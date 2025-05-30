@@ -3,284 +3,96 @@ import { lazy } from "@loadable/component";
 
 // Layouts
 import AuthLayout from "./layouts/Auth";
-import AuthCoverLayout from "./layouts/AuthCover";
 import DashboardLayout from "./layouts/Dashboard";
-import DocLayout from "./layouts/Doc";
 import LandingLayout from "./layouts/Landing";
 
 // Guards
 import AuthGuard from "./components/guards/AuthGuard";
+import SubscriptionGuard from "./components/guards/SubscriptionGuard"; // NEW: Subscription guard
 
-// Presentation & Landing
-const Presentation = lazy(() => import("./pages/landing/Presentation"));
-const Landing = lazy(() => import("./pages/landing/Landing"));
+// ASTRO Landing & Marketing
+const AstroLanding = lazy(() => import("./pages/landing/AstroLanding"));
+const Pricing = lazy(() => import("./pages/landing/Pricing"));
+const Features = lazy(() => import("./pages/landing/Features"));
 
-// Dashboards
-const Default = lazy(() => import("./pages/dashboards/Default"));
-const Analytics = lazy(() => import("./pages/dashboards/Analytics"));
-const SaaS = lazy(() => import("./pages/dashboards/SaaS"));
-const Social = lazy(() => import("./pages/dashboards/Social"));
-const Crypto = lazy(() => import("./pages/dashboards/Crypto"));
+// ASTRO Main Dashboard
+const MusicDashboard = lazy(() => import("./pages/dashboard/MusicDashboard"));
 
-// Apps
-const Calendar = lazy(() => import("./pages/apps/Calendar"));
-const Chat = lazy(() => import("./pages/apps/Chat"));
-const Customers = lazy(() => import("./pages/apps/Customers"));
-const EmailDetails = lazy(() => import("./pages/apps/EmailDetails"));
-const EmailInbox = lazy(() => import("./pages/apps/EmailInbox"));
-const FileManager = lazy(() => import("./pages/apps/FileManager"));
-const Invoice = lazy(() => import("./pages/apps/Invoice"));
-const Orders = lazy(() => import("./pages/apps/Orders"));
-const Pricing = lazy(() => import("./pages/apps/Pricing"));
-const Products = lazy(() => import("./pages/apps/Products"));
-const ProductsDetails = lazy(() => import("./pages/apps/ProductsDetails"));
-const Projects = lazy(() => import("./pages/apps/Projects"));
-const ProjectsDetails = lazy(() => import("./pages/apps/ProjectsDetails"));
-const TasksKanban = lazy(() => import("./pages/apps/TasksKanban"));
-const TasksList = lazy(() => import("./pages/apps/TasksList"));
+// Music Catalog Management
+const Works = lazy(() => import("./pages/catalog/Works"));
+const WorkDetails = lazy(() => import("./pages/catalog/WorkDetails"));
+const Recordings = lazy(() => import("./pages/catalog/Recordings"));
+const RecordingDetails = lazy(() => import("./pages/catalog/RecordingDetails"));
+const Releases = lazy(() => import("./pages/catalog/Releases"));
+const ReleaseDetails = lazy(() => import("./pages/catalog/ReleaseDetails"));
+const Artists = lazy(() => import("./pages/catalog/Artists"));
+const Publishers = lazy(() => import("./pages/catalog/Publishers"));
 
-// Pages
-const Profile = lazy(() => import("./pages/pages/Profile"));
-const Settings = lazy(() => import("./pages/pages/Settings"));
-const Blank = lazy(() => import("./pages/pages/Blank"));
+// Rights & Royalties
+const Royalties = lazy(() => import("./pages/royalties/Royalties"));
+const RoyaltyStatements = lazy(() => import("./pages/royalties/RoyaltyStatements"));
+const RoyaltyDistribution = lazy(() => import("./pages/royalties/RoyaltyDistribution"));
+const Agreements = lazy(() => import("./pages/agreements/Agreements"));
+const AgreementDetails = lazy(() => import("./pages/agreements/AgreementDetails"));
+const Copyrights = lazy(() => import("./pages/copyrights/Copyrights"));
 
-// Auth
-const Page500 = lazy(() => import("./pages/auth/Page500"));
-const Page404 = lazy(() => import("./pages/auth/Page404"));
+// Industry Registrations
+const CWRSubmissions = lazy(() => import("./pages/registrations/CWRSubmissions"));
+const DDEXDeliveries = lazy(() => import("./pages/registrations/DDEXDeliveries"));
+const PRORegistrations = lazy(() => import("./pages/registrations/PRORegistrations"));
+
+// Analytics & Reports
+const Analytics = lazy(() => import("./pages/analytics/Analytics"));
+const StreamingAnalytics = lazy(() => import("./pages/analytics/StreamingAnalytics"));
+const RoyaltyAnalytics = lazy(() => import("./pages/analytics/RoyaltyAnalytics"));
+const Reports = lazy(() => import("./pages/reports/Reports"));
+
+// NFT & Blockchain
+const NFTDashboard = lazy(() => import("./pages/nft/NFTDashboard"));
+const NFTMinting = lazy(() => import("./pages/nft/NFTMinting"));
+const SmartContracts = lazy(() => import("./pages/nft/SmartContracts"));
+
+// Sync Licensing
+const SyncOpportunities = lazy(() => import("./pages/sync/SyncOpportunities"));
+const SyncLicenses = lazy(() => import("./pages/sync/SyncLicenses"));
+
+// Settings & Profile
+const Profile = lazy(() => import("./pages/profile/Profile"));
+const Settings = lazy(() => import("./pages/settings/Settings"));
+const Subscription = lazy(() => import("./pages/settings/Subscription"));
+
+// Auth Pages
 const SignIn = lazy(() => import("./pages/auth/SignIn"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 const TwoFactor = lazy(() => import("./pages/auth/TwoFactor"));
-const LockScreen = lazy(() => import("./pages/auth/LockScreen"));
 
-// UI components
-const Alerts = lazy(() => import("./pages/ui/Alerts"));
-const Buttons = lazy(() => import("./pages/ui/Buttons"));
-const Cards = lazy(() => import("./pages/ui/Cards"));
-const Carousel = lazy(() => import("./pages/ui/Carousel"));
-const EmbedVideo = lazy(() => import("./pages/ui/EmbedVideo"));
-const General = lazy(() => import("./pages/ui/General"));
-const Grid = lazy(() => import("./pages/ui/Grid"));
-const Modals = lazy(() => import("./pages/ui/Modals"));
-const Offcanvas = lazy(() => import("./pages/ui/Offcanvas"));
-const Tabs = lazy(() => import("./pages/ui/Tabs"));
-const Typography = lazy(() => import("./pages/ui/Typography"));
-
-// Icons
-const Lucide = lazy(() => import("./pages/icons/Lucide"));
-const FontAwesome = lazy(() => import("./pages/icons/FontAwesome"));
-
-// Forms
-const Layouts = lazy(() => import("./pages/forms/Layouts"));
-const BasicInputs = lazy(() => import("./pages/forms/BasicInputs"));
-const InputGroups = lazy(() => import("./pages/forms/InputGroups"));
-const FloatingLabels = lazy(() => import("./pages/forms/FloatingLabels"));
-const AdvancedInputs = lazy(() => import("./pages/forms/AdvancedInputs"));
-const Formik = lazy(() => import("./pages/forms/Formik"));
-const Editors = lazy(() => import("./pages/forms/Editors"));
-
-// Tables
-const Tables = lazy(() => import("./pages/tables/Tables"));
-const Pagination = lazy(() => import("./pages/tables/Pagination"));
-const ColumnSorting = lazy(() => import("./pages/tables/ColumnSorting"));
-const ColumnFiltering = lazy(() => import("./pages/tables/ColumnFiltering"));
-const RowExpanding = lazy(() => import("./pages/tables/RowExpanding"));
-const RowSelection = lazy(() => import("./pages/tables/RowSelection"));
-
-// Charts
-const Chartjs = lazy(() => import("./pages/charts/Chartjs"));
-const ApexCharts = lazy(() => import("./pages/charts/ApexCharts"));
-
-// Notifications
-const Notifications = lazy(() => import("./pages/notifications/Notifications"));
-
-// Maps
-const GoogleMaps = lazy(() => import("./pages/maps/GoogleMaps"));
-const VectorMaps = lazy(() => import("./pages/maps/VectorMaps"));
-
-// Documentation
-const Introduction = lazy(() => import("./pages/docs/Introduction"));
-const GettingStarted = lazy(() => import("./pages/docs/GettingStarted"));
-const Routing = lazy(() => import("./pages/docs/Routing"));
-const Auth0 = lazy(() => import("./pages/docs/auth/Auth0"));
-const Cognito = lazy(() => import("./pages/docs/auth/Cognito"));
-const Firebase = lazy(() => import("./pages/docs/auth/Firebase"));
-const JWT = lazy(() => import("./pages/docs/auth/JWT"));
-const Guards = lazy(() => import("./pages/docs/Guards"));
-const APICalls = lazy(() => import("./pages/docs/APICalls"));
-const Redux = lazy(() => import("./pages/docs/Redux"));
-const Internationalization = lazy(() =>
-  import("./pages/docs/Internationalization")
-);
-const EnvironmentVariables = lazy(() =>
-  import("./pages/docs/EnvironmentVariables")
-);
-const ESLintAndPrettier = lazy(() => import("./pages/docs/ESLintAndPrettier"));
-const Deployment = lazy(() => import("./pages/docs/Deployment"));
-const MigratingToNextJS = lazy(() => import("./pages/docs/MigratingToNextJS"));
-const Support = lazy(() => import("./pages/docs/Support"));
-const Changelog = lazy(() => import("./pages/docs/Changelog"));
-
-// Protected routes
-const ProtectedPage = lazy(() => import("./pages/protected/ProtectedPage"));
+// Error Pages
+const Page404 = lazy(() => import("./pages/auth/Page404"));
+const Page500 = lazy(() => import("./pages/auth/Page500"));
 
 const routes = [
+  // Public Landing Pages
   {
     path: "/",
     element: <LandingLayout />,
     children: [
       {
         path: "",
-        element: <Presentation />,
-      },
-    ],
-  },
-  {
-    path: "dashboard",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "default",
-        element: <Default />,
-      },
-      {
-        path: "analytics",
-        element: <Analytics />,
-      },
-      {
-        path: "saas",
-        element: <SaaS />,
-      },
-      {
-        path: "social",
-        element: <Social />,
-      },
-      {
-        path: "crypto",
-        element: <Crypto />,
-      },
-    ],
-  },
-  {
-    path: "ecommerce",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "products",
-        element: <Products />,
-      },
-      {
-        path: "products-details",
-        element: <ProductsDetails />,
-      },
-      {
-        path: "orders",
-        element: <Orders />,
-      },
-      {
-        path: "customers",
-        element: <Customers />,
-      },
-      {
-        path: "invoice",
-        element: <Invoice />,
+        element: <AstroLanding />,
       },
       {
         path: "pricing",
         element: <Pricing />,
       },
-    ],
-  },
-  {
-    path: "projects",
-    element: <DashboardLayout />,
-    children: [
       {
-        path: "overview",
-        element: <Projects />,
-      },
-      {
-        path: "details",
-        element: <ProjectsDetails />,
+        path: "features",
+        element: <Features />,
       },
     ],
   },
-  {
-    path: "chat",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <Chat />,
-      },
-    ],
-  },
-  {
-    path: "file-manager",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <FileManager />,
-      },
-    ],
-  },
-  {
-    path: "calendar",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <Calendar />,
-      },
-    ],
-  },
-  {
-    path: "email",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "inbox",
-        element: <EmailInbox />,
-      },
-      {
-        path: "details",
-        element: <EmailDetails />,
-      },
-    ],
-  },
-  {
-    path: "tasks",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "list",
-        element: <TasksList />,
-      },
-      {
-        path: "kanban",
-        element: <TasksKanban />,
-      },
-    ],
-  },
-  {
-    path: "pages",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "profile",
-        element: <Profile />,
-      },
-      {
-        path: "settings",
-        element: <Settings />,
-      },
-      {
-        path: "blank",
-        element: <Blank />,
-      },
-    ],
-  },
+
+  // Authentication Routes
   {
     path: "auth",
     element: <AuthLayout />,
@@ -302,10 +114,6 @@ const routes = [
         element: <TwoFactor />,
       },
       {
-        path: "lock-screen",
-        element: <LockScreen />,
-      },
-      {
         path: "404",
         element: <Page404 />,
       },
@@ -315,314 +123,10 @@ const routes = [
       },
     ],
   },
+
+  // Protected Dashboard Routes
   {
-    path: "auth-cover",
-    element: <AuthCoverLayout />,
-    children: [
-      {
-        path: "sign-in",
-        element: <SignIn />,
-      },
-      {
-        path: "sign-up",
-        element: <SignUp />,
-      },
-      {
-        path: "reset-password",
-        element: <ResetPassword />,
-      },
-      {
-        path: "2fa",
-        element: <TwoFactor />,
-      },
-      {
-        path: "lock-screen",
-        element: <LockScreen />,
-      },
-      {
-        path: "404",
-        element: <Page404 />,
-      },
-      {
-        path: "500",
-        element: <Page500 />,
-      },
-    ],
-  },
-  {
-    path: "landing",
-    element: <LandingLayout />,
-    children: [
-      {
-        path: "",
-        element: <Landing />,
-      },
-    ],
-  },
-  {
-    path: "ui",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "alerts",
-        element: <Alerts />,
-      },
-      {
-        path: "buttons",
-        element: <Buttons />,
-      },
-      {
-        path: "cards",
-        element: <Cards />,
-      },
-      {
-        path: "carousel",
-        element: <Carousel />,
-      },
-      {
-        path: "embed-video",
-        element: <EmbedVideo />,
-      },
-      {
-        path: "general",
-        element: <General />,
-      },
-      {
-        path: "grid",
-        element: <Grid />,
-      },
-      {
-        path: "modals",
-        element: <Modals />,
-      },
-      {
-        path: "tabs",
-        element: <Tabs />,
-      },
-      {
-        path: "offcanvas",
-        element: <Offcanvas />,
-      },
-      {
-        path: "typography",
-        element: <Typography />,
-      },
-    ],
-  },
-  {
-    path: "icons",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "lucide",
-        element: <Lucide />,
-      },
-      {
-        path: "font-awesome",
-        element: <FontAwesome />,
-      },
-    ],
-  },
-  {
-    path: "forms",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "layouts",
-        element: <Layouts />,
-      },
-      {
-        path: "basic-inputs",
-        element: <BasicInputs />,
-      },
-      {
-        path: "input-groups",
-        element: <InputGroups />,
-      },
-      {
-        path: "floating-labels",
-        element: <FloatingLabels />,
-      },
-    ],
-  },
-  {
-    path: "tables",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <Tables />,
-      },
-    ],
-  },
-  {
-    path: "form-plugins",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "advanced-inputs",
-        element: <AdvancedInputs />,
-      },
-      {
-        path: "formik",
-        element: <Formik />,
-      },
-      {
-        path: "editors",
-        element: <Editors />,
-      },
-    ],
-  },
-  {
-    path: "advanced-tables",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "pagination",
-        element: <Pagination />,
-      },
-      {
-        path: "column-sorting",
-        element: <ColumnSorting />,
-      },
-      {
-        path: "column-filtering",
-        element: <ColumnFiltering />,
-      },
-      {
-        path: "row-expanding",
-        element: <RowExpanding />,
-      },
-      {
-        path: "row-selection",
-        element: <RowSelection />,
-      },
-    ],
-  },
-  {
-    path: "charts",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "chartjs",
-        element: <Chartjs />,
-      },
-      {
-        path: "apexcharts",
-        element: <ApexCharts />,
-      },
-    ],
-  },
-  {
-    path: "notifications",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <Notifications />,
-      },
-    ],
-  },
-  {
-    path: "maps",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "google-maps",
-        element: <GoogleMaps />,
-      },
-      {
-        path: "vector-maps",
-        element: <VectorMaps />,
-      },
-    ],
-  },
-  {
-    path: "calendar",
-    element: <DashboardLayout />,
-    children: [
-      {
-        path: "",
-        element: <Calendar />,
-      },
-    ],
-  },
-  {
-    path: "docs",
-    element: <DocLayout />,
-    children: [
-      {
-        path: "introduction",
-        element: <Introduction />,
-      },
-      {
-        path: "getting-started",
-        element: <GettingStarted />,
-      },
-      {
-        path: "routing",
-        element: <Routing />,
-      },
-      {
-        path: "auth/auth0",
-        element: <Auth0 />,
-      },
-      {
-        path: "auth/cognito",
-        element: <Cognito />,
-      },
-      {
-        path: "auth/firebase",
-        element: <Firebase />,
-      },
-      {
-        path: "auth/jwt",
-        element: <JWT />,
-      },
-      {
-        path: "guards",
-        element: <Guards />,
-      },
-      {
-        path: "api-calls",
-        element: <APICalls />,
-      },
-      {
-        path: "redux",
-        element: <Redux />,
-      },
-      {
-        path: "internationalization",
-        element: <Internationalization />,
-      },
-      {
-        path: "environment-variables",
-        element: <EnvironmentVariables />,
-      },
-      {
-        path: "eslint-and-prettier",
-        element: <ESLintAndPrettier />,
-      },
-      {
-        path: "deployment",
-        element: <Deployment />,
-      },
-      {
-        path: "migrating-to-next-js",
-        element: <MigratingToNextJS />,
-      },
-      {
-        path: "support",
-        element: <Support />,
-      },
-      {
-        path: "changelog",
-        element: <Changelog />,
-      },
-    ],
-  },
-  {
-    path: "private",
+    path: "dashboard",
     element: (
       <AuthGuard>
         <DashboardLayout />
@@ -631,10 +135,270 @@ const routes = [
     children: [
       {
         path: "",
-        element: <ProtectedPage />,
+        element: <MusicDashboard />,
       },
     ],
   },
+
+  // Music Catalog Routes
+  {
+    path: "catalog",
+    element: (
+      <AuthGuard>
+        <DashboardLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "works",
+        element: <Works />,
+      },
+      {
+        path: "works/:id",
+        element: <WorkDetails />,
+      },
+      {
+        path: "recordings",
+        element: <Recordings />,
+      },
+      {
+        path: "recordings/:id",
+        element: <RecordingDetails />,
+      },
+      {
+        path: "releases",
+        element: <Releases />,
+      },
+      {
+        path: "releases/:id",
+        element: <ReleaseDetails />,
+      },
+      {
+        path: "artists",
+        element: <Artists />,
+      },
+      {
+        path: "publishers",
+        element: <Publishers />,
+      },
+    ],
+  },
+
+  // Rights & Royalties Routes
+  {
+    path: "royalties",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="ascend">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Royalties />,
+      },
+      {
+        path: "statements",
+        element: <RoyaltyStatements />,
+      },
+      {
+        path: "distribution",
+        element: <RoyaltyDistribution />,
+      },
+    ],
+  },
+
+  // Agreements Routes
+  {
+    path: "agreements",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="pro">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Agreements />,
+      },
+      {
+        path: ":id",
+        element: <AgreementDetails />,
+      },
+    ],
+  },
+
+  // Copyright Routes
+  {
+    path: "copyrights",
+    element: (
+      <AuthGuard>
+        <DashboardLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Copyrights />,
+      },
+    ],
+  },
+
+  // Registration Routes
+  {
+    path: "registrations",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="ascend">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "cwr",
+        element: <CWRSubmissions />,
+      },
+      {
+        path: "ddex",
+        element: <DDEXDeliveries />,
+      },
+      {
+        path: "pro",
+        element: <PRORegistrations />,
+      },
+    ],
+  },
+
+  // Analytics Routes
+  {
+    path: "analytics",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="pro">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Analytics />,
+      },
+      {
+        path: "streaming",
+        element: <StreamingAnalytics />,
+      },
+      {
+        path: "royalties",
+        element: <RoyaltyAnalytics />,
+      },
+    ],
+  },
+
+  // NFT Routes
+  {
+    path: "nft",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="enterprise">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <NFTDashboard />,
+      },
+      {
+        path: "minting",
+        element: <NFTMinting />,
+      },
+      {
+        path: "contracts",
+        element: <SmartContracts />,
+      },
+    ],
+  },
+
+  // Sync Licensing Routes
+  {
+    path: "sync",
+    element: (
+      <AuthGuard>
+        <SubscriptionGuard requiredTier="pro">
+          <DashboardLayout />
+        </SubscriptionGuard>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "opportunities",
+        element: <SyncOpportunities />,
+      },
+      {
+        path: "licenses",
+        element: <SyncLicenses />,
+      },
+    ],
+  },
+
+  // Reports Routes
+  {
+    path: "reports",
+    element: (
+      <AuthGuard>
+        <DashboardLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Reports />,
+      },
+    ],
+  },
+
+  // Profile & Settings Routes
+  {
+    path: "profile",
+    element: (
+      <AuthGuard>
+        <DashboardLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Profile />,
+      },
+    ],
+  },
+  {
+    path: "settings",
+    element: (
+      <AuthGuard>
+        <DashboardLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        path: "",
+        element: <Settings />,
+      },
+      {
+        path: "subscription",
+        element: <Subscription />,
+      },
+    ],
+  },
+
+  // Catch-all 404
   {
     path: "*",
     element: <AuthLayout />,
