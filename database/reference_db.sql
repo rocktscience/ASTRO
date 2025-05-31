@@ -11,6 +11,484 @@ CREATE DATABASE reference_db
 
 USE reference_db;
 
+
+-- =====================================================================================
+-- RESOURCE_DB LOOKUP TABLES (DDEX STANDARD CODE LISTS)
+-- =====================================================================================
+
+-- First, create the lookup tables in resource_db database
+USE resource_db;
+
+-- DDEX Standards
+CREATE TABLE IF NOT EXISTS ddex_standards (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    standard_code VARCHAR(10) NOT NULL UNIQUE,
+    standard_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    current_version VARCHAR(10) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_standards_code (standard_code),
+    INDEX idx_ddex_standards_active (is_active)
+);
+
+INSERT INTO ddex_standards (standard_code, standard_name, description, current_version) VALUES
+('ERN', 'Electronic Release Notification', 'Release and resource information exchange', '4.3'),
+('DSR', 'Digital Sales Reporting', 'Sales and usage reporting', '3.0'),
+('MWN', 'Musical Work Notification', 'Musical work information exchange', '2.1'),
+('MWL', 'Musical Work License', 'Musical work licensing', '1.0'),
+('RDR', 'Recording Data and Revenue', 'Recording revenue reporting', '1.0'),
+('CDM', 'Claim Detail Message', 'Rights claims and disputes', '1.0');
+
+-- DDEX Release Types (Official ERN 4.3 Code List)
+CREATE TABLE IF NOT EXISTS ddex_release_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_release_types_code (type_code),
+    INDEX idx_ddex_release_types_version (ddex_version),
+    INDEX idx_ddex_release_types_active (is_active)
+);
+
+INSERT INTO ddex_release_types (type_code, type_name, description) VALUES
+('Album', 'Album', 'A collection of tracks released together'),
+('Single', 'Single', 'A release containing one to three tracks'),
+('EP', 'EP', 'Extended Play - typically 4-6 tracks'),
+('Compilation', 'Compilation', 'Collection of previously released tracks'),
+('Soundtrack', 'Soundtrack', 'Music from film, TV, or other media'),
+('Bootleg', 'Bootleg', 'Unofficial or unauthorized release'),
+('Spokenword', 'Spokenword', 'Spoken word content'),
+('Interview', 'Interview', 'Interview content'),
+('Audiobook', 'Audiobook', 'Book in audio format'),
+('Live', 'Live', 'Live performance recording'),
+('Remix', 'Remix', 'Remixed version of existing content'),
+('DJ-mix', 'DJ-mix', 'DJ mixed content'),
+('MasterRingTone', 'Master Ring Tone', 'Full-length ringtone'),
+('RingToneFromMaster', 'Ring Tone From Master', 'Ringtone excerpt from master');
+
+-- DDEX Usage Types (Official Code List)
+CREATE TABLE IF NOT EXISTS ddex_usage_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_usage_types_code (type_code),
+    INDEX idx_ddex_usage_types_version (ddex_version),
+    INDEX idx_ddex_usage_types_active (is_active)
+);
+
+INSERT INTO ddex_usage_types (type_code, type_name, description) VALUES
+('Stream', 'Stream', 'Streaming usage'),
+('PermanentDownload', 'Permanent Download', 'Permanent download to own'),
+('ConditionalDownload', 'Conditional Download', 'Temporary/conditional download'),
+('NonInteractiveStream', 'Non-Interactive Stream', 'Radio-style streaming'),
+('OnDemandStream', 'On-Demand Stream', 'User-initiated streaming'),
+('UserMade', 'User Made', 'User-generated content'),
+('Preview', 'Preview', 'Preview/sample usage'),
+('Simulcast', 'Simulcast', 'Simultaneous broadcast'),
+('Broadcast', 'Broadcast', 'Traditional broadcast'),
+('PhysicalRental', 'Physical Rental', 'Physical media rental'),
+('DigitalRental', 'Digital Rental', 'Digital content rental'),
+('Synchronization', 'Synchronization', 'Sync licensing usage'),
+('MobilePersonalization', 'Mobile Personalization', 'Mobile customization'),
+('BackgroundMusic', 'Background Music', 'Background/ambient usage');
+
+-- DDEX Commercial Model Types (Official Code List)
+CREATE TABLE IF NOT EXISTS ddex_commercial_model_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_commercial_model_types_code (type_code),
+    INDEX idx_ddex_commercial_model_types_version (ddex_version),
+    INDEX idx_ddex_commercial_model_types_active (is_active)
+);
+
+INSERT INTO ddex_commercial_model_types (type_code, type_name, description) VALUES
+('SubscriptionModel', 'Subscription Model', 'Subscription-based access'),
+('PayAsYouGoModel', 'Pay As You Go Model', 'Per-transaction payment'),
+('AdvertisementSupportedModel', 'Advertisement Supported Model', 'Ad-supported free access'),
+('PremiumModel', 'Premium Model', 'Premium tier access'),
+('FreemiumModel', 'Freemium Model', 'Free with premium upgrades'),
+('FreeOfChargeModel', 'Free Of Charge Model', 'Completely free access');
+
+-- DDEX Party ID Types
+CREATE TABLE IF NOT EXISTS ddex_party_id_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    validation_pattern VARCHAR(255) NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_party_id_types_code (type_code),
+    INDEX idx_ddex_party_id_types_version (ddex_version),
+    INDEX idx_ddex_party_id_types_active (is_active)
+);
+
+INSERT INTO ddex_party_id_types (type_code, type_name, description, validation_pattern) VALUES
+('DPID', 'DDEX Party Identifier', 'DDEX Party Identifier', '^[A-Za-z0-9]{4,20}$'),
+('IPI', 'Interested Parties Information number', 'IPI number for rights holders', '^[0-9]{9,11}$'),
+('ISNI', 'International Standard Name Identifier', 'ISO 27729 identifier', '^[0-9]{15}[0-9X]$'),
+('ProprietaryId', 'Proprietary identifier', 'Company-specific identifier', NULL),
+('DunsNumber', 'Data Universal Numbering System', 'D-U-N-S Number', '^[0-9]{9}$'),
+('IPN', 'Interested Party Number', 'Legacy IPI number format', '^[0-9]+$');
+
+-- DDEX Resource Types
+CREATE TABLE IF NOT EXISTS ddex_resource_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_resource_types_code (type_code),
+    INDEX idx_ddex_resource_types_version (ddex_version),
+    INDEX idx_ddex_resource_types_active (is_active)
+);
+
+INSERT INTO ddex_resource_types (type_code, type_name, description) VALUES
+('SoundRecording', 'Sound Recording', 'Audio recording'),
+('MusicalWorkSoundRecording', 'Musical Work Sound Recording', 'Sound recording of musical work'),
+('NonMusicalWorkSoundRecording', 'Non-Musical Work Sound Recording', 'Non-musical audio content'),
+('MIDI', 'MIDI', 'MIDI file'),
+('Video', 'Video', 'Video content'),
+('MusicalWorkVideo', 'Musical Work Video', 'Video of musical work'),
+('NonMusicalWorkVideo', 'Non-Musical Work Video', 'Non-musical video content'),
+('Image', 'Image', 'Image/artwork'),
+('Software', 'Software', 'Software application'),
+('Text', 'Text', 'Text content'),
+('SheetMusic', 'Sheet Music', 'Musical notation');
+
+-- DDEX Resource ID Types
+CREATE TABLE IF NOT EXISTS ddex_resource_id_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    validation_pattern VARCHAR(255) NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_resource_id_types_code (type_code),
+    INDEX idx_ddex_resource_id_types_version (ddex_version),
+    INDEX idx_ddex_resource_id_types_active (is_active)
+);
+
+INSERT INTO ddex_resource_id_types (type_code, type_name, description, validation_pattern) VALUES
+('ISRC', 'International Standard Recording Code', 'ISO 3901 standard', '^[A-Z]{2}-[A-Z0-9]{3}-[0-9]{2}-[0-9]{5}$'),
+('ProprietaryId', 'Proprietary Resource Identifier', 'Company-specific identifier', NULL),
+('ISAN', 'International Standard Audiovisual Number', 'ISO 15706 standard', '^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{1}$'),
+('ISBN', 'International Standard Book Number', 'ISO 2108 standard', '^(97[89])?[0-9]{9}[0-9X]$'),
+('ISSN', 'International Standard Serial Number', 'ISO 3297 standard', '^[0-9]{4}-[0-9]{3}[0-9X]$'),
+('SICI', 'Serial Item and Contribution Identifier', 'ANSI/NISO Z39.56 standard', NULL),
+('CatalogNumber', 'Catalog Number', 'Label catalog number', NULL);
+
+-- DDEX Release ID Types
+CREATE TABLE IF NOT EXISTS ddex_release_id_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    validation_pattern VARCHAR(255) NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_release_id_types_code (type_code),
+    INDEX idx_ddex_release_id_types_version (ddex_version),
+    INDEX idx_ddex_release_id_types_active (is_active)
+);
+
+INSERT INTO ddex_release_id_types (type_code, type_name, description, validation_pattern) VALUES
+('ICPN', 'International Cataloguing of Published Notation', 'ICPN identifier', '^[0-9]{12}$'),
+('GRID', 'Global Release Identifier', 'DDEX Global Release ID', '^A[0-9]-[0-9A-Z]{5}-[A-Z0-9]{11}-[A-Z]$'),
+('CatalogNumber', 'Catalog Number', 'Label catalog number', NULL),
+('ProprietaryId', 'Proprietary Release Identifier', 'Company-specific identifier', NULL),
+('EAN', 'European Article Number', 'EAN-13 barcode', '^[0-9]{13}$'),
+('UPC', 'Universal Product Code', 'UPC-A barcode', '^[0-9]{12}$');
+
+-- ISO Territory Codes (Official ISO 3166)
+CREATE TABLE IF NOT EXISTS iso_territory_codes (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    territory_code VARCHAR(10) NOT NULL UNIQUE,
+    territory_name VARCHAR(255) NOT NULL,
+    iso_alpha2 VARCHAR(2) NULL,
+    iso_alpha3 VARCHAR(3) NULL,
+    iso_numeric VARCHAR(3) NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_iso_territory_codes_code (territory_code),
+    INDEX idx_iso_territory_codes_alpha2 (iso_alpha2),
+    INDEX idx_iso_territory_codes_active (is_active)
+);
+
+INSERT INTO iso_territory_codes (territory_code, territory_name, iso_alpha2, iso_alpha3, iso_numeric) VALUES
+('Worldwide', 'Worldwide', NULL, NULL, NULL),
+('US', 'United States', 'US', 'USA', '840'),
+('CA', 'Canada', 'CA', 'CAN', '124'),
+('GB', 'United Kingdom', 'GB', 'GBR', '826'),
+('DE', 'Germany', 'DE', 'DEU', '276'),
+('FR', 'France', 'FR', 'FRA', '250'),
+('IT', 'Italy', 'IT', 'ITA', '380'),
+('ES', 'Spain', 'ES', 'ESP', '724'),
+('JP', 'Japan', 'JP', 'JPN', '392'),
+('AU', 'Australia', 'AU', 'AUS', '036'),
+('BR', 'Brazil', 'BR', 'BRA', '076'),
+('MX', 'Mexico', 'MX', 'MEX', '484'),
+('CN', 'China', 'CN', 'CHN', '156'),
+('IN', 'India', 'IN', 'IND', '356'),
+('KR', 'South Korea', 'KR', 'KOR', '410'),
+('NL', 'Netherlands', 'NL', 'NLD', '528'),
+('SE', 'Sweden', 'SE', 'SWE', '752'),
+('NO', 'Norway', 'NO', 'NOR', '578'),
+('DK', 'Denmark', 'DK', 'DNK', '208'),
+('FI', 'Finland', 'FI', 'FIN', '246');
+
+-- ISO Currency Codes (Official ISO 4217)
+CREATE TABLE IF NOT EXISTS iso_currency_codes (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    currency_code VARCHAR(3) NOT NULL UNIQUE,
+    currency_name VARCHAR(255) NOT NULL,
+    currency_number VARCHAR(3) NULL,
+    minor_units INT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_iso_currency_codes_code (currency_code),
+    INDEX idx_iso_currency_codes_active (is_active)
+);
+
+INSERT INTO iso_currency_codes (currency_code, currency_name, currency_number, minor_units) VALUES
+('USD', 'US Dollar', '840', 2),
+('EUR', 'Euro', '978', 2),
+('GBP', 'British Pound', '826', 2),
+('CAD', 'Canadian Dollar', '124', 2),
+('JPY', 'Japanese Yen', '392', 0),
+('AUD', 'Australian Dollar', '036', 2),
+('CHF', 'Swiss Franc', '756', 2),
+('CNY', 'Chinese Yuan', '156', 2),
+('SEK', 'Swedish Krona', '752', 2),
+('NOK', 'Norwegian Krone', '578', 2),
+('DKK', 'Danish Krone', '208', 2),
+('PLN', 'Polish Zloty', '985', 2),
+('CZK', 'Czech Koruna', '203', 2),
+('HUF', 'Hungarian Forint', '348', 2),
+('RUB', 'Russian Ruble', '643', 2);
+
+-- DDEX Title Types
+CREATE TABLE IF NOT EXISTS ddex_title_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_title_types_code (type_code),
+    INDEX idx_ddex_title_types_version (ddex_version),
+    INDEX idx_ddex_title_types_active (is_active)
+);
+
+INSERT INTO ddex_title_types (type_code, type_name, description) VALUES
+('DisplayTitle', 'Display Title', 'Title for display purposes'),
+('GroupingTitle', 'Grouping Title', 'Title that groups related works'),
+('VersionTitle', 'Version Title', 'Title indicating version or variant'),
+('TransliteratedTitle', 'Transliterated Title', 'Title transliterated to Latin script'),
+('FormalTitle', 'Formal Title', 'Official formal title'),
+('AlternativeTitle', 'Alternative Title', 'Alternative or working title');
+
+-- DDEX Artist Role Types
+CREATE TABLE IF NOT EXISTS ddex_artist_role_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_artist_role_types_code (type_code),
+    INDEX idx_ddex_artist_role_types_version (ddex_version),
+    INDEX idx_ddex_artist_role_types_active (is_active)
+);
+
+INSERT INTO ddex_artist_role_types (type_code, type_name, description) VALUES
+('MainArtist', 'Main Artist', 'Primary performing artist'),
+('FeaturedArtist', 'Featured Artist', 'Featured or guest artist'),
+('Composer', 'Composer', 'Musical composition creator'),
+('Producer', 'Producer', 'Recording producer'),
+('Mixer', 'Mixer', 'Audio mixing engineer'),
+('Conductor', 'Conductor', 'Orchestra or ensemble conductor'),
+('Performer', 'Performer', 'General performer role');
+
+-- DDEX Duration Precision Types
+CREATE TABLE IF NOT EXISTS ddex_duration_precision_types (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    type_code VARCHAR(50) NOT NULL UNIQUE,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
+    deprecated_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_duration_precision_types_code (type_code),
+    INDEX idx_ddex_duration_precision_types_version (ddex_version),
+    INDEX idx_ddex_duration_precision_types_active (is_active)
+);
+
+INSERT INTO ddex_duration_precision_types (type_code, type_name, description) VALUES
+('Exact', 'Exact', 'Exact duration measurement'),
+('Approximate', 'Approximate', 'Approximate duration measurement');
+
+-- DDEX Processing Statuses
+CREATE TABLE IF NOT EXISTS ddex_processing_statuses (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    status_code VARCHAR(50) NOT NULL UNIQUE,
+    status_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    is_final_status BOOLEAN NOT NULL DEFAULT FALSE,
+    is_error_status BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_processing_statuses_code (status_code),
+    INDEX idx_ddex_processing_statuses_final (is_final_status),
+    INDEX idx_ddex_processing_statuses_error (is_error_status),
+    INDEX idx_ddex_processing_statuses_active (is_active)
+);
+
+INSERT INTO ddex_processing_statuses (status_code, status_name, description, is_final_status, is_error_status) VALUES
+('RECEIVED', 'Received', 'Message received and queued', FALSE, FALSE),
+('VALIDATING', 'Validating', 'Message validation in progress', FALSE, FALSE),
+('VALIDATED', 'Validated', 'Message passed validation', FALSE, FALSE),
+('PROCESSING', 'Processing', 'Message processing in progress', FALSE, FALSE),
+('PROCESSED', 'Processed', 'Message successfully processed', TRUE, FALSE),
+('XML_GENERATED', 'XML Generated', 'XML content generated successfully', FALSE, FALSE),
+('TRANSMITTED', 'Transmitted', 'Message transmitted to recipient', TRUE, FALSE),
+('ACKNOWLEDGED', 'Acknowledged', 'Message acknowledged by recipient', TRUE, FALSE),
+('VALIDATION_FAILED', 'Validation Failed', 'Message failed validation', TRUE, TRUE),
+('PROCESSING_FAILED', 'Processing Failed', 'Message processing failed', TRUE, TRUE),
+('TRANSMISSION_FAILED', 'Transmission Failed', 'Message transmission failed', TRUE, TRUE),
+('RETRY_SCHEDULED', 'Retry Scheduled', 'Message scheduled for retry', FALSE, FALSE);
+
+-- DDEX Validation Statuses
+CREATE TABLE IF NOT EXISTS ddex_validation_statuses (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    status_code VARCHAR(50) NOT NULL UNIQUE,
+    status_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_ddex_validation_statuses_code (status_code),
+    INDEX idx_ddex_validation_statuses_active (is_active)
+);
+
+INSERT INTO ddex_validation_statuses (status_code, status_name, description) VALUES
+('PENDING', 'Pending', 'Validation not yet started'),
+('VALIDATING', 'Validating', 'Validation in progress'),
+('PASSED', 'Passed', 'Validation passed successfully'),
+('FAILED', 'Failed', 'Validation failed'),
+('WARNING', 'Warning', 'Validation passed with warnings');
+
+
+-- =============================================
+-- REFERENCE GUIDE FOR ALLOWED VALUES
+-- =============================================
+
+-- investment_type: PRE_RELEASE, POST_RELEASE, SECONDARY, CROWDFUND
+-- investment_tier: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+-- status (investment): PENDING, CONFIRMED, FAILED, REFUNDED, MATURED
+-- verification_status: PENDING, VERIFIED, REJECTED, EXPIRED
+-- verification_level: BASIC, ENHANCED, ACCREDITED
+-- risk_tolerance: CONSERVATIVE, MODERATE, AGGRESSIVE
+-- aml_check_status: PENDING, CLEARED, FLAGGED, BLOCKED
+-- token_standard: ERC20, ERC1155, SPL, BEP20
+-- distribution_frequency: REAL_TIME, DAILY, WEEKLY, MONTHLY, QUARTERLY
+-- offering_type: PRIVATE_SALE, PUBLIC_SALE, CROWDFUND, AUCTION, BONDING_CURVE
+-- pricing_model: FIXED, DUTCH_AUCTION, BONDING_CURVE, DYNAMIC
+-- distribution_type: AUTOMATIC, MANUAL, CLAIM_BASED
+-- distribution_status: CALCULATING, READY, IN_PROGRESS, COMPLETED, FAILED
+-- calculation_type: REVENUE_SHARE, PROFIT_SHARE, MILESTONE, BONUS
+-- performance_tier: TOP_1, TOP_5, TOP_10, TOP_25, AVERAGE, BELOW_AVERAGE
+-- wallet_type: CUSTODIAL, NON_CUSTODIAL, HARDWARE, MULTI_SIG
+-- market_type: ORDER_BOOK, AMM, AUCTION, OTC
+-- pool_type: UNISWAP_V2, UNISWAP_V3, BALANCER, CURVE, CUSTOM
+-- agreement_type: SAFE, TOKEN_PURCHASE, REVENUE_SHARE, CONVERTIBLE_NOTE
+-- dispute_resolution: ARBITRATION, COURT, MEDIATION
+-- trigger_type: DATE, STREAMS, REVENUE, DELIVERABLE, MANUAL
+-- verification_method: AUTOMATIC, ORACLE, MANUAL, DAO_VOTE
+-- vote_choice: FOR, AGAINST, ABSTAIN
+-- period_type: DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL
+-- curve_type: LINEAR, POLYNOMIAL, EXPONENTIAL, SIGMOID, CUSTOM
+-- referee_status: REGISTERED, KYC_COMPLETE, INVESTED, ACTIVE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- ============================================================
 -- CORE REFERENCE TABLES
 -- ============================================================

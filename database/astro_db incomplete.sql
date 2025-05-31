@@ -4,6 +4,9 @@
 
 USE astro_db;
 
+-- Set timezone for consistent timestamp handling
+SET time_zone = '+00:00'
+
 -- =============================================
 -- PERSON TABLES
 -- =============================================
@@ -15166,447 +15169,15 @@ BEGIN
 END//
 DELIMITER ;
 
-
-
 -- =====================================================================================
 -- Section 7: DDEX TABLES
--- Purpose: TRUE 100% Digital Data Exchange (DDEX) schema compliance
--- Standards: ERN 4.3, DSR 3.0, MWN 2.1, MWL 1.0, RDR 1.0, CDM 1.0
 -- =====================================================================================
-
-USE astro_db;
-
--- =====================================================================================
--- RESOURCE_DB LOOKUP TABLES (DDEX STANDARD CODE LISTS)
--- =====================================================================================
-
--- First, create the lookup tables in resource_db database
-USE resource_db;
-
--- DDEX Standards
-CREATE TABLE IF NOT EXISTS ddex_standards (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    standard_code VARCHAR(10) NOT NULL UNIQUE,
-    standard_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    current_version VARCHAR(10) NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_standards_code (standard_code),
-    INDEX idx_ddex_standards_active (is_active)
-);
-
-INSERT INTO ddex_standards (standard_code, standard_name, description, current_version) VALUES
-('ERN', 'Electronic Release Notification', 'Release and resource information exchange', '4.3'),
-('DSR', 'Digital Sales Reporting', 'Sales and usage reporting', '3.0'),
-('MWN', 'Musical Work Notification', 'Musical work information exchange', '2.1'),
-('MWL', 'Musical Work License', 'Musical work licensing', '1.0'),
-('RDR', 'Recording Data and Revenue', 'Recording revenue reporting', '1.0'),
-('CDM', 'Claim Detail Message', 'Rights claims and disputes', '1.0');
-
--- DDEX Release Types (Official ERN 4.3 Code List)
-CREATE TABLE IF NOT EXISTS ddex_release_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_release_types_code (type_code),
-    INDEX idx_ddex_release_types_version (ddex_version),
-    INDEX idx_ddex_release_types_active (is_active)
-);
-
-INSERT INTO ddex_release_types (type_code, type_name, description) VALUES
-('Album', 'Album', 'A collection of tracks released together'),
-('Single', 'Single', 'A release containing one to three tracks'),
-('EP', 'EP', 'Extended Play - typically 4-6 tracks'),
-('Compilation', 'Compilation', 'Collection of previously released tracks'),
-('Soundtrack', 'Soundtrack', 'Music from film, TV, or other media'),
-('Bootleg', 'Bootleg', 'Unofficial or unauthorized release'),
-('Spokenword', 'Spokenword', 'Spoken word content'),
-('Interview', 'Interview', 'Interview content'),
-('Audiobook', 'Audiobook', 'Book in audio format'),
-('Live', 'Live', 'Live performance recording'),
-('Remix', 'Remix', 'Remixed version of existing content'),
-('DJ-mix', 'DJ-mix', 'DJ mixed content'),
-('MasterRingTone', 'Master Ring Tone', 'Full-length ringtone'),
-('RingToneFromMaster', 'Ring Tone From Master', 'Ringtone excerpt from master');
-
--- DDEX Usage Types (Official Code List)
-CREATE TABLE IF NOT EXISTS ddex_usage_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_usage_types_code (type_code),
-    INDEX idx_ddex_usage_types_version (ddex_version),
-    INDEX idx_ddex_usage_types_active (is_active)
-);
-
-INSERT INTO ddex_usage_types (type_code, type_name, description) VALUES
-('Stream', 'Stream', 'Streaming usage'),
-('PermanentDownload', 'Permanent Download', 'Permanent download to own'),
-('ConditionalDownload', 'Conditional Download', 'Temporary/conditional download'),
-('NonInteractiveStream', 'Non-Interactive Stream', 'Radio-style streaming'),
-('OnDemandStream', 'On-Demand Stream', 'User-initiated streaming'),
-('UserMade', 'User Made', 'User-generated content'),
-('Preview', 'Preview', 'Preview/sample usage'),
-('Simulcast', 'Simulcast', 'Simultaneous broadcast'),
-('Broadcast', 'Broadcast', 'Traditional broadcast'),
-('PhysicalRental', 'Physical Rental', 'Physical media rental'),
-('DigitalRental', 'Digital Rental', 'Digital content rental'),
-('Synchronization', 'Synchronization', 'Sync licensing usage'),
-('MobilePersonalization', 'Mobile Personalization', 'Mobile customization'),
-('BackgroundMusic', 'Background Music', 'Background/ambient usage');
-
--- DDEX Commercial Model Types (Official Code List)
-CREATE TABLE IF NOT EXISTS ddex_commercial_model_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_commercial_model_types_code (type_code),
-    INDEX idx_ddex_commercial_model_types_version (ddex_version),
-    INDEX idx_ddex_commercial_model_types_active (is_active)
-);
-
-INSERT INTO ddex_commercial_model_types (type_code, type_name, description) VALUES
-('SubscriptionModel', 'Subscription Model', 'Subscription-based access'),
-('PayAsYouGoModel', 'Pay As You Go Model', 'Per-transaction payment'),
-('AdvertisementSupportedModel', 'Advertisement Supported Model', 'Ad-supported free access'),
-('PremiumModel', 'Premium Model', 'Premium tier access'),
-('FreemiumModel', 'Freemium Model', 'Free with premium upgrades'),
-('FreeOfChargeModel', 'Free Of Charge Model', 'Completely free access');
-
--- DDEX Party ID Types
-CREATE TABLE IF NOT EXISTS ddex_party_id_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    validation_pattern VARCHAR(255) NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_party_id_types_code (type_code),
-    INDEX idx_ddex_party_id_types_version (ddex_version),
-    INDEX idx_ddex_party_id_types_active (is_active)
-);
-
-INSERT INTO ddex_party_id_types (type_code, type_name, description, validation_pattern) VALUES
-('DPID', 'DDEX Party Identifier', 'DDEX Party Identifier', '^[A-Za-z0-9]{4,20}$'),
-('IPI', 'Interested Parties Information number', 'IPI number for rights holders', '^[0-9]{9,11}$'),
-('ISNI', 'International Standard Name Identifier', 'ISO 27729 identifier', '^[0-9]{15}[0-9X]$'),
-('ProprietaryId', 'Proprietary identifier', 'Company-specific identifier', NULL),
-('DunsNumber', 'Data Universal Numbering System', 'D-U-N-S Number', '^[0-9]{9}$'),
-('IPN', 'Interested Party Number', 'Legacy IPI number format', '^[0-9]+$');
-
--- DDEX Resource Types
-CREATE TABLE IF NOT EXISTS ddex_resource_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_resource_types_code (type_code),
-    INDEX idx_ddex_resource_types_version (ddex_version),
-    INDEX idx_ddex_resource_types_active (is_active)
-);
-
-INSERT INTO ddex_resource_types (type_code, type_name, description) VALUES
-('SoundRecording', 'Sound Recording', 'Audio recording'),
-('MusicalWorkSoundRecording', 'Musical Work Sound Recording', 'Sound recording of musical work'),
-('NonMusicalWorkSoundRecording', 'Non-Musical Work Sound Recording', 'Non-musical audio content'),
-('MIDI', 'MIDI', 'MIDI file'),
-('Video', 'Video', 'Video content'),
-('MusicalWorkVideo', 'Musical Work Video', 'Video of musical work'),
-('NonMusicalWorkVideo', 'Non-Musical Work Video', 'Non-musical video content'),
-('Image', 'Image', 'Image/artwork'),
-('Software', 'Software', 'Software application'),
-('Text', 'Text', 'Text content'),
-('SheetMusic', 'Sheet Music', 'Musical notation');
-
--- DDEX Resource ID Types
-CREATE TABLE IF NOT EXISTS ddex_resource_id_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    validation_pattern VARCHAR(255) NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_resource_id_types_code (type_code),
-    INDEX idx_ddex_resource_id_types_version (ddex_version),
-    INDEX idx_ddex_resource_id_types_active (is_active)
-);
-
-INSERT INTO ddex_resource_id_types (type_code, type_name, description, validation_pattern) VALUES
-('ISRC', 'International Standard Recording Code', 'ISO 3901 standard', '^[A-Z]{2}-[A-Z0-9]{3}-[0-9]{2}-[0-9]{5}$'),
-('ProprietaryId', 'Proprietary Resource Identifier', 'Company-specific identifier', NULL),
-('ISAN', 'International Standard Audiovisual Number', 'ISO 15706 standard', '^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{1}$'),
-('ISBN', 'International Standard Book Number', 'ISO 2108 standard', '^(97[89])?[0-9]{9}[0-9X]$'),
-('ISSN', 'International Standard Serial Number', 'ISO 3297 standard', '^[0-9]{4}-[0-9]{3}[0-9X]$'),
-('SICI', 'Serial Item and Contribution Identifier', 'ANSI/NISO Z39.56 standard', NULL),
-('CatalogNumber', 'Catalog Number', 'Label catalog number', NULL);
-
--- DDEX Release ID Types
-CREATE TABLE IF NOT EXISTS ddex_release_id_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    validation_pattern VARCHAR(255) NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_release_id_types_code (type_code),
-    INDEX idx_ddex_release_id_types_version (ddex_version),
-    INDEX idx_ddex_release_id_types_active (is_active)
-);
-
-INSERT INTO ddex_release_id_types (type_code, type_name, description, validation_pattern) VALUES
-('ICPN', 'International Cataloguing of Published Notation', 'ICPN identifier', '^[0-9]{12}$'),
-('GRID', 'Global Release Identifier', 'DDEX Global Release ID', '^A[0-9]-[0-9A-Z]{5}-[A-Z0-9]{11}-[A-Z]$'),
-('CatalogNumber', 'Catalog Number', 'Label catalog number', NULL),
-('ProprietaryId', 'Proprietary Release Identifier', 'Company-specific identifier', NULL),
-('EAN', 'European Article Number', 'EAN-13 barcode', '^[0-9]{13}$'),
-('UPC', 'Universal Product Code', 'UPC-A barcode', '^[0-9]{12}$');
-
--- ISO Territory Codes (Official ISO 3166)
-CREATE TABLE IF NOT EXISTS iso_territory_codes (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    territory_code VARCHAR(10) NOT NULL UNIQUE,
-    territory_name VARCHAR(255) NOT NULL,
-    iso_alpha2 VARCHAR(2) NULL,
-    iso_alpha3 VARCHAR(3) NULL,
-    iso_numeric VARCHAR(3) NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_iso_territory_codes_code (territory_code),
-    INDEX idx_iso_territory_codes_alpha2 (iso_alpha2),
-    INDEX idx_iso_territory_codes_active (is_active)
-);
-
-INSERT INTO iso_territory_codes (territory_code, territory_name, iso_alpha2, iso_alpha3, iso_numeric) VALUES
-('Worldwide', 'Worldwide', NULL, NULL, NULL),
-('US', 'United States', 'US', 'USA', '840'),
-('CA', 'Canada', 'CA', 'CAN', '124'),
-('GB', 'United Kingdom', 'GB', 'GBR', '826'),
-('DE', 'Germany', 'DE', 'DEU', '276'),
-('FR', 'France', 'FR', 'FRA', '250'),
-('IT', 'Italy', 'IT', 'ITA', '380'),
-('ES', 'Spain', 'ES', 'ESP', '724'),
-('JP', 'Japan', 'JP', 'JPN', '392'),
-('AU', 'Australia', 'AU', 'AUS', '036'),
-('BR', 'Brazil', 'BR', 'BRA', '076'),
-('MX', 'Mexico', 'MX', 'MEX', '484'),
-('CN', 'China', 'CN', 'CHN', '156'),
-('IN', 'India', 'IN', 'IND', '356'),
-('KR', 'South Korea', 'KR', 'KOR', '410'),
-('NL', 'Netherlands', 'NL', 'NLD', '528'),
-('SE', 'Sweden', 'SE', 'SWE', '752'),
-('NO', 'Norway', 'NO', 'NOR', '578'),
-('DK', 'Denmark', 'DK', 'DNK', '208'),
-('FI', 'Finland', 'FI', 'FIN', '246');
-
--- ISO Currency Codes (Official ISO 4217)
-CREATE TABLE IF NOT EXISTS iso_currency_codes (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    currency_code VARCHAR(3) NOT NULL UNIQUE,
-    currency_name VARCHAR(255) NOT NULL,
-    currency_number VARCHAR(3) NULL,
-    minor_units INT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_iso_currency_codes_code (currency_code),
-    INDEX idx_iso_currency_codes_active (is_active)
-);
-
-INSERT INTO iso_currency_codes (currency_code, currency_name, currency_number, minor_units) VALUES
-('USD', 'US Dollar', '840', 2),
-('EUR', 'Euro', '978', 2),
-('GBP', 'British Pound', '826', 2),
-('CAD', 'Canadian Dollar', '124', 2),
-('JPY', 'Japanese Yen', '392', 0),
-('AUD', 'Australian Dollar', '036', 2),
-('CHF', 'Swiss Franc', '756', 2),
-('CNY', 'Chinese Yuan', '156', 2),
-('SEK', 'Swedish Krona', '752', 2),
-('NOK', 'Norwegian Krone', '578', 2),
-('DKK', 'Danish Krone', '208', 2),
-('PLN', 'Polish Zloty', '985', 2),
-('CZK', 'Czech Koruna', '203', 2),
-('HUF', 'Hungarian Forint', '348', 2),
-('RUB', 'Russian Ruble', '643', 2);
-
--- DDEX Title Types
-CREATE TABLE IF NOT EXISTS ddex_title_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_title_types_code (type_code),
-    INDEX idx_ddex_title_types_version (ddex_version),
-    INDEX idx_ddex_title_types_active (is_active)
-);
-
-INSERT INTO ddex_title_types (type_code, type_name, description) VALUES
-('DisplayTitle', 'Display Title', 'Title for display purposes'),
-('GroupingTitle', 'Grouping Title', 'Title that groups related works'),
-('VersionTitle', 'Version Title', 'Title indicating version or variant'),
-('TransliteratedTitle', 'Transliterated Title', 'Title transliterated to Latin script'),
-('FormalTitle', 'Formal Title', 'Official formal title'),
-('AlternativeTitle', 'Alternative Title', 'Alternative or working title');
-
--- DDEX Artist Role Types
-CREATE TABLE IF NOT EXISTS ddex_artist_role_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_artist_role_types_code (type_code),
-    INDEX idx_ddex_artist_role_types_version (ddex_version),
-    INDEX idx_ddex_artist_role_types_active (is_active)
-);
-
-INSERT INTO ddex_artist_role_types (type_code, type_name, description) VALUES
-('MainArtist', 'Main Artist', 'Primary performing artist'),
-('FeaturedArtist', 'Featured Artist', 'Featured or guest artist'),
-('Composer', 'Composer', 'Musical composition creator'),
-('Producer', 'Producer', 'Recording producer'),
-('Mixer', 'Mixer', 'Audio mixing engineer'),
-('Conductor', 'Conductor', 'Orchestra or ensemble conductor'),
-('Performer', 'Performer', 'General performer role');
-
--- DDEX Duration Precision Types
-CREATE TABLE IF NOT EXISTS ddex_duration_precision_types (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    type_code VARCHAR(50) NOT NULL UNIQUE,
-    type_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    ddex_version VARCHAR(10) NOT NULL DEFAULT '4.3',
-    deprecated_date DATE NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_duration_precision_types_code (type_code),
-    INDEX idx_ddex_duration_precision_types_version (ddex_version),
-    INDEX idx_ddex_duration_precision_types_active (is_active)
-);
-
-INSERT INTO ddex_duration_precision_types (type_code, type_name, description) VALUES
-('Exact', 'Exact', 'Exact duration measurement'),
-('Approximate', 'Approximate', 'Approximate duration measurement');
-
--- DDEX Processing Statuses
-CREATE TABLE IF NOT EXISTS ddex_processing_statuses (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    status_code VARCHAR(50) NOT NULL UNIQUE,
-    status_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    is_final_status BOOLEAN NOT NULL DEFAULT FALSE,
-    is_error_status BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_processing_statuses_code (status_code),
-    INDEX idx_ddex_processing_statuses_final (is_final_status),
-    INDEX idx_ddex_processing_statuses_error (is_error_status),
-    INDEX idx_ddex_processing_statuses_active (is_active)
-);
-
-INSERT INTO ddex_processing_statuses (status_code, status_name, description, is_final_status, is_error_status) VALUES
-('RECEIVED', 'Received', 'Message received and queued', FALSE, FALSE),
-('VALIDATING', 'Validating', 'Message validation in progress', FALSE, FALSE),
-('VALIDATED', 'Validated', 'Message passed validation', FALSE, FALSE),
-('PROCESSING', 'Processing', 'Message processing in progress', FALSE, FALSE),
-('PROCESSED', 'Processed', 'Message successfully processed', TRUE, FALSE),
-('XML_GENERATED', 'XML Generated', 'XML content generated successfully', FALSE, FALSE),
-('TRANSMITTED', 'Transmitted', 'Message transmitted to recipient', TRUE, FALSE),
-('ACKNOWLEDGED', 'Acknowledged', 'Message acknowledged by recipient', TRUE, FALSE),
-('VALIDATION_FAILED', 'Validation Failed', 'Message failed validation', TRUE, TRUE),
-('PROCESSING_FAILED', 'Processing Failed', 'Message processing failed', TRUE, TRUE),
-('TRANSMISSION_FAILED', 'Transmission Failed', 'Message transmission failed', TRUE, TRUE),
-('RETRY_SCHEDULED', 'Retry Scheduled', 'Message scheduled for retry', FALSE, FALSE);
-
--- DDEX Validation Statuses
-CREATE TABLE IF NOT EXISTS ddex_validation_statuses (
-    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    status_code VARCHAR(50) NOT NULL UNIQUE,
-    status_name VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_ddex_validation_statuses_code (status_code),
-    INDEX idx_ddex_validation_statuses_active (is_active)
-);
-
-INSERT INTO ddex_validation_statuses (status_code, status_name, description) VALUES
-('PENDING', 'Pending', 'Validation not yet started'),
-('VALIDATING', 'Validating', 'Validation in progress'),
-('PASSED', 'Passed', 'Validation passed successfully'),
-('FAILED', 'Failed', 'Validation failed'),
-('WARNING', 'Warning', 'Validation passed with warnings');
 
 -- Switch back to astro_db for main tables
 USE astro_db;
 
 -- =====================================================================================
--- DDEX MESSAGE ENVELOPE AND HEADER (100% SCHEMA COMPLIANT)
+-- DDEX MESSAGE ENVELOPE AND HEADER
 -- =====================================================================================
 
 -- DDEX Message (ERN/DSR/MWN/etc.) - Schema Compliant with FK References
@@ -15725,7 +15296,7 @@ CREATE TABLE ddex_message (
 );
 
 -- =====================================================================================
--- DDEX PARTY MANAGEMENT (SCHEMA COMPLIANT WITH FK REFERENCES)
+-- DDEX PARTY MANAGEMENT
 -- =====================================================================================
 
 -- DDEX Party (PartyReference compliant)
@@ -15862,7 +15433,7 @@ ADD CONSTRAINT fk_ddex_message_sender FOREIGN KEY (sender_party_id) REFERENCES d
 ADD CONSTRAINT fk_ddex_message_recipient FOREIGN KEY (recipient_party_id) REFERENCES ddex_party(id);
 
 -- =====================================================================================
--- ERN 4.3 IMPLEMENTATION (100% SCHEMA COMPLIANT)
+-- ERN 4.3 IMPLEMENTATION
 -- =====================================================================================
 
 -- ERN SoundRecording (100% XSD Compliant with FK References)
@@ -16298,7 +15869,7 @@ CREATE TABLE ddex_ern_p_line (
 );
 
 -- =====================================================================================
--- ERN RELEASE IMPLEMENTATION (100% SCHEMA COMPLIANT)
+-- ERN RELEASE IMPLEMENTATION
 -- =====================================================================================
 
 -- ERN Release (100% XSD Compliant with FK References)
@@ -16618,7 +16189,7 @@ CREATE TABLE ddex_ern_release_display_artist_name (
 );
 
 -- =====================================================================================
--- DDEX XML GENERATION ENGINE (100% SCHEMA COMPLIANT)
+-- DDEX XML GENERATION ENGINE
 -- =====================================================================================
 
 -- DDEX XML Templates (Schema-Based with FK References)
@@ -16681,127 +16252,6 @@ CREATE TABLE ddex_xml_template (
     
     -- Unique Constraints
     UNIQUE KEY uk_xml_template (ddex_standard_id, ddex_version, template_name)
-);
-
--- =====================================================================================
--- SAMPLE DATA FOR TESTING
--- =====================================================================================
-
--- Sample DDEX Parties
-INSERT INTO ddex_party (
-    full_name, key_name, party_type_id, party_status_id, territory_code, created_by, updated_by
-) VALUES 
-('Universal Music Group', 'Universal Music Group', 1, 1, 'US', 1, 1),
-('Sony Music Entertainment', 'Sony Music Entertainment', 1, 1, 'US', 1, 1),
-('Spotify Technology S.A.', 'Spotify', 2, 1, 'SE', 1, 1),
-('Artist Management Company', 'Artist Management', 3, 1, 'US', 1, 1);
-
--- Sample DDEX Party IDs
-INSERT INTO ddex_party_id (
-    ddex_party_id, party_id_type_id, party_id_value, sequence_number, created_by, updated_by
-) VALUES 
-(1, 1, 'DPID001', 1, 1, 1), -- Universal Music Group DPID
-(2, 1, 'DPID002', 1, 1, 1), -- Sony Music DPID
-(3, 1, 'DPID003', 1, 1, 1), -- Spotify DPID
-(4, 1, 'DPID004', 1, 1, 1); -- Artist Management DPID
-
--- Sample DDEX Messages
-INSERT INTO ddex_message (
-    message_thread_id, message_id, message_created_date_time, message_schema_version_id,
-    sender_party_id, recipient_party_id, ddex_standard_id, ddex_version,
-    processing_status_id, validation_status_id, delivery_status_id,
-    created_by, updated_by
-) VALUES 
-(
-    'THREAD_ERN_20250530_001', 'MSG_ERN_20250530_001', '2025-05-30 10:00:00', 'ern/43',
-    1, 3, 1, '4.3', 1, 1, 1, 1, 1
-),
-(
-    'THREAD_DSR_20250530_001', 'MSG_DSR_20250530_001', '2025-05-30 11:00:00', 'dsr/30',
-    3, 1, 2, '3.0', 1, 1, 1, 1, 1
-);
-
--- Sample ERN Sound Recordings
-INSERT INTO ddex_ern_sound_recording (
-    ddex_message_id, resource_reference, sound_recording_type_id,
-    language_of_performance, is_remastered, created_by, updated_by
-) VALUES 
-(1, 'R1', 1, 'en', FALSE, 1, 1),
-(1, 'R2', 1, 'en', FALSE, 1, 1);
-
--- Sample ERN Sound Recording IDs
-INSERT INTO ddex_ern_sound_recording_id (
-    sound_recording_id, resource_id_type_id, resource_id_value, sequence_number, created_by, updated_by
-) VALUES 
-(1, 1, 'US-ABC-25-12345', 1, 1, 1), -- ISRC for R1
-(2, 1, 'US-ABC-25-12346', 1, 1, 1); -- ISRC for R2
-
--- Sample ERN Reference Titles
-INSERT INTO ddex_ern_reference_title (
-    sound_recording_id, title_text, language_and_script_code, created_by, updated_by
-) VALUES 
-(1, 'Sample Track Title', 'en', 1, 1),
-(2, 'Another Track Title', 'en', 1, 1);
-
--- Sample ERN Releases
-INSERT INTO ddex_ern_release (
-    ddex_message_id, release_reference, release_type_id, is_main_release, created_by, updated_by
-) VALUES 
-(1, 'REL1', 1, TRUE, 1, 1); -- Album
-
--- Sample ERN Release IDs
-INSERT INTO ddex_ern_release_id (
-    release_id, release_id_type_id, release_id_value, sequence_number, created_by, updated_by
-) VALUES 
-(1, 1, '123456789012', 1, 1, 1); -- ICPN
-
--- Sample ERN Release Reference Title
-INSERT INTO ddex_ern_release_reference_title (
-    release_id, title_text, language_and_script_code, created_by, updated_by
-) VALUES 
-(1, 'Sample Album Release', 'en', 1, 1);
-
--- Sample ERN Release Resource References
-INSERT INTO ddex_ern_release_resource_reference (
-    release_id, resource_reference, sequence_number, created_by, updated_by
-) VALUES 
-(1, 'R1', 1, 1, 1),
-(1, 'R2', 2, 1, 1);
-
--- Sample ERN Release Details by Territory
-INSERT INTO ddex_ern_release_details_by_territory (
-    release_id, territory_code, original_release_date, created_by, updated_by
-) VALUES 
-(1, 'Worldwide', '2025-06-01', 1, 1);
-
--- Sample ERN Release Display Artist Names
-INSERT INTO ddex_ern_release_display_artist_name (
-    release_details_by_territory_id, artist_name, sequence_number, created_by, updated_by
-) VALUES 
-(1, 'Sample Artist', 1, 1, 1);
-
--- Sample XML Template
-INSERT INTO ddx_xml_template (
-    template_name, ddex_standard_id, ddex_version, template_version,
-    xml_namespace_declarations, schema_location, root_element_template,
-    field_mappings, description, effective_date, created_by, updated_by
-) VALUES (
-    'ERN_4.3_Default_Template',
-    1, -- ERN
-    '4.3',
-    '1.0',
-    'xmlns:ern="http://ddex.net/xml/ern/43" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
-    'http://ddex.net/xml/ern/43 http://service.ddex.net/xml/ern/43/ern-main.xsd',
-    '<ern:NewReleaseMessage>{{MESSAGE_HEADER}}{{RESOURCE_LIST}}{{RELEASE_LIST}}</ern:NewReleaseMessage>',
-    JSON_OBJECT(
-        'MessageId', 'ddex_message.message_id',
-        'ReleaseTitle', 'ddex_ern_release_reference_title.title_text',
-        'ResourceTitle', 'ddex_ern_reference_title.title_text'
-    ),
-    'Default ERN 4.3 template for electronic release notifications',
-    CURDATE(),
-    1,
-    1
 );
 
 -- =====================================================================================
@@ -17156,69 +16606,5365 @@ GRANT SELECT ON resource_db.ddex_duration_precision_types TO 'astro_app_user'@'%
 GRANT SELECT ON resource_db.ddex_processing_statuses TO 'astro_app_user'@'%';
 GRANT SELECT ON resource_db.ddex_validation_statuses TO 'astro_app_user'@'%';
 
--- =====================================================================================
--- FINAL SUMMARY: 100% DDEX SCHEMA COMPLIANCE WITHOUT ENUMS
--- =====================================================================================
+-- =====================================================
+-- Section 8: Agreement & Contract Management Tables
+-- =====================================================
 
-/*
-DDEX 100% SCHEMA COMPLIANCE - NO ENUMS ✅
+-- =====================================================
+-- AGREEMENT TEMPLATE TABLES
+-- =====================================================
 
-This implementation now provides TRUE 100% DDEX schema compliance WITHOUT using any ENUM data types:
+-- Agreement Templates
+CREATE TABLE IF NOT EXISTS agreement_template (
+    template_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_uuid CHAR(36) NOT NULL DEFAULT (UUID()),
+    template_code VARCHAR(50) NOT NULL,
+    template_name VARCHAR(255) NOT NULL,
+    template_type VARCHAR(50) NOT NULL, -- publishing, recording, management, etc.
+    template_category VARCHAR(50),
+    template_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
+    is_standard BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    
+    -- Template Content
+    template_content JSON,
+    template_clauses JSON,
+    template_variables JSON,
+    required_parties JSON,
+    required_approvals JSON,
+    
+    -- Legal Metadata
+    jurisdiction VARCHAR(100),
+    governing_law VARCHAR(100),
+    legal_review_date DATE,
+    legal_reviewer VARCHAR(255),
+    compliance_notes TEXT,
+    
+    -- Template Settings
+    allow_modifications BOOLEAN DEFAULT TRUE,
+    require_legal_review BOOLEAN DEFAULT FALSE,
+    auto_numbering_format VARCHAR(100),
+    signature_requirements JSON,
+    
+    -- Metadata
+    tags JSON,
+    industry_standard VARCHAR(100),
+    recommended_for JSON,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_by BIGINT UNSIGNED,
+    deleted_at TIMESTAMP NULL,
+    row_hash VARCHAR(64),
+    
+    PRIMARY KEY (template_id),
+    UNIQUE KEY uk_template_uuid (template_uuid),
+    UNIQUE KEY uk_template_code_version (template_code, template_version),
+    INDEX idx_template_type (template_type),
+    INDEX idx_template_category (template_category),
+    INDEX idx_is_active (is_active, is_deleted),
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (deleted_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-✅ FOREIGN KEY ENFORCEMENT INSTEAD OF ENUMS:
-- All code values enforced via foreign keys to resource_db lookup tables
-- Database referential integrity ensures only valid DDEX values
-- Easy to update code lists without schema changes
-- Supports versioning and deprecation of code values
+-- Template Clauses Library
+CREATE TABLE IF NOT EXISTS template_clause (
+    clause_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    clause_uuid CHAR(36) NOT NULL DEFAULT (UUID()),
+    clause_code VARCHAR(50) NOT NULL,
+    clause_name VARCHAR(255) NOT NULL,
+    clause_category VARCHAR(100),
+    clause_type VARCHAR(50), -- standard, custom, optional
+    
+    -- Clause Content
+    clause_text TEXT NOT NULL,
+    clause_variables JSON,
+    legal_language VARCHAR(10) DEFAULT 'en',
+    
+    -- Legal Metadata
+    legal_jurisdiction VARCHAR(100),
+    legal_review_date DATE,
+    compliance_standards JSON,
+    risk_level VARCHAR(20), -- low, medium, high
+    
+    -- Usage
+    applicable_to JSON, -- agreement types this clause applies to
+    incompatible_with JSON, -- clauses that conflict
+    requires_clauses JSON, -- dependent clauses
+    
+    -- Metadata
+    tags JSON,
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_by BIGINT UNSIGNED,
+    deleted_at TIMESTAMP NULL,
+    
+    PRIMARY KEY (clause_id),
+    UNIQUE KEY uk_clause_uuid (clause_uuid),
+    UNIQUE KEY uk_clause_code (clause_code),
+    INDEX idx_clause_category (clause_category),
+    INDEX idx_clause_type (clause_type),
+    INDEX idx_legal_language (legal_language),
+    INDEX idx_is_active (is_active, is_deleted),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (deleted_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-✅ COMPLETE DDEX CARDINALITY COMPLIANCE:
-- Required 1: Enforced with NOT NULL constraints
-- Required 1-unbounded: Separate tables with foreign key constraints  
-- Optional 0-1: Nullable fields with unique constraints
-- Optional 0-unbounded: Separate tables allowing multiple entries
+-- =====================================================
+-- CORE AGREEMENT TABLES
+-- =====================================================
 
-✅ OFFICIAL DDEX CODE LISTS:
-- All official DDEX enumeration values in lookup tables
-- ISO 3166 territory codes
-- ISO 4217 currency codes
-- DDEX party ID types with validation patterns
-- Release types, usage types, commercial models
+-- Master Agreement Table
+CREATE TABLE IF NOT EXISTS agreement (
+    agreement_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_uuid CHAR(36) NOT NULL DEFAULT (UUID()),
+    agreement_number VARCHAR(100) NOT NULL,
+    agreement_name VARCHAR(500) NOT NULL,
+    agreement_type VARCHAR(50) NOT NULL,
+    agreement_subtype VARCHAR(50),
+    
+    -- Version Control
+    parent_agreement_id BIGINT UNSIGNED,
+    version_number VARCHAR(20) NOT NULL DEFAULT '1.0',
+    version_type VARCHAR(20) DEFAULT 'initial', -- initial, amendment, renewal, etc.
+    is_current_version BOOLEAN DEFAULT TRUE,
+    
+    -- Template Reference
+    template_id BIGINT UNSIGNED,
+    template_version_used VARCHAR(20),
+    
+    -- Parties
+    primary_party_id BIGINT UNSIGNED NOT NULL,
+    primary_party_role VARCHAR(50),
+    counterparty_id BIGINT UNSIGNED,
+    counterparty_role VARCHAR(50),
+    
+    -- Status and Workflow
+    status VARCHAR(50) NOT NULL DEFAULT 'draft',
+    workflow_stage VARCHAR(50),
+    workflow_id BIGINT UNSIGNED,
+    
+    -- Key Dates
+    effective_date DATE,
+    expiration_date DATE,
+    execution_date DATE,
+    termination_date DATE,
+    
+    -- Terms
+    term_length_value INT,
+    term_length_unit VARCHAR(20), -- days, months, years
+    auto_renewal BOOLEAN DEFAULT FALSE,
+    renewal_notice_days INT,
+    renewal_terms JSON,
+    
+    -- Territory and Language
+    territory_scope VARCHAR(50) DEFAULT 'worldwide',
+    territories JSON,
+    excluded_territories JSON,
+    governing_law VARCHAR(100),
+    jurisdiction VARCHAR(100),
+    agreement_language VARCHAR(10) DEFAULT 'en',
+    
+    -- Financial Summary
+    currency_code CHAR(3) DEFAULT 'USD',
+    total_advance_amount DECIMAL(20,4),
+    total_guaranteed_amount DECIMAL(20,4),
+    estimated_total_value DECIMAL(20,4),
+    
+    -- Content Scope
+    covers_all_works BOOLEAN DEFAULT FALSE,
+    covers_all_recordings BOOLEAN DEFAULT FALSE,
+    content_scope_description TEXT,
+    
+    -- Rights Granted
+    rights_granted JSON,
+    rights_reserved JSON,
+    usage_restrictions JSON,
+    
+    -- Document Management
+    document_url TEXT,
+    document_hash VARCHAR(64),
+    document_size_bytes BIGINT,
+    document_mime_type VARCHAR(100),
+    
+    -- Legal and Compliance
+    requires_legal_review BOOLEAN DEFAULT FALSE,
+    legal_review_status VARCHAR(50),
+    legal_review_date TIMESTAMP NULL,
+    legal_reviewer_id BIGINT UNSIGNED,
+    compliance_checklist JSON,
+    
+    -- Notifications
+    notification_emails JSON,
+    reminder_settings JSON,
+    
+    -- Metadata
+    tags JSON,
+    custom_fields JSON,
+    notes TEXT,
+    internal_notes TEXT,
+    
+    -- Search
+    search_text TEXT,
+    
+    -- Security
+    access_level VARCHAR(20) DEFAULT 'private',
+    encryption_version VARCHAR(10),
+    row_hash VARCHAR(64),
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_by BIGINT UNSIGNED,
+    deleted_at TIMESTAMP NULL,
+    
+    PRIMARY KEY (agreement_id),
+    UNIQUE KEY uk_agreement_uuid (agreement_uuid),
+    UNIQUE KEY uk_agreement_number (agreement_number),
+    INDEX idx_agreement_type (agreement_type, agreement_subtype),
+    INDEX idx_parent_agreement (parent_agreement_id),
+    INDEX idx_template (template_id),
+    INDEX idx_primary_party (primary_party_id),
+    INDEX idx_counterparty (counterparty_id),
+    INDEX idx_status (status),
+    INDEX idx_workflow (workflow_id),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_expiration_date (expiration_date),
+    INDEX idx_is_current (is_current_version, is_active, is_deleted),
+    INDEX idx_created_at (created_at),
+    FULLTEXT idx_search (agreement_name, search_text),
+    FOREIGN KEY (parent_agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (template_id) REFERENCES agreement_template(template_id),
+    FOREIGN KEY (primary_party_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (counterparty_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (legal_reviewer_id) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (deleted_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-✅ DATA TYPE PRECISION:
-- ISO 8601 duration format validation
-- ISRC format validation (CC-XXX-YY-NNNNN)
-- GRID format validation (A1-2425G-ABC1234002-M)
-- Territory code foreign key validation
-- Language code format validation
+-- Agreement History (Audit Trail)
+CREATE TABLE IF NOT EXISTS agreement_history (
+    history_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    version_number VARCHAR(20) NOT NULL,
+    
+    -- Change Information
+    action VARCHAR(50) NOT NULL, -- created, updated, signed, terminated, etc.
+    change_type VARCHAR(50), -- status_change, content_update, party_change, etc.
+    change_description TEXT,
+    changed_fields JSON,
+    previous_values JSON,
+    new_values JSON,
+    
+    -- User and Timestamp
+    changed_by BIGINT UNSIGNED NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    change_reason TEXT,
+    
+    -- Document Snapshot
+    document_snapshot JSON,
+    document_hash VARCHAR(64),
+    
+    -- Metadata
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    session_id VARCHAR(128),
+    
+    PRIMARY KEY (history_id),
+    INDEX idx_agreement_history (agreement_id, changed_at),
+    INDEX idx_version (agreement_id, version_number),
+    INDEX idx_action (action),
+    INDEX idx_changed_by (changed_by),
+    INDEX idx_changed_at (changed_at),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (changed_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-✅ SCHEMA-COMPLIANT XML GENERATION:
-- 100% ERN 4.3 XSD compliance
-- Proper namespace declarations
-- Required element validation
-- Correct element ordering and cardinality
+-- Agreement Parties (Multiple parties per agreement)
+CREATE TABLE IF NOT EXISTS agreement_party (
+    agreement_party_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    party_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Party Role and Details
+    party_role VARCHAR(100) NOT NULL, -- licensor, licensee, artist, label, etc.
+    party_type VARCHAR(50), -- individual, company, group
+    is_primary_party BOOLEAN DEFAULT FALSE,
+    party_number INT NOT NULL DEFAULT 1,
+    
+    -- Representation
+    represented_by_party_id BIGINT UNSIGNED,
+    legal_representative VARCHAR(255),
+    power_of_attorney BOOLEAN DEFAULT FALSE,
+    
+    -- Contact for Agreement
+    contact_name VARCHAR(255),
+    contact_email VARCHAR(255),
+    contact_phone VARCHAR(50),
+    contact_address JSON,
+    
+    -- Signing Authority
+    signatory_name VARCHAR(255),
+    signatory_title VARCHAR(255),
+    signatory_email VARCHAR(255),
+    signing_capacity VARCHAR(100),
+    
+    -- Status
+    approval_status VARCHAR(50) DEFAULT 'pending',
+    approval_date TIMESTAMP NULL,
+    signature_status VARCHAR(50) DEFAULT 'pending',
+    signature_date TIMESTAMP NULL,
+    
+    -- Party-Specific Terms
+    party_specific_terms JSON,
+    party_obligations JSON,
+    party_rights JSON,
+    
+    -- Financial Interest
+    revenue_share_percentage DECIMAL(6,4),
+    advance_share_percentage DECIMAL(6,4),
+    expense_share_percentage DECIMAL(6,4),
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (agreement_party_id),
+    UNIQUE KEY uk_agreement_party (agreement_id, party_id, party_role),
+    INDEX idx_party (party_id),
+    INDEX idx_party_role (party_role),
+    INDEX idx_represented_by (represented_by_party_id),
+    INDEX idx_approval_status (approval_status),
+    INDEX idx_signature_status (signature_status),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (party_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (represented_by_party_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-✅ NO ENUM USAGE:
-- All enumeration values stored in resource_db lookup tables
-- Foreign key constraints enforce data integrity
-- CHECK constraints with subqueries validate against lookup tables
-- Fully relational design following ASTRO standards
+-- Agreement Terms and Conditions
+CREATE TABLE IF NOT EXISTS agreement_term (
+    term_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Term Details
+    term_type VARCHAR(100) NOT NULL, -- payment, delivery, performance, etc.
+    term_category VARCHAR(50),
+    term_number VARCHAR(20),
+    term_title VARCHAR(255),
+    
+    -- Content
+    term_text TEXT NOT NULL,
+    term_summary VARCHAR(500),
+    
+    -- Source
+    clause_id BIGINT UNSIGNED,
+    is_standard_term BOOLEAN DEFAULT TRUE,
+    is_negotiated BOOLEAN DEFAULT FALSE,
+    
+    -- Conditions
+    conditions JSON,
+    dependencies JSON,
+    
+    -- Compliance
+    compliance_required BOOLEAN DEFAULT FALSE,
+    compliance_standard VARCHAR(100),
+    compliance_status VARCHAR(50),
+    
+    -- Metadata
+    display_order INT,
+    is_material_term BOOLEAN DEFAULT FALSE,
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (term_id),
+    INDEX idx_agreement_term (agreement_id, display_order),
+    INDEX idx_term_type (term_type),
+    INDEX idx_clause (clause_id),
+    INDEX idx_compliance (compliance_required, compliance_status),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (clause_id) REFERENCES template_clause(clause_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-COMPLIANCE LEVEL: 100% ✅
-ENUM USAGE: 0% ✅
-DDEX CERTIFICATION READY: ✅
+-- Financial Terms
+CREATE TABLE IF NOT EXISTS agreement_financial_term (
+    financial_term_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Term Identification
+    term_name VARCHAR(255) NOT NULL,
+    term_type VARCHAR(50) NOT NULL, -- advance, royalty, fee, bonus, etc.
+    term_category VARCHAR(50),
+    
+    -- Amount and Currency
+    amount DECIMAL(20,4),
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    exchange_rate DECIMAL(10,6) DEFAULT 1.000000,
+    
+    -- Payment Structure
+    payment_structure VARCHAR(50), -- one-time, recurring, milestone-based
+    payment_frequency VARCHAR(50), -- monthly, quarterly, annually, etc.
+    
+    -- Royalty Rates
+    royalty_base VARCHAR(50), -- net_receipts, gross_receipts, ppd
+    royalty_rate DECIMAL(6,4),
+    royalty_tiers JSON,
+    minimum_royalty DECIMAL(20,4),
+    maximum_royalty DECIMAL(20,4),
+    
+    -- Advance Terms
+    is_recoupable BOOLEAN DEFAULT TRUE,
+    recoupment_rate DECIMAL(6,4) DEFAULT 100.0000,
+    cross_collateralized BOOLEAN DEFAULT FALSE,
+    cross_collateral_agreements JSON,
+    
+    -- Payment Schedule
+    first_payment_date DATE,
+    payment_schedule JSON,
+    
+    -- Conditions
+    payment_conditions JSON,
+    escalation_clauses JSON,
+    
+    -- Territory-Specific
+    territory_specific BOOLEAN DEFAULT FALSE,
+    territory_rates JSON,
+    
+    -- Accounting
+    accounting_period VARCHAR(50),
+    statement_frequency VARCHAR(50),
+    audit_rights BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    notes TEXT,
+    calculation_formula TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (financial_term_id),
+    INDEX idx_agreement_financial (agreement_id),
+    INDEX idx_term_type (term_type),
+    INDEX idx_payment_structure (payment_structure),
+    INDEX idx_first_payment (first_payment_date),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-This implementation can now:
-- Pass official DDEX validation tools
-- Generate production-ready XML messages  
-- Integrate with any DDEX-compliant partner
-- Support all major music industry workflows
-- Scale for enterprise-level usage
-- Maintain data integrity without ENUMs
+-- Agreement Territories
+CREATE TABLE IF NOT EXISTS agreement_territory (
+    territory_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Territory Definition
+    territory_code VARCHAR(10) NOT NULL,
+    territory_name VARCHAR(100) NOT NULL,
+    territory_type VARCHAR(50), -- country, region, worldwide
+    is_included BOOLEAN DEFAULT TRUE, -- true for included, false for excluded
+    
+    -- Rights by Territory
+    rights_granted JSON,
+    rights_excluded JSON,
+    
+    -- Territory-Specific Terms
+    territory_terms JSON,
+    local_partner_id BIGINT UNSIGNED,
+    
+    -- Language Requirements
+    required_languages JSON,
+    translation_required BOOLEAN DEFAULT FALSE,
+    
+    -- Compliance
+    local_compliance_required BOOLEAN DEFAULT FALSE,
+    compliance_notes TEXT,
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (territory_id),
+    INDEX idx_agreement_territory (agreement_id, territory_code),
+    INDEX idx_territory_type (territory_type),
+    INDEX idx_is_included (is_included),
+    INDEX idx_local_partner (local_partner_id),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (local_partner_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DEPLOYMENT READY: ✅
-INDUSTRY CERTIFIED: ✅  
-PRODUCTION QUALITY: ✅
-ASTRO COMPLIANT: ✅
-*/
+-- Agreement Works Coverage
+CREATE TABLE IF NOT EXISTS agreement_work (
+    agreement_work_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    work_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Coverage Details
+    coverage_type VARCHAR(50) NOT NULL, -- full, partial, specific_rights
+    ownership_percentage DECIMAL(6,4),
+    rights_granted JSON,
+    rights_excluded JSON,
+    
+    -- Term
+    effective_date DATE,
+    expiration_date DATE,
+    in_perpetuity BOOLEAN DEFAULT FALSE,
+    
+    -- Territory
+    territory_scope VARCHAR(50) DEFAULT 'as_per_agreement',
+    specific_territories JSON,
+    
+    -- Usage Restrictions
+    usage_restrictions JSON,
+    approval_required BOOLEAN DEFAULT FALSE,
+    
+    -- Financial Override
+    specific_royalty_rate DECIMAL(6,4),
+    specific_terms JSON,
+    
+    -- Metadata
+    inclusion_date DATE,
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (agreement_work_id),
+    UNIQUE KEY uk_agreement_work (agreement_id, work_id),
+    INDEX idx_work (work_id),
+    INDEX idx_coverage_type (coverage_type),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_expiration_date (expiration_date),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (work_id) REFERENCES catalog_db.musical_work(work_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- End of Section 7: DDEX Tables (100% Schema Compliant, No ENUMs)
+-- Agreement Recordings Coverage
+CREATE TABLE IF NOT EXISTS agreement_recording (
+    agreement_recording_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    recording_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Coverage Details
+    coverage_type VARCHAR(50) NOT NULL, -- master, distribution, licensing
+    ownership_percentage DECIMAL(6,4),
+    rights_granted JSON,
+    rights_excluded JSON,
+    
+    -- Term
+    effective_date DATE,
+    expiration_date DATE,
+    in_perpetuity BOOLEAN DEFAULT FALSE,
+    
+    -- Territory
+    territory_scope VARCHAR(50) DEFAULT 'as_per_agreement',
+    specific_territories JSON,
+    
+    -- Usage Restrictions
+    usage_restrictions JSON,
+    approval_required BOOLEAN DEFAULT FALSE,
+    
+    -- Distribution Rights
+    distribution_channels JSON,
+    excluded_platforms JSON,
+    
+    -- Financial Override
+    specific_royalty_rate DECIMAL(6,4),
+    specific_terms JSON,
+    
+    -- Metadata
+    inclusion_date DATE,
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (agreement_recording_id),
+    UNIQUE KEY uk_agreement_recording (agreement_id, recording_id),
+    INDEX idx_recording (recording_id),
+    INDEX idx_coverage_type (coverage_type),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_expiration_date (expiration_date),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (recording_id) REFERENCES catalog_db.recording(recording_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Agreement Milestones
+CREATE TABLE IF NOT EXISTS agreement_milestone (
+    milestone_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Milestone Details
+    milestone_name VARCHAR(255) NOT NULL,
+    milestone_type VARCHAR(50) NOT NULL, -- delivery, performance, payment, approval
+    milestone_category VARCHAR(50),
+    
+    -- Target
+    target_date DATE,
+    target_value DECIMAL(20,4),
+    target_unit VARCHAR(50),
+    target_description TEXT,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'pending',
+    completion_date DATE,
+    actual_value DECIMAL(20,4),
+    completion_percentage DECIMAL(5,2),
+    
+    -- Verification
+    requires_verification BOOLEAN DEFAULT TRUE,
+    verified_by BIGINT UNSIGNED,
+    verification_date TIMESTAMP NULL,
+    verification_notes TEXT,
+    
+    -- Consequences
+    is_material BOOLEAN DEFAULT FALSE,
+    failure_consequences JSON,
+    success_triggers JSON,
+    
+    -- Notifications
+    notification_days_before INT,
+    notification_recipients JSON,
+    
+    -- Metadata
+    evidence_required JSON,
+    attachments JSON,
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (milestone_id),
+    INDEX idx_agreement_milestone (agreement_id, target_date),
+    INDEX idx_milestone_type (milestone_type),
+    INDEX idx_status (status),
+    INDEX idx_target_date (target_date),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (verified_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Agreement Advances
+CREATE TABLE IF NOT EXISTS agreement_advance (
+    advance_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    financial_term_id BIGINT UNSIGNED,
+    
+    -- Advance Details
+    advance_type VARCHAR(50) NOT NULL, -- signing, option, milestone
+    advance_amount DECIMAL(20,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Payment Details
+    payment_date DATE NOT NULL,
+    payment_status VARCHAR(50) DEFAULT 'scheduled',
+    actual_payment_date DATE,
+    payment_reference VARCHAR(255),
+    
+    -- Recoupment
+    is_recoupable BOOLEAN DEFAULT TRUE,
+    recouped_amount DECIMAL(20,4) DEFAULT 0.0000,
+    recoupment_percentage DECIMAL(6,4) DEFAULT 100.0000,
+    fully_recouped BOOLEAN DEFAULT FALSE,
+    recoupment_date DATE,
+    
+    -- Cross-Collateralization
+    cross_collateralized BOOLEAN DEFAULT FALSE,
+    cross_collateral_pool VARCHAR(100),
+    
+    -- Conditions
+    payment_conditions JSON,
+    conditions_met BOOLEAN DEFAULT FALSE,
+    
+    -- Accounting
+    transaction_id BIGINT UNSIGNED,
+    accounting_period VARCHAR(20),
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (advance_id),
+    INDEX idx_agreement_advance (agreement_id),
+    INDEX idx_financial_term (financial_term_id),
+    INDEX idx_payment_date (payment_date),
+    INDEX idx_payment_status (payment_status),
+    INDEX idx_recoupable (is_recoupable, fully_recouped),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (financial_term_id) REFERENCES agreement_financial_term(financial_term_id),
+    FOREIGN KEY (transaction_id) REFERENCES financial_db.transaction(transaction_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Agreement Recoupment Tracking
+CREATE TABLE IF NOT EXISTS agreement_recoupment (
+    recoupment_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    advance_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Recoupment Details
+    recoupment_date DATE NOT NULL,
+    recoupment_amount DECIMAL(20,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Source
+    source_type VARCHAR(50) NOT NULL, -- royalty, sync_fee, advance_recovery
+    source_id BIGINT UNSIGNED,
+    source_description VARCHAR(500),
+    
+    -- Calculation
+    gross_amount DECIMAL(20,4),
+    recoupment_rate DECIMAL(6,4),
+    net_amount DECIMAL(20,4),
+    
+    -- Balance
+    balance_before DECIMAL(20,4),
+    balance_after DECIMAL(20,4),
+    
+    -- Accounting
+    accounting_period VARCHAR(20),
+    statement_id BIGINT UNSIGNED,
+    transaction_id BIGINT UNSIGNED,
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (recoupment_id),
+    INDEX idx_agreement_recoupment (agreement_id),
+    INDEX idx_advance (advance_id),
+    INDEX idx_recoupment_date (recoupment_date),
+    INDEX idx_source (source_type, source_id),
+    INDEX idx_statement (statement_id),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (advance_id) REFERENCES agreement_advance(advance_id),
+    FOREIGN KEY (statement_id) REFERENCES royalty_db.royalty_statement(statement_id),
+    FOREIGN KEY (transaction_id) REFERENCES financial_db.transaction(transaction_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Agreement Options
+CREATE TABLE IF NOT EXISTS agreement_option (
+    option_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Option Details
+    option_number INT NOT NULL,
+    option_type VARCHAR(50) NOT NULL, -- term_extension, territory_expansion, catalog_addition
+    option_description TEXT,
+    
+    -- Exercise Period
+    exercise_start_date DATE,
+    exercise_end_date DATE,
+    notice_required_days INT,
+    
+    -- Terms
+    option_terms JSON,
+    financial_terms JSON,
+    additional_advance DECIMAL(20,4),
+    
+    -- Exercise Status
+    exercise_status VARCHAR(50) DEFAULT 'available',
+    exercised_date DATE,
+    exercised_by BIGINT UNSIGNED,
+    exercise_notice_date DATE,
+    
+    -- Conditions
+    exercise_conditions JSON,
+    conditions_met BOOLEAN DEFAULT FALSE,
+    
+    -- New Agreement
+    new_agreement_id BIGINT UNSIGNED,
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (option_id),
+    INDEX idx_agreement_option (agreement_id, option_number),
+    INDEX idx_option_type (option_type),
+    INDEX idx_exercise_dates (exercise_start_date, exercise_end_date),
+    INDEX idx_exercise_status (exercise_status),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (exercised_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (new_agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Agreement Amendments
+CREATE TABLE IF NOT EXISTS agreement_amendment (
+    amendment_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    amendment_agreement_id BIGINT UNSIGNED,
+    
+    -- Amendment Details
+    amendment_number VARCHAR(50) NOT NULL,
+    amendment_type VARCHAR(50) NOT NULL,
+    amendment_date DATE NOT NULL,
+    effective_date DATE NOT NULL,
+    
+    -- Changes
+    sections_modified JSON,
+    terms_added JSON,
+    terms_removed JSON,
+    terms_modified JSON,
+    
+    -- Reason
+    amendment_reason TEXT,
+    requested_by BIGINT UNSIGNED,
+    
+    -- Approval
+    requires_all_parties BOOLEAN DEFAULT TRUE,
+    approval_status VARCHAR(50) DEFAULT 'pending',
+    
+    -- Document
+    document_url TEXT,
+    document_hash VARCHAR(64),
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (amendment_id),
+    UNIQUE KEY uk_amendment_number (agreement_id, amendment_number),
+    INDEX idx_amendment_agreement (amendment_agreement_id),
+    INDEX idx_amendment_date (amendment_date),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_approval_status (approval_status),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (amendment_agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (requested_by) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SIGNATURE AND APPROVAL TABLES
+-- =====================================================
+
+-- Electronic Signatures
+CREATE TABLE IF NOT EXISTS agreement_signature (
+    signature_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    agreement_party_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Signature Details
+    signature_type VARCHAR(50) NOT NULL, -- electronic, wet, docusign, adobe_sign
+    signature_status VARCHAR(50) DEFAULT 'pending',
+    
+    -- Signatory
+    signatory_name VARCHAR(255) NOT NULL,
+    signatory_email VARCHAR(255) NOT NULL,
+    signatory_title VARCHAR(255),
+    signing_capacity VARCHAR(100),
+    
+    -- Signature Process
+    signature_request_id VARCHAR(255), -- External system ID
+    signature_request_sent TIMESTAMP NULL,
+    reminder_sent_count INT DEFAULT 0,
+    last_reminder_sent TIMESTAMP NULL,
+    
+    -- Completion
+    signed_date TIMESTAMP NULL,
+    signature_method VARCHAR(50),
+    ip_address VARCHAR(45),
+    
+    -- Verification
+    certificate_id VARCHAR(255),
+    verification_status VARCHAR(50),
+    verification_details JSON,
+    
+    -- Document
+    signed_document_url TEXT,
+    signed_document_hash VARCHAR(64),
+    
+    -- Metadata
+    signature_image MEDIUMBLOB,
+    device_info JSON,
+    location_data JSON,
+    
+    -- Standard fields
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (signature_id),
+    INDEX idx_agreement_signature (agreement_id),
+    INDEX idx_agreement_party (agreement_party_id),
+    INDEX idx_signature_status (signature_status),
+    INDEX idx_signature_request (signature_request_id),
+    INDEX idx_signed_date (signed_date),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (agreement_party_id) REFERENCES agreement_party(agreement_party_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Approval Workflow Chain
+CREATE TABLE IF NOT EXISTS agreement_approval_chain (
+    approval_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Approval Details
+    approval_level INT NOT NULL,
+    approval_type VARCHAR(50) NOT NULL, -- legal, financial, executive, party
+    approver_id BIGINT UNSIGNED,
+    approver_party_id BIGINT UNSIGNED,
+    
+    -- Requirements
+    approval_required BOOLEAN DEFAULT TRUE,
+    can_delegate BOOLEAN DEFAULT FALSE,
+    delegated_to BIGINT UNSIGNED,
+    
+    -- Status
+    approval_status VARCHAR(50) DEFAULT 'pending',
+    approval_date TIMESTAMP NULL,
+    
+    -- Response
+    approval_comments TEXT,
+    conditions_imposed JSON,
+    
+    -- Deadline
+    approval_deadline DATE,
+    escalation_date DATE,
+    escalated_to BIGINT UNSIGNED,
+    
+    -- Metadata
+    reminder_count INT DEFAULT 0,
+    last_reminder_sent TIMESTAMP NULL,
+    
+    -- Standard fields
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (approval_id),
+    INDEX idx_agreement_approval (agreement_id, approval_level),
+    INDEX idx_approval_type (approval_type),
+    INDEX idx_approver (approver_id),
+    INDEX idx_approver_party (approver_party_id),
+    INDEX idx_approval_status (approval_status),
+    INDEX idx_approval_deadline (approval_deadline),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (approver_id) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (approver_party_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (delegated_to) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (escalated_to) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SPLIT SHEET TABLES
+-- =====================================================
+
+-- Split Sheets
+CREATE TABLE IF NOT EXISTS split_sheet (
+    split_sheet_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_sheet_uuid CHAR(36) NOT NULL DEFAULT (UUID()),
+    split_sheet_number VARCHAR(100) NOT NULL,
+    
+    -- Work Reference
+    work_id BIGINT UNSIGNED NOT NULL,
+    work_title VARCHAR(500) NOT NULL,
+    alternate_titles JSON,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'draft',
+    version_number VARCHAR(20) DEFAULT '1.0',
+    is_final BOOLEAN DEFAULT FALSE,
+    
+    -- Creation Details
+    created_date DATE NOT NULL,
+    session_date DATE,
+    studio_name VARCHAR(255),
+    
+    -- Agreement Link
+    agreement_id BIGINT UNSIGNED,
+    
+    -- Total Verification
+    total_writer_share DECIMAL(6,4) DEFAULT 0.0000,
+    total_publisher_share DECIMAL(6,4) DEFAULT 0.0000,
+    is_balanced BOOLEAN DEFAULT FALSE,
+    
+    -- Additional Rights
+    master_recording_splits JSON,
+    production_splits JSON,
+    
+    -- Metadata
+    notes TEXT,
+    session_notes TEXT,
+    
+    -- Standard fields
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_by BIGINT UNSIGNED,
+    deleted_at TIMESTAMP NULL,
+    
+    PRIMARY KEY (split_sheet_id),
+    UNIQUE KEY uk_split_sheet_uuid (split_sheet_uuid),
+    UNIQUE KEY uk_split_sheet_number (split_sheet_number),
+    INDEX idx_work (work_id),
+    INDEX idx_status (status),
+    INDEX idx_agreement (agreement_id),
+    INDEX idx_created_date (created_date),
+    INDEX idx_is_final (is_final, is_active, is_deleted),
+    FOREIGN KEY (work_id) REFERENCES catalog_db.musical_work(work_id),
+    FOREIGN KEY (agreement_id) REFERENCES agreement(agreement_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (deleted_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Split Sheet Parties
+CREATE TABLE IF NOT EXISTS split_sheet_party (
+    split_party_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_sheet_id BIGINT UNSIGNED NOT NULL,
+    party_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Role and Contribution
+    party_role VARCHAR(50) NOT NULL, -- writer, publisher, admin, producer
+    contribution_type VARCHAR(100), -- lyrics, music, both, production
+    contribution_description TEXT,
+    
+    -- Ownership Splits
+    writer_share DECIMAL(6,4) DEFAULT 0.0000,
+    publisher_share DECIMAL(6,4) DEFAULT 0.0000,
+    total_share DECIMAL(6,4) DEFAULT 0.0000,
+    
+    -- Publisher Information
+    controlled_publisher_id BIGINT UNSIGNED,
+    admin_rights BOOLEAN DEFAULT FALSE,
+    
+    -- PRO Affiliation
+    pro_name VARCHAR(100),
+    pro_affiliation_number VARCHAR(100),
+    
+    -- Agreement Status
+    agreed_to_splits BOOLEAN DEFAULT FALSE,
+    agreement_date TIMESTAMP NULL,
+    dispute_flag BOOLEAN DEFAULT FALSE,
+    dispute_notes TEXT,
+    
+    -- Contact for Split
+    contact_email VARCHAR(255),
+    contact_phone VARCHAR(50),
+    
+    -- Metadata
+    notes TEXT,
+    
+    -- Standard fields
+    created_by BIGINT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (split_party_id),
+    UNIQUE KEY uk_split_party (split_sheet_id, party_id, party_role),
+    INDEX idx_party (party_id),
+    INDEX idx_party_role (party_role),
+    INDEX idx_controlled_publisher (controlled_publisher_id),
+    INDEX idx_agreed_status (agreed_to_splits),
+    FOREIGN KEY (split_sheet_id) REFERENCES split_sheet(split_sheet_id),
+    FOREIGN KEY (party_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (controlled_publisher_id) REFERENCES resource_db.party(party_id),
+    FOREIGN KEY (created_by) REFERENCES resource_db.user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Split Sheet Signatures
+CREATE TABLE IF NOT EXISTS split_sheet_signature (
+    signature_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_sheet_id BIGINT UNSIGNED NOT NULL,
+    split_party_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Signature Status
+    signature_status VARCHAR(50) DEFAULT 'pending',
+    signature_date TIMESTAMP NULL,
+    
+    -- Signatory Details
+    signatory_name VARCHAR(255),
+    signatory_email VARCHAR(255),
+    signatory_confirms_splits BOOLEAN DEFAULT FALSE,
+    
+    -- Signature Method
+    signature_method VARCHAR(50),
+    signature_token VARCHAR(255),
+    ip_address VARCHAR(45),
+    
+    -- Dispute Resolution
+    disputes_splits BOOLEAN DEFAULT FALSE,
+    dispute_details TEXT,
+    
+    -- Metadata
+    device_info JSON,
+    
+    -- Standard fields
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (signature_id),
+    UNIQUE KEY uk_split_signature (split_sheet_id, split_party_id),
+    INDEX idx_signature_status (signature_status),
+    INDEX idx_signature_date (signature_date),
+    FOREIGN KEY (split_sheet_id) REFERENCES split_sheet(split_sheet_id),
+    FOREIGN KEY (split_party_id) REFERENCES split_sheet_party(split_party_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Split Sheet History
+CREATE TABLE IF NOT EXISTS split_sheet_history (
+    history_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_sheet_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Change Information
+    action VARCHAR(50) NOT NULL,
+    change_description TEXT,
+    previous_values JSON,
+    new_values JSON,
+    
+    -- User and Timestamp
+    changed_by BIGINT UNSIGNED NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (history_id),
+    INDEX idx_split_history (split_sheet_id, changed_at),
+    FOREIGN KEY (split_sheet_id) REFERENCES split_sheet(split_sheet_id),
+    FOREIGN KEY (changed_by) REFERENCES resource_db.user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+DELIMITER //
+
+-- Create Agreement from Template
+CREATE PROCEDURE sp_create_agreement_from_template(
+    IN p_template_id BIGINT,
+    IN p_agreement_name VARCHAR(500),
+    IN p_primary_party_id BIGINT,
+    IN p_counterparty_id BIGINT,
+    IN p_created_by BIGINT,
+    OUT p_agreement_id BIGINT
+)
+BEGIN
+    DECLARE v_agreement_number VARCHAR(100);
+    DECLARE v_template_content JSON;
+    DECLARE v_year VARCHAR(4);
+    
+    -- Start transaction
+    START TRANSACTION;
+    
+    -- Get current year
+    SET v_year = YEAR(CURRENT_DATE);
+    
+    -- Generate agreement number
+    SELECT CONCAT('AGR-', v_year, '-', LPAD(IFNULL(MAX(CAST(SUBSTRING_INDEX(agreement_number, '-', -1) AS UNSIGNED)), 0) + 1, 6, '0'))
+    INTO v_agreement_number
+    FROM agreement
+    WHERE agreement_number LIKE CONCAT('AGR-', v_year, '-%');
+    
+    -- Get template content
+    SELECT template_content, template_type, template_version
+    INTO v_template_content, @template_type, @template_version
+    FROM agreement_template
+    WHERE template_id = p_template_id AND is_active = TRUE;
+    
+    -- Create agreement
+    INSERT INTO agreement (
+        agreement_number, agreement_name, agreement_type,
+        template_id, template_version_used,
+        primary_party_id, counterparty_id,
+        status, created_by
+    ) VALUES (
+        v_agreement_number, p_agreement_name, @template_type,
+        p_template_id, @template_version,
+        p_primary_party_id, p_counterparty_id,
+        'draft', p_created_by
+    );
+    
+    SET p_agreement_id = LAST_INSERT_ID();
+    
+    -- Create parties
+    INSERT INTO agreement_party (agreement_id, party_id, party_role, is_primary_party, created_by)
+    VALUES 
+        (p_agreement_id, p_primary_party_id, 'primary', TRUE, p_created_by),
+        (p_agreement_id, p_counterparty_id, 'counterparty', FALSE, p_created_by);
+    
+    -- Create initial history entry
+    INSERT INTO agreement_history (
+        agreement_id, version_number, action, change_type,
+        change_description, changed_by
+    ) VALUES (
+        p_agreement_id, '1.0', 'created', 'initial_creation',
+        CONCAT('Agreement created from template: ', @template_type),
+        p_created_by
+    );
+    
+    COMMIT;
+END//
+
+-- Update Agreement Version
+CREATE PROCEDURE sp_update_agreement_version(
+    IN p_agreement_id BIGINT,
+    IN p_version_type VARCHAR(20),
+    IN p_change_description TEXT,
+    IN p_updated_by BIGINT
+)
+BEGIN
+    DECLARE v_current_version VARCHAR(20);
+    DECLARE v_new_version VARCHAR(20);
+    
+    -- Get current version
+    SELECT version_number INTO v_current_version
+    FROM agreement
+    WHERE agreement_id = p_agreement_id;
+    
+    -- Calculate new version
+    IF p_version_type = 'minor' THEN
+        SET v_new_version = CONCAT(
+            SUBSTRING_INDEX(v_current_version, '.', 1), '.',
+            CAST(SUBSTRING_INDEX(v_current_version, '.', -1) AS UNSIGNED) + 1
+        );
+    ELSE
+        SET v_new_version = CONCAT(
+            CAST(SUBSTRING_INDEX(v_current_version, '.', 1) AS UNSIGNED) + 1, '.0'
+        );
+    END IF;
+    
+    -- Update version
+    UPDATE agreement
+    SET version_number = v_new_version,
+        updated_by = p_updated_by
+    WHERE agreement_id = p_agreement_id;
+    
+    -- Log history
+    INSERT INTO agreement_history (
+        agreement_id, version_number, action, change_type,
+        change_description, changed_by
+    ) VALUES (
+        p_agreement_id, v_new_version, 'updated', 'version_update',
+        p_change_description, p_updated_by
+    );
+END//
+
+-- Approve Agreement Step
+CREATE PROCEDURE sp_approve_agreement_step(
+    IN p_agreement_id BIGINT,
+    IN p_approval_id BIGINT,
+    IN p_approval_status VARCHAR(50),
+    IN p_comments TEXT,
+    IN p_approved_by BIGINT
+)
+BEGIN
+    DECLARE v_all_approved BOOLEAN;
+    
+    START TRANSACTION;
+    
+    -- Update approval
+    UPDATE agreement_approval_chain
+    SET approval_status = p_approval_status,
+        approval_date = CURRENT_TIMESTAMP,
+        approval_comments = p_comments,
+        updated_by = p_approved_by
+    WHERE approval_id = p_approval_id;
+    
+    -- Check if all required approvals are complete
+    SELECT NOT EXISTS(
+        SELECT 1 FROM agreement_approval_chain
+        WHERE agreement_id = p_agreement_id
+        AND approval_required = TRUE
+        AND approval_status != 'approved'
+    ) INTO v_all_approved;
+    
+    -- Update agreement status if all approved
+    IF v_all_approved THEN
+        UPDATE agreement
+        SET status = 'approved',
+            workflow_stage = 'ready_for_signature'
+        WHERE agreement_id = p_agreement_id;
+    END IF;
+    
+    -- Log history
+    INSERT INTO agreement_history (
+        agreement_id, version_number, action, change_type,
+        change_description, changed_by
+    ) VALUES (
+        p_agreement_id,
+        (SELECT version_number FROM agreement WHERE agreement_id = p_agreement_id),
+        'approval_update',
+        'approval',
+        CONCAT('Approval ', p_approval_status, ': ', p_comments),
+        p_approved_by
+    );
+    
+    COMMIT;
+END//
+
+-- Execute Agreement
+CREATE PROCEDURE sp_execute_agreement(
+    IN p_agreement_id BIGINT,
+    IN p_execution_date DATE,
+    IN p_executed_by BIGINT
+)
+BEGIN
+    DECLARE v_all_signed BOOLEAN;
+    
+    START TRANSACTION;
+    
+    -- Check all signatures
+    SELECT NOT EXISTS(
+        SELECT 1 FROM agreement_party ap
+        LEFT JOIN agreement_signature as ON ap.agreement_party_id = as.agreement_party_id
+        WHERE ap.agreement_id = p_agreement_id
+        AND (as.signature_status IS NULL OR as.signature_status != 'completed')
+    ) INTO v_all_signed;
+    
+    IF NOT v_all_signed THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Not all parties have signed';
+    END IF;
+    
+    -- Update agreement
+    UPDATE agreement
+    SET status = 'executed',
+        execution_date = p_execution_date,
+        updated_by = p_executed_by
+    WHERE agreement_id = p_agreement_id;
+    
+    -- Activate all related records
+    UPDATE agreement_work SET is_active = TRUE WHERE agreement_id = p_agreement_id;
+    UPDATE agreement_recording SET is_active = TRUE WHERE agreement_id = p_agreement_id;
+    UPDATE agreement_financial_term SET is_active = TRUE WHERE agreement_id = p_agreement_id;
+    
+    -- Log history
+    INSERT INTO agreement_history (
+        agreement_id, version_number, action, change_type,
+        change_description, changed_by
+    ) VALUES (
+        p_agreement_id,
+        (SELECT version_number FROM agreement WHERE agreement_id = p_agreement_id),
+        'executed',
+        'status_change',
+        'Agreement executed and activated',
+        p_executed_by
+    );
+    
+    COMMIT;
+END//
+
+-- Calculate Financial Terms
+CREATE PROCEDURE sp_calculate_financial_terms(
+    IN p_agreement_id BIGINT,
+    IN p_calculation_date DATE
+)
+BEGIN
+    DECLARE v_total_advance DECIMAL(20,4) DEFAULT 0;
+    DECLARE v_total_guaranteed DECIMAL(20,4) DEFAULT 0;
+    
+    -- Calculate total advances
+    SELECT IFNULL(SUM(advance_amount), 0)
+    INTO v_total_advance
+    FROM agreement_advance
+    WHERE agreement_id = p_agreement_id
+    AND payment_date <= p_calculation_date;
+    
+    -- Calculate total guaranteed amounts
+    SELECT IFNULL(SUM(
+        CASE 
+            WHEN term_type = 'guaranteed_minimum' THEN amount
+            ELSE 0
+        END
+    ), 0)
+    INTO v_total_guaranteed
+    FROM agreement_financial_term
+    WHERE agreement_id = p_agreement_id
+    AND is_active = TRUE;
+    
+    -- Update agreement
+    UPDATE agreement
+    SET total_advance_amount = v_total_advance,
+        total_guaranteed_amount = v_total_guaranteed
+    WHERE agreement_id = p_agreement_id;
+    
+    -- Return results
+    SELECT 
+        v_total_advance as total_advances,
+        v_total_guaranteed as total_guaranteed,
+        (v_total_advance + v_total_guaranteed) as total_commitment;
+END//
+
+-- Generate Split Sheet
+CREATE PROCEDURE sp_generate_split_sheet(
+    IN p_work_id BIGINT,
+    IN p_created_by BIGINT,
+    OUT p_split_sheet_id BIGINT
+)
+BEGIN
+    DECLARE v_split_number VARCHAR(100);
+    DECLARE v_work_title VARCHAR(500);
+    
+    START TRANSACTION;
+    
+    -- Get work title
+    SELECT title INTO v_work_title
+    FROM catalog_db.musical_work
+    WHERE work_id = p_work_id;
+    
+    -- Generate split sheet number
+    SELECT CONCAT('SPLIT-', DATE_FORMAT(CURRENT_DATE, '%Y%m%d'), '-', 
+                  LPAD(IFNULL(MAX(CAST(SUBSTRING_INDEX(split_sheet_number, '-', -1) AS UNSIGNED)), 0) + 1, 4, '0'))
+    INTO v_split_number
+    FROM split_sheet
+    WHERE split_sheet_number LIKE CONCAT('SPLIT-', DATE_FORMAT(CURRENT_DATE, '%Y%m%d'), '-%');
+    
+    -- Create split sheet
+    INSERT INTO split_sheet (
+        split_sheet_number, work_id, work_title,
+        created_date, status, created_by
+    ) VALUES (
+        v_split_number, p_work_id, v_work_title,
+        CURRENT_DATE, 'draft', p_created_by
+    );
+    
+    SET p_split_sheet_id = LAST_INSERT_ID();
+    
+    -- Add writers from work
+    INSERT INTO split_sheet_party (
+        split_sheet_id, party_id, party_role,
+        writer_share, created_by
+    )
+    SELECT 
+        p_split_sheet_id,
+        wc.contributor_id,
+        'writer',
+        wc.ownership_share,
+        p_created_by
+    FROM catalog_db.work_contributor wc
+    WHERE wc.work_id = p_work_id
+    AND wc.contributor_role IN ('writer', 'composer', 'lyricist');
+    
+    COMMIT;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS
+-- =====================================================
+
+-- Active Agreements View
+CREATE OR REPLACE VIEW v_active_agreements AS
+SELECT 
+    a.agreement_id,
+    a.agreement_number,
+    a.agreement_name,
+    a.agreement_type,
+    a.status,
+    a.effective_date,
+    a.expiration_date,
+    pp.name as primary_party_name,
+    cp.name as counterparty_name,
+    a.total_advance_amount,
+    a.currency_code
+FROM agreement a
+LEFT JOIN resource_db.party pp ON a.primary_party_id = pp.party_id
+LEFT JOIN resource_db.party cp ON a.counterparty_id = cp.party_id
+WHERE a.is_active = TRUE 
+AND a.is_deleted = FALSE
+AND a.is_current_version = TRUE;
+
+-- Financial Terms Summary View
+CREATE OR REPLACE VIEW v_financial_terms_summary AS
+SELECT 
+    a.agreement_id,
+    a.agreement_number,
+    COUNT(DISTINCT ft.financial_term_id) as term_count,
+    SUM(CASE WHEN ft.term_type = 'advance' THEN ft.amount ELSE 0 END) as total_advances,
+    SUM(CASE WHEN ft.term_type = 'guaranteed_minimum' THEN ft.amount ELSE 0 END) as total_guaranteed,
+    AVG(CASE WHEN ft.term_type = 'royalty' THEN ft.royalty_rate ELSE NULL END) as avg_royalty_rate,
+    a.currency_code
+FROM agreement a
+LEFT JOIN agreement_financial_term ft ON a.agreement_id = ft.agreement_id
+WHERE a.is_active = TRUE AND ft.is_active = TRUE
+GROUP BY a.agreement_id;
+
+-- Milestone Tracking View
+CREATE OR REPLACE VIEW v_milestone_tracking AS
+SELECT 
+    m.milestone_id,
+    a.agreement_number,
+    a.agreement_name,
+    m.milestone_name,
+    m.milestone_type,
+    m.target_date,
+    m.status,
+    m.completion_percentage,
+    DATEDIFF(m.target_date, CURRENT_DATE) as days_until_due,
+    CASE 
+        WHEN m.status = 'completed' THEN 'Completed'
+        WHEN DATEDIFF(m.target_date, CURRENT_DATE) < 0 THEN 'Overdue'
+        WHEN DATEDIFF(m.target_date, CURRENT_DATE) <= 7 THEN 'Due Soon'
+        ELSE 'On Track'
+    END as milestone_health
+FROM agreement_milestone m
+JOIN agreement a ON m.agreement_id = a.agreement_id
+WHERE m.is_active = TRUE
+AND a.is_active = TRUE;
+
+-- Signature Status Dashboard View
+CREATE OR REPLACE VIEW v_signature_status AS
+SELECT 
+    a.agreement_id,
+    a.agreement_number,
+    a.agreement_name,
+    COUNT(DISTINCT ap.agreement_party_id) as total_parties,
+    COUNT(DISTINCT s.signature_id) as signatures_completed,
+    GROUP_CONCAT(
+        CASE WHEN s.signature_status != 'completed' OR s.signature_status IS NULL
+        THEN ap.party_id END
+    ) as pending_party_ids,
+    CASE 
+        WHEN COUNT(DISTINCT ap.agreement_party_id) = COUNT(DISTINCT CASE WHEN s.signature_status = 'completed' THEN s.agreement_party_id END)
+        THEN 'All Signed'
+        WHEN COUNT(DISTINCT CASE WHEN s.signature_status = 'completed' THEN s.agreement_party_id END) > 0
+        THEN 'Partially Signed'
+        ELSE 'No Signatures'
+    END as signature_status
+FROM agreement a
+JOIN agreement_party ap ON a.agreement_id = ap.agreement_id
+LEFT JOIN agreement_signature s ON ap.agreement_party_id = s.agreement_party_id
+WHERE a.is_active = TRUE
+GROUP BY a.agreement_id;
+
+-- Split Sheet Status View
+CREATE OR REPLACE VIEW v_split_sheet_status AS
+SELECT 
+    ss.split_sheet_id,
+    ss.split_sheet_number,
+    w.title as work_title,
+    ss.status,
+    ss.total_writer_share,
+    ss.total_publisher_share,
+    ss.is_balanced,
+    COUNT(DISTINCT ssp.split_party_id) as total_parties,
+    COUNT(DISTINCT CASE WHEN ssp.agreed_to_splits = TRUE THEN ssp.split_party_id END) as parties_agreed,
+    COUNT(DISTINCT CASE WHEN ssp.dispute_flag = TRUE THEN ssp.split_party_id END) as disputes
+FROM split_sheet ss
+JOIN catalog_db.musical_work w ON ss.work_id = w.work_id
+LEFT JOIN split_sheet_party ssp ON ss.split_sheet_id = ssp.split_sheet_id
+WHERE ss.is_active = TRUE AND ss.is_deleted = FALSE
+GROUP BY ss.split_sheet_id;
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_agreement_search ON agreement(status, agreement_type, effective_date);
+CREATE INDEX idx_financial_calculation ON agreement_financial_term(agreement_id, term_type, is_active);
+CREATE INDEX idx_milestone_due ON agreement_milestone(target_date, status);
+CREATE INDEX idx_signature_pending ON agreement_signature(signature_status, agreement_id);
+CREATE INDEX idx_split_balance ON split_sheet(is_balanced, status);
+
+-- =====================================================
+-- Section 9: SMART CONTRACT & BLOCKCHAIN INTEGRATION
+-- =====================================================
+
+-- =====================================================
+-- WALLET MANAGEMENT TABLES
+-- =====================================================
+
+-- Blockchain wallet addresses for users
+CREATE TABLE wallet_address (
+    wallet_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL,
+    blockchain_network VARCHAR(50) NOT NULL, -- ethereum, polygon, solana, arbitrum, private
+    wallet_address VARCHAR(255) NOT NULL,
+    wallet_type VARCHAR(50) NOT NULL, -- metamask, walletconnect, phantom, ledger
+    is_primary TINYINT(1) DEFAULT 0,
+    is_verified TINYINT(1) DEFAULT 0,
+    verification_status VARCHAR(50) DEFAULT 'pending', -- pending, verified, failed, suspended
+    label VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_active TINYINT(1) DEFAULT 1,
+    deleted_at TIMESTAMP NULL,
+    PRIMARY KEY (wallet_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_wallet_address (wallet_address),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_verification_status (verification_status),
+    UNIQUE KEY uk_wallet_network (wallet_address, blockchain_network)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- KYC/AML verification for wallets
+CREATE TABLE wallet_verification (
+    verification_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    wallet_id BIGINT UNSIGNED NOT NULL,
+    verification_type VARCHAR(50) NOT NULL, -- kyc, aml, accreditation, identity
+    verification_provider VARCHAR(100), -- jumio, onfido, chainalysis
+    verification_data JSON,
+    verification_score DECIMAL(5,2),
+    risk_level VARCHAR(20), -- low, medium, high, critical
+    country_code CHAR(2),
+    verification_date TIMESTAMP NULL,
+    expiry_date DATE,
+    document_hash VARCHAR(255),
+    ipfs_hash VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    is_active TINYINT(1) DEFAULT 1,
+    PRIMARY KEY (verification_id),
+    INDEX idx_wallet_id (wallet_id),
+    INDEX idx_verification_type (verification_type),
+    INDEX idx_risk_level (risk_level),
+    INDEX idx_expiry_date (expiry_date),
+    FOREIGN KEY (wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SMART CONTRACT MANAGEMENT
+-- =====================================================
+
+-- Smart contract templates
+CREATE TABLE smart_contract_template (
+    template_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_name VARCHAR(255) NOT NULL,
+    template_type VARCHAR(100) NOT NULL, -- master_rights, publishing_rights, sync_license, nft_collection, royalty_pool
+    contract_version VARCHAR(20) NOT NULL,
+    blockchain_network VARCHAR(50) NOT NULL,
+    contract_standard VARCHAR(50), -- ERC20, ERC721, ERC1155, custom
+    source_code TEXT,
+    compiled_bytecode TEXT,
+    abi_definition JSON,
+    constructor_params JSON,
+    gas_estimate BIGINT UNSIGNED,
+    security_audit_status VARCHAR(50), -- pending, passed, failed, in_progress
+    audit_report_url VARCHAR(500),
+    features JSON, -- List of features like multi-sig, pausable, upgradeable
+    required_oracles JSON,
+    documentation_url VARCHAR(500),
+    is_deprecated TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    PRIMARY KEY (template_id),
+    INDEX idx_template_type (template_type),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_contract_standard (contract_standard),
+    INDEX idx_security_audit_status (security_audit_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Deployed smart contracts
+CREATE TABLE smart_contract (
+    contract_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_id BIGINT UNSIGNED,
+    contract_address VARCHAR(255) NOT NULL,
+    blockchain_network VARCHAR(50) NOT NULL,
+    contract_type VARCHAR(100) NOT NULL,
+    deployment_tx_hash VARCHAR(255),
+    deployment_block_number BIGINT UNSIGNED,
+    deployment_timestamp TIMESTAMP NULL,
+    deployer_wallet_id BIGINT UNSIGNED,
+    owner_wallet_id BIGINT UNSIGNED,
+    contract_name VARCHAR(255),
+    contract_metadata JSON, -- Additional metadata specific to contract type
+    initialization_params JSON,
+    is_proxy TINYINT(1) DEFAULT 0,
+    implementation_address VARCHAR(255),
+    admin_address VARCHAR(255),
+    is_paused TINYINT(1) DEFAULT 0,
+    pause_reason VARCHAR(500),
+    total_gas_used BIGINT UNSIGNED DEFAULT 0,
+    total_transactions INT UNSIGNED DEFAULT 0,
+    last_interaction_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active TINYINT(1) DEFAULT 1,
+    terminated_at TIMESTAMP NULL,
+    termination_reason VARCHAR(500),
+    PRIMARY KEY (contract_id),
+    INDEX idx_contract_address (contract_address),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_contract_type (contract_type),
+    INDEX idx_deployment_block (deployment_block_number),
+    INDEX idx_owner_wallet (owner_wallet_id),
+    UNIQUE KEY uk_contract_network (contract_address, blockchain_network),
+    FOREIGN KEY (template_id) REFERENCES smart_contract_template(template_id),
+    FOREIGN KEY (deployer_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (owner_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Smart contract state tracking
+CREATE TABLE smart_contract_state (
+    state_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    state_variable VARCHAR(255) NOT NULL,
+    state_value JSON NOT NULL,
+    previous_value JSON,
+    block_number BIGINT UNSIGNED NOT NULL,
+    transaction_hash VARCHAR(255),
+    timestamp TIMESTAMP NOT NULL,
+    gas_used BIGINT UNSIGNED,
+    updated_by_address VARCHAR(255),
+    update_function VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (state_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_state_variable (state_variable),
+    INDEX idx_block_number (block_number),
+    INDEX idx_timestamp (timestamp),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Smart contract events
+CREATE TABLE smart_contract_event (
+    event_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    event_name VARCHAR(255) NOT NULL,
+    event_signature VARCHAR(255),
+    transaction_hash VARCHAR(255) NOT NULL,
+    block_number BIGINT UNSIGNED NOT NULL,
+    log_index INT UNSIGNED,
+    event_data JSON,
+    indexed_params JSON,
+    event_timestamp TIMESTAMP NOT NULL,
+    gas_used BIGINT UNSIGNED,
+    emitter_address VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP NULL,
+    PRIMARY KEY (event_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_event_name (event_name),
+    INDEX idx_transaction_hash (transaction_hash),
+    INDEX idx_block_number (block_number),
+    INDEX idx_event_timestamp (event_timestamp),
+    INDEX idx_processed_at (processed_at),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- BLOCKCHAIN TRANSACTION MANAGEMENT
+-- =====================================================
+
+-- All blockchain transactions
+CREATE TABLE blockchain_transaction (
+    transaction_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    transaction_hash VARCHAR(255) NOT NULL,
+    blockchain_network VARCHAR(50) NOT NULL,
+    transaction_type VARCHAR(100) NOT NULL, -- deployment, interaction, transfer, mint, burn
+    from_address VARCHAR(255) NOT NULL,
+    to_address VARCHAR(255),
+    contract_id BIGINT UNSIGNED,
+    wallet_id BIGINT UNSIGNED,
+    value_wei VARCHAR(100), -- Store as string to handle large numbers
+    value_decimal DECIMAL(36,18),
+    gas_limit BIGINT UNSIGNED,
+    gas_price_wei VARCHAR(100),
+    gas_used BIGINT UNSIGNED,
+    gas_fee_wei VARCHAR(100),
+    gas_fee_usd DECIMAL(20,6),
+    nonce BIGINT UNSIGNED,
+    input_data TEXT,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, confirmed, failed, dropped
+    block_number BIGINT UNSIGNED,
+    block_timestamp TIMESTAMP NULL,
+    confirmation_count INT UNSIGNED DEFAULT 0,
+    error_message TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (transaction_id),
+    INDEX idx_transaction_hash (transaction_hash),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_from_address (from_address),
+    INDEX idx_to_address (to_address),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_wallet_id (wallet_id),
+    INDEX idx_status (status),
+    INDEX idx_block_number (block_number),
+    INDEX idx_created_at (created_at),
+    UNIQUE KEY uk_tx_network (transaction_hash, blockchain_network),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Transaction confirmation tracking
+CREATE TABLE blockchain_confirmation (
+    confirmation_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    transaction_id BIGINT UNSIGNED NOT NULL,
+    confirmation_number INT UNSIGNED NOT NULL,
+    block_hash VARCHAR(255),
+    block_number BIGINT UNSIGNED,
+    confirmation_timestamp TIMESTAMP NOT NULL,
+    reorganized TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (confirmation_id),
+    INDEX idx_transaction_id (transaction_id),
+    INDEX idx_confirmation_number (confirmation_number),
+    INDEX idx_block_number (block_number),
+    UNIQUE KEY uk_tx_confirmation (transaction_id, confirmation_number),
+    FOREIGN KEY (transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Gas fee tracking and optimization
+CREATE TABLE gas_fee_tracking (
+    gas_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    blockchain_network VARCHAR(50) NOT NULL,
+    base_fee_wei VARCHAR(100),
+    priority_fee_wei VARCHAR(100),
+    max_fee_wei VARCHAR(100),
+    gas_price_gwei DECIMAL(20,9),
+    gas_price_usd DECIMAL(20,6),
+    network_congestion VARCHAR(20), -- low, medium, high, critical
+    block_number BIGINT UNSIGNED,
+    timestamp TIMESTAMP NOT NULL,
+    eth_price_usd DECIMAL(20,6),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (gas_id),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_network_congestion (network_congestion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CONTRACT INTERACTIONS & OPERATIONS
+-- =====================================================
+
+-- User interactions with contracts
+CREATE TABLE contract_interaction (
+    interaction_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    wallet_id BIGINT UNSIGNED NOT NULL,
+    transaction_id BIGINT UNSIGNED,
+    function_name VARCHAR(255) NOT NULL,
+    function_signature VARCHAR(255),
+    parameters JSON,
+    return_values JSON,
+    interaction_type VARCHAR(100), -- read, write, approve, transfer, mint, burn
+    status VARCHAR(50) DEFAULT 'pending',
+    gas_estimated BIGINT UNSIGNED,
+    gas_used BIGINT UNSIGNED,
+    error_code VARCHAR(100),
+    error_message TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    PRIMARY KEY (interaction_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_wallet_id (wallet_id),
+    INDEX idx_transaction_id (transaction_id),
+    INDEX idx_function_name (function_name),
+    INDEX idx_interaction_type (interaction_type),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Oracle data feeds
+CREATE TABLE oracle_feed (
+    oracle_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    oracle_name VARCHAR(255) NOT NULL,
+    oracle_type VARCHAR(100) NOT NULL, -- price, streaming_count, exchange_rate, random
+    provider VARCHAR(100), -- chainlink, band, api3, custom
+    blockchain_network VARCHAR(50),
+    contract_address VARCHAR(255),
+    endpoint_url VARCHAR(500),
+    update_frequency_seconds INT UNSIGNED,
+    last_update_timestamp TIMESTAMP NULL,
+    last_value JSON,
+    decimals TINYINT UNSIGNED,
+    description TEXT,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (oracle_id),
+    INDEX idx_oracle_type (oracle_type),
+    INDEX idx_provider (provider),
+    INDEX idx_blockchain_network (blockchain_network),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Contract upgrades and migrations
+CREATE TABLE contract_upgrade (
+    upgrade_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    old_implementation VARCHAR(255),
+    new_implementation VARCHAR(255),
+    upgrade_type VARCHAR(50), -- implementation, logic, storage, emergency
+    upgrade_transaction_hash VARCHAR(255),
+    upgrade_block_number BIGINT UNSIGNED,
+    upgrade_timestamp TIMESTAMP NULL,
+    initiated_by_wallet_id BIGINT UNSIGNED,
+    approval_count INT UNSIGNED DEFAULT 0,
+    required_approvals INT UNSIGNED,
+    upgrade_data JSON,
+    rollback_possible TINYINT(1) DEFAULT 1,
+    rollback_deadline TIMESTAMP NULL,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, approved, executed, rolled_back
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    executed_at TIMESTAMP NULL,
+    PRIMARY KEY (upgrade_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_status (status),
+    INDEX idx_upgrade_timestamp (upgrade_timestamp),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (initiated_by_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MUSIC RIGHTS NFT TABLES
+-- =====================================================
+
+-- NFT collections for music rights
+CREATE TABLE nft_collection (
+    collection_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    collection_name VARCHAR(255) NOT NULL,
+    collection_symbol VARCHAR(20),
+    collection_type VARCHAR(50), -- song_rights, recording_rights, royalty_shares, fan_tokens
+    total_supply BIGINT UNSIGNED,
+    max_supply BIGINT UNSIGNED,
+    base_uri VARCHAR(500),
+    metadata_standard VARCHAR(50), -- opensea, rarible, custom
+    royalty_percentage DECIMAL(5,2),
+    royalty_recipient_wallet_id BIGINT UNSIGNED,
+    minting_enabled TINYINT(1) DEFAULT 1,
+    trading_enabled TINYINT(1) DEFAULT 1,
+    reveal_timestamp TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (collection_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_collection_type (collection_type),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (royalty_recipient_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Individual NFT tokens
+CREATE TABLE nft_token (
+    token_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    collection_id BIGINT UNSIGNED NOT NULL,
+    token_number BIGINT UNSIGNED NOT NULL,
+    current_owner_wallet_id BIGINT UNSIGNED,
+    work_id BIGINT UNSIGNED, -- Link to musical work
+    recording_id BIGINT UNSIGNED, -- Link to recording
+    rights_percentage DECIMAL(10,6), -- Percentage of rights represented
+    metadata_uri VARCHAR(500),
+    metadata_json JSON,
+    minted_by_wallet_id BIGINT UNSIGNED,
+    mint_transaction_id BIGINT UNSIGNED,
+    mint_timestamp TIMESTAMP NULL,
+    burn_transaction_id BIGINT UNSIGNED,
+    burn_timestamp TIMESTAMP NULL,
+    is_burned TINYINT(1) DEFAULT 0,
+    lock_until TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (token_id),
+    INDEX idx_collection_id (collection_id),
+    INDEX idx_token_number (token_number),
+    INDEX idx_current_owner (current_owner_wallet_id),
+    INDEX idx_work_id (work_id),
+    INDEX idx_recording_id (recording_id),
+    UNIQUE KEY uk_collection_token (collection_id, token_number),
+    FOREIGN KEY (collection_id) REFERENCES nft_collection(collection_id),
+    FOREIGN KEY (current_owner_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (minted_by_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (mint_transaction_id) REFERENCES blockchain_transaction(transaction_id),
+    FOREIGN KEY (burn_transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- NFT transfer history
+CREATE TABLE nft_transfer (
+    transfer_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    token_id BIGINT UNSIGNED NOT NULL,
+    from_wallet_id BIGINT UNSIGNED,
+    to_wallet_id BIGINT UNSIGNED NOT NULL,
+    transaction_id BIGINT UNSIGNED NOT NULL,
+    transfer_type VARCHAR(50), -- mint, transfer, burn, sale
+    price_amount DECIMAL(36,18),
+    price_currency VARCHAR(10),
+    price_usd DECIMAL(20,6),
+    marketplace VARCHAR(100), -- opensea, rarible, astro, direct
+    transfer_timestamp TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (transfer_id),
+    INDEX idx_token_id (token_id),
+    INDEX idx_from_wallet (from_wallet_id),
+    INDEX idx_to_wallet (to_wallet_id),
+    INDEX idx_transaction_id (transaction_id),
+    INDEX idx_transfer_type (transfer_type),
+    INDEX idx_transfer_timestamp (transfer_timestamp),
+    FOREIGN KEY (token_id) REFERENCES nft_token(token_id),
+    FOREIGN KEY (from_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (to_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- ROYALTY DISTRIBUTION CONTRACTS
+-- =====================================================
+
+-- Royalty split contracts
+CREATE TABLE royalty_split_contract (
+    split_contract_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    work_id BIGINT UNSIGNED,
+    recording_id BIGINT UNSIGNED,
+    split_name VARCHAR(255),
+    total_recipients INT UNSIGNED,
+    distribution_frequency VARCHAR(50), -- realtime, daily, weekly, monthly
+    minimum_distribution_amount DECIMAL(20,6),
+    distribution_currency VARCHAR(10),
+    recoupment_enabled TINYINT(1) DEFAULT 0,
+    recoupment_amount DECIMAL(20,6),
+    recouped_amount DECIMAL(20,6) DEFAULT 0,
+    total_distributed DECIMAL(20,6) DEFAULT 0,
+    last_distribution_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active TINYINT(1) DEFAULT 1,
+    PRIMARY KEY (split_contract_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_work_id (work_id),
+    INDEX idx_recording_id (recording_id),
+    INDEX idx_distribution_frequency (distribution_frequency),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Recipients of royalty splits
+CREATE TABLE royalty_split_recipient (
+    recipient_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_contract_id BIGINT UNSIGNED NOT NULL,
+    wallet_id BIGINT UNSIGNED NOT NULL,
+    party_id BIGINT UNSIGNED,
+    split_percentage DECIMAL(10,6) NOT NULL,
+    role VARCHAR(100), -- writer, producer, performer, label, publisher
+    recoupment_percentage DECIMAL(10,6),
+    minimum_payout DECIMAL(20,6),
+    total_received DECIMAL(20,6) DEFAULT 0,
+    pending_amount DECIMAL(20,6) DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (recipient_id),
+    INDEX idx_split_contract_id (split_contract_id),
+    INDEX idx_wallet_id (wallet_id),
+    INDEX idx_party_id (party_id),
+    INDEX idx_role (role),
+    FOREIGN KEY (split_contract_id) REFERENCES royalty_split_contract(split_contract_id),
+    FOREIGN KEY (wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Royalty distribution transactions
+CREATE TABLE royalty_distribution (
+    distribution_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    split_contract_id BIGINT UNSIGNED NOT NULL,
+    transaction_id BIGINT UNSIGNED,
+    distribution_batch VARCHAR(100),
+    source_type VARCHAR(50), -- streaming, sync, mechanical, performance
+    source_reference VARCHAR(255),
+    gross_amount DECIMAL(20,6) NOT NULL,
+    recoupment_amount DECIMAL(20,6) DEFAULT 0,
+    distribution_amount DECIMAL(20,6) NOT NULL,
+    currency VARCHAR(10),
+    exchange_rate DECIMAL(20,10),
+    distribution_timestamp TIMESTAMP NULL,
+    block_number BIGINT UNSIGNED,
+    gas_fee_amount DECIMAL(20,6),
+    status VARCHAR(50) DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    PRIMARY KEY (distribution_id),
+    INDEX idx_split_contract_id (split_contract_id),
+    INDEX idx_transaction_id (transaction_id),
+    INDEX idx_distribution_batch (distribution_batch),
+    INDEX idx_source_type (source_type),
+    INDEX idx_status (status),
+    INDEX idx_distribution_timestamp (distribution_timestamp),
+    FOREIGN KEY (split_contract_id) REFERENCES royalty_split_contract(split_contract_id),
+    FOREIGN KEY (transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- LICENSING SMART CONTRACTS
+-- =====================================================
+
+-- Automated licensing contracts
+CREATE TABLE licensing_contract (
+    licensing_contract_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    license_type VARCHAR(100) NOT NULL, -- sync, mechanical, public_performance, master
+    licensor_wallet_id BIGINT UNSIGNED NOT NULL,
+    work_id BIGINT UNSIGNED,
+    recording_id BIGINT UNSIGNED,
+    territory_restrictions JSON,
+    usage_restrictions JSON,
+    pricing_model VARCHAR(50), -- fixed, percentage, tiered, dynamic
+    base_price DECIMAL(20,6),
+    currency VARCHAR(10),
+    automatic_approval TINYINT(1) DEFAULT 0,
+    approval_threshold DECIMAL(20,6),
+    max_licenses INT UNSIGNED,
+    issued_licenses INT UNSIGNED DEFAULT 0,
+    total_revenue DECIMAL(20,6) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active TINYINT(1) DEFAULT 1,
+    PRIMARY KEY (licensing_contract_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_license_type (license_type),
+    INDEX idx_licensor_wallet_id (licensor_wallet_id),
+    INDEX idx_work_id (work_id),
+    INDEX idx_recording_id (recording_id),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (licensor_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Issued licenses from smart contracts
+CREATE TABLE smart_license_grant (
+    grant_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    licensing_contract_id BIGINT UNSIGNED NOT NULL,
+    licensee_wallet_id BIGINT UNSIGNED NOT NULL,
+    transaction_id BIGINT UNSIGNED,
+    license_terms JSON,
+    grant_date TIMESTAMP NOT NULL,
+    expiry_date TIMESTAMP NULL,
+    territory VARCHAR(500),
+    usage_type VARCHAR(255),
+    payment_amount DECIMAL(20,6),
+    payment_currency VARCHAR(10),
+    token_id BIGINT UNSIGNED, -- If license is tokenized
+    ipfs_hash VARCHAR(255), -- License document on IPFS
+    status VARCHAR(50) DEFAULT 'active', -- active, expired, revoked, pending
+    revocation_reason VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (grant_id),
+    INDEX idx_licensing_contract_id (licensing_contract_id),
+    INDEX idx_licensee_wallet_id (licensee_wallet_id),
+    INDEX idx_transaction_id (transaction_id),
+    INDEX idx_status (status),
+    INDEX idx_grant_date (grant_date),
+    INDEX idx_expiry_date (expiry_date),
+    FOREIGN KEY (licensing_contract_id) REFERENCES licensing_contract(licensing_contract_id),
+    FOREIGN KEY (licensee_wallet_id) REFERENCES wallet_address(wallet_id),
+    FOREIGN KEY (transaction_id) REFERENCES blockchain_transaction(transaction_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- DEFI INTEGRATION TABLES
+-- =====================================================
+
+-- Tokenized royalty streams
+CREATE TABLE royalty_token (
+    royalty_token_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    token_name VARCHAR(255) NOT NULL,
+    token_symbol VARCHAR(20) NOT NULL,
+    work_id BIGINT UNSIGNED,
+    recording_id BIGINT UNSIGNED,
+    total_supply DECIMAL(36,18),
+    circulating_supply DECIMAL(36,18),
+    locked_supply DECIMAL(36,18),
+    revenue_share_percentage DECIMAL(10,6),
+    revenue_period_days INT UNSIGNED,
+    total_revenue_distributed DECIMAL(20,6) DEFAULT 0,
+    last_distribution_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (royalty_token_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_work_id (work_id),
+    INDEX idx_recording_id (recording_id),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Liquidity pools for music assets
+CREATE TABLE liquidity_pool (
+    pool_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    pool_name VARCHAR(255),
+    token_a_address VARCHAR(255),
+    token_b_address VARCHAR(255),
+    dex_platform VARCHAR(100), -- uniswap, sushiswap, custom
+    total_liquidity_usd DECIMAL(20,6),
+    volume_24h_usd DECIMAL(20,6),
+    fees_24h_usd DECIMAL(20,6),
+    apy_percentage DECIMAL(10,4),
+    impermanent_loss DECIMAL(10,4),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (pool_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_dex_platform (dex_platform),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- AUDIT AND COMPLIANCE
+-- =====================================================
+
+-- Complete audit trail for smart contracts
+CREATE TABLE smart_contract_audit (
+    audit_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    audit_type VARCHAR(100) NOT NULL, -- deployment, interaction, state_change, upgrade
+    audit_action VARCHAR(255) NOT NULL,
+    actor_wallet_id BIGINT UNSIGNED,
+    actor_address VARCHAR(255),
+    transaction_hash VARCHAR(255),
+    block_number BIGINT UNSIGNED,
+    audit_data JSON,
+    risk_score DECIMAL(5,2),
+    compliance_check VARCHAR(50), -- passed, failed, flagged
+    audit_timestamp TIMESTAMP NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (audit_id),
+    INDEX idx_contract_id (contract_id),
+    INDEX idx_audit_type (audit_type),
+    INDEX idx_actor_wallet_id (actor_wallet_id),
+    INDEX idx_compliance_check (compliance_check),
+    INDEX idx_audit_timestamp (audit_timestamp),
+    FOREIGN KEY (contract_id) REFERENCES smart_contract(contract_id),
+    FOREIGN KEY (actor_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Regulatory compliance tracking
+CREATE TABLE blockchain_compliance (
+    compliance_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    entity_type VARCHAR(50) NOT NULL, -- wallet, contract, transaction
+    entity_id BIGINT UNSIGNED NOT NULL,
+    compliance_type VARCHAR(100), -- kyc, aml, securities, tax
+    jurisdiction VARCHAR(100),
+    regulation_code VARCHAR(100),
+    compliance_status VARCHAR(50), -- compliant, non_compliant, pending, exempt
+    verification_method VARCHAR(100),
+    verification_data JSON,
+    expiry_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    verified_by BIGINT UNSIGNED,
+    PRIMARY KEY (compliance_id),
+    INDEX idx_entity_type_id (entity_type, entity_id),
+    INDEX idx_compliance_type (compliance_type),
+    INDEX idx_compliance_status (compliance_status),
+    INDEX idx_expiry_date (expiry_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CROSS-CHAIN BRIDGE TABLES
+-- =====================================================
+
+-- Cross-chain bridge transactions
+CREATE TABLE bridge_transaction (
+    bridge_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    source_network VARCHAR(50) NOT NULL,
+    destination_network VARCHAR(50) NOT NULL,
+    source_transaction_id BIGINT UNSIGNED,
+    destination_transaction_id BIGINT UNSIGNED,
+    bridge_protocol VARCHAR(100), -- wormhole, layerzero, axelar
+    asset_type VARCHAR(50), -- token, nft, message
+    asset_address VARCHAR(255),
+    amount DECIMAL(36,18),
+    sender_wallet_id BIGINT UNSIGNED,
+    recipient_address VARCHAR(255),
+    bridge_fee DECIMAL(20,6),
+    status VARCHAR(50) DEFAULT 'initiated',
+    initiated_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP NULL,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (bridge_id),
+    INDEX idx_source_network (source_network),
+    INDEX idx_destination_network (destination_network),
+    INDEX idx_status (status),
+    INDEX idx_initiated_at (initiated_at),
+    FOREIGN KEY (source_transaction_id) REFERENCES blockchain_transaction(transaction_id),
+    FOREIGN KEY (destination_transaction_id) REFERENCES blockchain_transaction(transaction_id),
+    FOREIGN KEY (sender_wallet_id) REFERENCES wallet_address(wallet_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- VIEWS FOR BLOCKCHAIN ANALYTICS
+-- =====================================================
+
+-- Active smart contracts summary
+CREATE OR REPLACE VIEW v_active_smart_contracts AS
+SELECT 
+    sc.contract_id,
+    sc.contract_name,
+    sc.contract_type,
+    sc.blockchain_network,
+    sc.contract_address,
+    sc.total_gas_used,
+    sc.total_transactions,
+    COUNT(DISTINCT ci.wallet_id) as unique_users,
+    SUM(CASE WHEN ci.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as interactions_7d,
+    SUM(CASE WHEN ci.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as interactions_30d
+FROM smart_contract sc
+LEFT JOIN contract_interaction ci ON sc.contract_id = ci.contract_id
+WHERE sc.is_active = 1
+GROUP BY sc.contract_id;
+
+-- NFT collection analytics
+CREATE OR REPLACE VIEW v_nft_collection_stats AS
+SELECT 
+    nc.collection_id,
+    nc.collection_name,
+    nc.collection_type,
+    nc.total_supply,
+    COUNT(DISTINCT nt.token_id) as minted_tokens,
+    COUNT(DISTINCT nt.current_owner_wallet_id) as unique_holders,
+    SUM(CASE WHEN nt.is_burned = 0 THEN 1 ELSE 0 END) as active_tokens,
+    COUNT(DISTINCT ntr.transfer_id) as total_transfers,
+    COALESCE(AVG(ntr.price_usd), 0) as avg_price_usd,
+    COALESCE(MAX(ntr.price_usd), 0) as max_price_usd
+FROM nft_collection nc
+LEFT JOIN nft_token nt ON nc.collection_id = nt.collection_id
+LEFT JOIN nft_transfer ntr ON nt.token_id = ntr.token_id
+GROUP BY nc.collection_id;
+
+-- Royalty distribution summary
+CREATE OR REPLACE VIEW v_royalty_distribution_summary AS
+SELECT 
+    rsc.split_contract_id,
+    rsc.split_name,
+    rsc.distribution_frequency,
+    rsc.total_distributed,
+    rsc.recouped_amount,
+    COUNT(DISTINCT rsr.wallet_id) as recipient_count,
+    COUNT(DISTINCT rd.distribution_id) as distribution_count,
+    SUM(CASE WHEN rd.status = 'completed' THEN rd.distribution_amount ELSE 0 END) as completed_distributions,
+    SUM(CASE WHEN rd.status = 'pending' THEN rd.distribution_amount ELSE 0 END) as pending_distributions
+FROM royalty_split_contract rsc
+LEFT JOIN royalty_split_recipient rsr ON rsc.split_contract_id = rsr.split_contract_id
+LEFT JOIN royalty_distribution rd ON rsc.split_contract_id = rd.split_contract_id
+WHERE rsc.is_active = 1
+GROUP BY rsc.split_contract_id;
+
+-- Gas optimization insights
+CREATE OR REPLACE VIEW v_gas_optimization AS
+SELECT 
+    sc.contract_type,
+    sc.blockchain_network,
+    ci.function_name,
+    COUNT(*) as call_count,
+    AVG(ci.gas_used) as avg_gas_used,
+    MIN(ci.gas_used) as min_gas_used,
+    MAX(ci.gas_used) as max_gas_used,
+    STD(ci.gas_used) as gas_std_dev,
+    AVG(bt.gas_fee_usd) as avg_fee_usd
+FROM contract_interaction ci
+JOIN smart_contract sc ON ci.contract_id = sc.contract_id
+LEFT JOIN blockchain_transaction bt ON ci.transaction_id = bt.transaction_id
+WHERE ci.status = 'completed'
+GROUP BY sc.contract_type, sc.blockchain_network, ci.function_name
+HAVING call_count >= 10
+ORDER BY avg_gas_used DESC;
+
+-- =====================================================
+-- STORED PROCEDURES FOR BLOCKCHAIN OPERATIONS
+-- =====================================================
+
+DELIMITER //
+
+-- Deploy smart contract procedure
+CREATE PROCEDURE sp_deploy_smart_contract(
+    IN p_template_id BIGINT,
+    IN p_deployer_wallet_id BIGINT,
+    IN p_contract_name VARCHAR(255),
+    IN p_initialization_params JSON,
+    IN p_blockchain_network VARCHAR(50)
+)
+BEGIN
+    DECLARE v_contract_id BIGINT;
+    DECLARE v_estimated_gas BIGINT;
+    
+    -- Get gas estimate from template
+    SELECT gas_estimate INTO v_estimated_gas
+    FROM smart_contract_template
+    WHERE template_id = p_template_id;
+    
+    -- Insert contract record
+    INSERT INTO smart_contract (
+        template_id,
+        blockchain_network,
+        contract_type,
+        deployer_wallet_id,
+        owner_wallet_id,
+        contract_name,
+        initialization_params,
+        created_at
+    )
+    SELECT 
+        p_template_id,
+        p_blockchain_network,
+        template_type,
+        p_deployer_wallet_id,
+        p_deployer_wallet_id,
+        p_contract_name,
+        p_initialization_params,
+        NOW()
+    FROM smart_contract_template
+    WHERE template_id = p_template_id;
+    
+    SET v_contract_id = LAST_INSERT_ID();
+    
+    -- Return contract details
+    SELECT v_contract_id as contract_id, v_estimated_gas as estimated_gas;
+END//
+
+-- Process royalty distribution
+CREATE PROCEDURE sp_process_royalty_distribution(
+    IN p_split_contract_id BIGINT,
+    IN p_gross_amount DECIMAL(20,6),
+    IN p_source_type VARCHAR(50),
+    IN p_source_reference VARCHAR(255)
+)
+BEGIN
+    DECLARE v_recoupment_amount DECIMAL(20,6) DEFAULT 0;
+    DECLARE v_distribution_amount DECIMAL(20,6);
+    DECLARE v_remaining_recoupment DECIMAL(20,6);
+    DECLARE v_distribution_id BIGINT;
+    
+    -- Start transaction
+    START TRANSACTION;
+    
+    -- Get recoupment info
+    SELECT 
+        GREATEST(0, recoupment_amount - recouped_amount) INTO v_remaining_recoupment
+    FROM royalty_split_contract
+    WHERE split_contract_id = p_split_contract_id
+    AND recoupment_enabled = 1;
+    
+    -- Calculate recoupment
+    IF v_remaining_recoupment > 0 THEN
+        SET v_recoupment_amount = LEAST(p_gross_amount, v_remaining_recoupment);
+        SET v_distribution_amount = p_gross_amount - v_recoupment_amount;
+        
+        -- Update recouped amount
+        UPDATE royalty_split_contract
+        SET recouped_amount = recouped_amount + v_recoupment_amount
+        WHERE split_contract_id = p_split_contract_id;
+    ELSE
+        SET v_distribution_amount = p_gross_amount;
+    END IF;
+    
+    -- Create distribution record
+    INSERT INTO royalty_distribution (
+        split_contract_id,
+        source_type,
+        source_reference,
+        gross_amount,
+        recoupment_amount,
+        distribution_amount,
+        currency,
+        status,
+        created_at
+    ) VALUES (
+        p_split_contract_id,
+        p_source_type,
+        p_source_reference,
+        p_gross_amount,
+        v_recoupment_amount,
+        v_distribution_amount,
+        'USD',
+        'pending',
+        NOW()
+    );
+    
+    SET v_distribution_id = LAST_INSERT_ID();
+    
+    -- Update recipient pending amounts
+    UPDATE royalty_split_recipient rsr
+    SET pending_amount = pending_amount + (v_distribution_amount * (rsr.split_percentage / 100))
+    WHERE rsr.split_contract_id = p_split_contract_id
+    AND rsr.is_active = 1;
+    
+    -- Update contract totals
+    UPDATE royalty_split_contract
+    SET total_distributed = total_distributed + v_distribution_amount
+    WHERE split_contract_id = p_split_contract_id;
+    
+    COMMIT;
+    
+    SELECT v_distribution_id as distribution_id, v_distribution_amount as distributed_amount;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE OPTIMIZATION
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_wallet_active ON wallet_address(is_active, blockchain_network);
+CREATE INDEX idx_contract_active ON smart_contract(is_active, contract_type);
+CREATE INDEX idx_tx_recent ON blockchain_transaction(created_at DESC, status);
+CREATE INDEX idx_event_processing ON smart_contract_event(processed_at, contract_id);
+CREATE INDEX idx_distribution_pending ON royalty_distribution(status, created_at) WHERE status = 'pending';
+CREATE INDEX idx_nft_ownership ON nft_token(current_owner_wallet_id, is_burned);
+CREATE INDEX idx_gas_optimization ON gas_fee_tracking(blockchain_network, timestamp DESC);
+
+-- =============================================================================
+-- Section 10: Enhanced NFT Tables
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- CORE NFT INFRASTRUCTURE (Enhancement)
+-- -----------------------------------------------------------------------------
+
+-- NFT Metadata Storage with IPFS Integration
+CREATE TABLE nft_metadata (
+    metadata_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    version INT UNSIGNED NOT NULL DEFAULT 1,
+    ipfs_hash VARCHAR(100) NOT NULL,
+    arweave_id VARCHAR(100),
+    metadata_uri VARCHAR(500),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    image_url VARCHAR(500),
+    animation_url VARCHAR(500),
+    external_url VARCHAR(500),
+    background_color VARCHAR(7),
+    youtube_url VARCHAR(500),
+    attributes JSON,
+    properties JSON,
+    localization JSON,
+    content_rating VARCHAR(10),
+    content_warnings JSON,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_nft_version (nft_id, version),
+    INDEX idx_ipfs (ipfs_hash),
+    INDEX idx_active (is_active, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dynamic NFT Traits and Achievements
+CREATE TABLE nft_trait (
+    trait_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    trait_type VARCHAR(100) NOT NULL,
+    trait_value VARCHAR(255) NOT NULL,
+    display_type VARCHAR(50), -- number, date, boost_percentage, boost_number
+    max_value DECIMAL(20,8),
+    trait_count INT UNSIGNED DEFAULT 0,
+    rarity_score DECIMAL(5,4),
+    is_dynamic BOOLEAN DEFAULT FALSE,
+    update_frequency VARCHAR(50), -- real_time, daily, weekly, milestone
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_nft_trait (nft_id, trait_type),
+    INDEX idx_trait_value (trait_type, trait_value),
+    INDEX idx_dynamic (is_dynamic, update_frequency),
+    INDEX idx_rarity (rarity_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Current NFT Ownership with Fractional Support
+CREATE TABLE nft_ownership (
+    ownership_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    owner_address VARCHAR(42) NOT NULL,
+    fraction_amount DECIMAL(36,18) NOT NULL DEFAULT 1.000000000000000000,
+    fraction_percentage DECIMAL(20,18),
+    acquisition_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    acquisition_price DECIMAL(20,8),
+    acquisition_currency VARCHAR(10),
+    lock_until TIMESTAMP NULL,
+    delegation_address VARCHAR(42),
+    delegation_until TIMESTAMP NULL,
+    is_custodial BOOLEAN DEFAULT FALSE,
+    custodian_id INT UNSIGNED,
+    metadata JSON,
+    INDEX idx_owner (owner_address, nft_id),
+    INDEX idx_nft_owner (nft_id, fraction_amount DESC),
+    INDEX idx_lock (lock_until),
+    INDEX idx_delegation (delegation_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Complete Ownership History Trail
+CREATE TABLE nft_ownership_history (
+    history_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    from_address VARCHAR(42),
+    to_address VARCHAR(42) NOT NULL,
+    fraction_amount DECIMAL(36,18) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL, -- mint, transfer, burn, fractionalize
+    transaction_hash VARCHAR(66),
+    block_number BIGINT UNSIGNED,
+    gas_price DECIMAL(20,8),
+    gas_used INT UNSIGNED,
+    price DECIMAL(20,8),
+    currency VARCHAR(10),
+    marketplace_id INT UNSIGNED,
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSON,
+    INDEX idx_nft_history (nft_id, transfer_date DESC),
+    INDEX idx_from (from_address, transfer_date DESC),
+    INDEX idx_to (to_address, transfer_date DESC),
+    INDEX idx_tx (transaction_hash),
+    INDEX idx_block (block_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- MARKETPLACE & TRADING
+-- -----------------------------------------------------------------------------
+
+-- Multi-Marketplace NFT Listings
+CREATE TABLE nft_marketplace_listing (
+    listing_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    seller_address VARCHAR(42) NOT NULL,
+    marketplace_name VARCHAR(100) NOT NULL,
+    marketplace_id VARCHAR(255),
+    listing_type VARCHAR(50) NOT NULL, -- fixed_price, auction, dutch_auction
+    price DECIMAL(20,8) NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    fraction_amount DECIMAL(36,18) DEFAULT 1.000000000000000000,
+    min_bid DECIMAL(20,8),
+    reserve_price DECIMAL(20,8),
+    buy_now_price DECIMAL(20,8),
+    start_price DECIMAL(20,8),
+    end_price DECIMAL(20,8),
+    auction_start TIMESTAMP NULL,
+    auction_end TIMESTAMP NULL,
+    private_sale_to VARCHAR(42),
+    bundle_id INT UNSIGNED,
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    metadata JSON,
+    INDEX idx_nft_listing (nft_id, status),
+    INDEX idx_seller (seller_address, status),
+    INDEX idx_marketplace (marketplace_name, status),
+    INDEX idx_price (currency, price),
+    INDEX idx_auction (auction_end, status),
+    INDEX idx_bundle (bundle_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bid Management for Auctions and Offers
+CREATE TABLE nft_bid (
+    bid_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    listing_id INT UNSIGNED,
+    nft_id INT UNSIGNED NOT NULL,
+    bidder_address VARCHAR(42) NOT NULL,
+    bid_amount DECIMAL(20,8) NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    fraction_amount DECIMAL(36,18) DEFAULT 1.000000000000000000,
+    bid_type VARCHAR(50) NOT NULL, -- auction_bid, collection_offer, token_offer
+    expiration_date TIMESTAMP NULL,
+    message TEXT,
+    signature VARCHAR(132),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMP NULL,
+    rejected_at TIMESTAMP NULL,
+    outbid_at TIMESTAMP NULL,
+    metadata JSON,
+    INDEX idx_listing_bids (listing_id, bid_amount DESC),
+    INDEX idx_nft_bids (nft_id, status, bid_amount DESC),
+    INDEX idx_bidder (bidder_address, status),
+    INDEX idx_status (status, created_at DESC),
+    INDEX idx_expiration (expiration_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Completed NFT Sales
+CREATE TABLE nft_sale (
+    sale_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    listing_id INT UNSIGNED,
+    seller_address VARCHAR(42) NOT NULL,
+    buyer_address VARCHAR(42) NOT NULL,
+    sale_price DECIMAL(20,8) NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    fraction_amount DECIMAL(36,18) DEFAULT 1.000000000000000000,
+    marketplace_name VARCHAR(100),
+    marketplace_fee DECIMAL(20,8),
+    creator_royalty DECIMAL(20,8),
+    gas_fee DECIMAL(20,8),
+    net_seller_amount DECIMAL(20,8),
+    transaction_hash VARCHAR(66),
+    block_number BIGINT UNSIGNED,
+    sale_type VARCHAR(50), -- primary, secondary, auction, offer_accepted
+    bundle_id INT UNSIGNED,
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSON,
+    INDEX idx_nft_sales (nft_id, sale_date DESC),
+    INDEX idx_seller_sales (seller_address, sale_date DESC),
+    INDEX idx_buyer_sales (buyer_address, sale_date DESC),
+    INDEX idx_marketplace_sales (marketplace_name, sale_date DESC),
+    INDEX idx_tx_hash (transaction_hash),
+    INDEX idx_bundle_sale (bundle_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- On-chain Royalty Enforcement
+CREATE TABLE nft_royalty (
+    royalty_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    collection_id INT UNSIGNED,
+    recipient_address VARCHAR(42) NOT NULL,
+    royalty_percentage DECIMAL(5,4) NOT NULL, -- Up to 99.99%
+    min_royalty_amount DECIMAL(20,8),
+    royalty_type VARCHAR(50) DEFAULT 'standard', -- standard, tiered, dynamic
+    tier_threshold DECIMAL(20,8),
+    is_enforced BOOLEAN DEFAULT TRUE,
+    enforcement_type VARCHAR(50), -- on_chain, operator_filter, marketplace
+    split_contract_address VARCHAR(42),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    metadata JSON,
+    INDEX idx_nft_royalty (nft_id),
+    INDEX idx_collection_royalty (collection_id),
+    INDEX idx_recipient (recipient_address),
+    INDEX idx_enforced (is_enforced, enforcement_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- FAN TOKEN SYSTEM
+-- -----------------------------------------------------------------------------
+
+-- Token Distribution Events
+CREATE TABLE token_distribution (
+    distribution_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    token_address VARCHAR(42) NOT NULL,
+    distribution_type VARCHAR(50) NOT NULL, -- airdrop, claim, reward, vesting
+    distribution_name VARCHAR(255),
+    total_amount DECIMAL(36,18) NOT NULL,
+    recipients_count INT UNSIGNED NOT NULL,
+    amount_per_recipient DECIMAL(36,18),
+    eligibility_criteria JSON,
+    merkle_root VARCHAR(66),
+    ipfs_data VARCHAR(100),
+    claim_start TIMESTAMP NULL,
+    claim_end TIMESTAMP NULL,
+    claimed_amount DECIMAL(36,18) DEFAULT 0,
+    claims_count INT UNSIGNED DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_by VARCHAR(42),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    executed_at TIMESTAMP NULL,
+    metadata JSON,
+    INDEX idx_token_dist (token_address, status),
+    INDEX idx_type (distribution_type, status),
+    INDEX idx_claim_period (claim_start, claim_end),
+    INDEX idx_merkle (merkle_root)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Current Token Holder Balances
+CREATE TABLE token_holder (
+    holder_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    token_address VARCHAR(42) NOT NULL,
+    holder_address VARCHAR(42) NOT NULL,
+    balance DECIMAL(36,18) NOT NULL DEFAULT 0,
+    locked_balance DECIMAL(36,18) DEFAULT 0,
+    staked_balance DECIMAL(36,18) DEFAULT 0,
+    delegated_balance DECIMAL(36,18) DEFAULT 0,
+    voting_power DECIMAL(36,18),
+    holder_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_transaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    holder_rank INT UNSIGNED,
+    percentage_ownership DECIMAL(20,18),
+    is_contract BOOLEAN DEFAULT FALSE,
+    tags JSON,
+    metadata JSON,
+    UNIQUE KEY uk_token_holder (token_address, holder_address),
+    INDEX idx_balance (token_address, balance DESC),
+    INDEX idx_holder (holder_address),
+    INDEX idx_rank (token_address, holder_rank),
+    INDEX idx_last_tx (last_transaction DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- All Token Transactions
+CREATE TABLE token_transaction (
+    transaction_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    token_address VARCHAR(42) NOT NULL,
+    transaction_hash VARCHAR(66) NOT NULL,
+    block_number BIGINT UNSIGNED NOT NULL,
+    from_address VARCHAR(42),
+    to_address VARCHAR(42) NOT NULL,
+    amount DECIMAL(36,18) NOT NULL,
+    transaction_type VARCHAR(50), -- transfer, mint, burn, stake, unstake
+    gas_price DECIMAL(20,8),
+    gas_used INT UNSIGNED,
+    log_index INT UNSIGNED,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSON,
+    INDEX idx_token_tx (token_address, transaction_date DESC),
+    INDEX idx_from_tx (from_address, transaction_date DESC),
+    INDEX idx_to_tx (to_address, transaction_date DESC),
+    INDEX idx_tx_hash (transaction_hash),
+    INDEX idx_block (block_number),
+    INDEX idx_type (transaction_type, transaction_date DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Token Vesting Schedules
+CREATE TABLE token_vesting (
+    vesting_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    token_address VARCHAR(42) NOT NULL,
+    beneficiary_address VARCHAR(42) NOT NULL,
+    total_amount DECIMAL(36,18) NOT NULL,
+    released_amount DECIMAL(36,18) DEFAULT 0,
+    vesting_type VARCHAR(50) NOT NULL, -- linear, cliff, stepped, custom
+    cliff_duration INT UNSIGNED, -- in seconds
+    vesting_duration INT UNSIGNED NOT NULL, -- in seconds
+    vesting_interval INT UNSIGNED, -- in seconds
+    start_date TIMESTAMP NOT NULL,
+    cliff_date TIMESTAMP NULL,
+    end_date TIMESTAMP NOT NULL,
+    is_revocable BOOLEAN DEFAULT FALSE,
+    revoked_at TIMESTAMP NULL,
+    revoked_by VARCHAR(42),
+    last_release_date TIMESTAMP NULL,
+    next_release_date TIMESTAMP NULL,
+    next_release_amount DECIMAL(36,18),
+    metadata JSON,
+    INDEX idx_beneficiary (beneficiary_address, token_address),
+    INDEX idx_token_vesting (token_address),
+    INDEX idx_next_release (next_release_date),
+    INDEX idx_active (revoked_at, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Token Burn Events
+CREATE TABLE token_burn (
+    burn_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    token_address VARCHAR(42) NOT NULL,
+    burner_address VARCHAR(42) NOT NULL,
+    amount DECIMAL(36,18) NOT NULL,
+    burn_type VARCHAR(50), -- manual, fee, buyback, mechanism
+    burn_reason VARCHAR(255),
+    transaction_hash VARCHAR(66),
+    block_number BIGINT UNSIGNED,
+    burn_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    usd_value_at_burn DECIMAL(20,8),
+    total_supply_before DECIMAL(36,18),
+    total_supply_after DECIMAL(36,18),
+    metadata JSON,
+    INDEX idx_token_burns (token_address, burn_date DESC),
+    INDEX idx_burner (burner_address, burn_date DESC),
+    INDEX idx_type (burn_type, burn_date DESC),
+    INDEX idx_tx (transaction_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- MUSIC-SPECIFIC NFT FEATURES
+-- -----------------------------------------------------------------------------
+
+-- Detailed Music Metadata for NFTs
+CREATE TABLE nft_music_metadata (
+    music_metadata_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    song_id INT UNSIGNED,
+    isrc VARCHAR(12),
+    iswc VARCHAR(11),
+    title VARCHAR(255) NOT NULL,
+    artist_name VARCHAR(255) NOT NULL,
+    album_name VARCHAR(255),
+    genre VARCHAR(100),
+    sub_genre VARCHAR(100),
+    mood JSON,
+    bpm DECIMAL(6,2),
+    musical_key VARCHAR(10),
+    time_signature VARCHAR(10),
+    duration_seconds INT UNSIGNED,
+    release_date DATE,
+    recording_date DATE,
+    recording_location VARCHAR(255),
+    producer_names JSON,
+    songwriter_names JSON,
+    musician_credits JSON,
+    engineering_credits JSON,
+    label_name VARCHAR(255),
+    catalog_number VARCHAR(50),
+    audio_format VARCHAR(50),
+    bitrate INT UNSIGNED,
+    sample_rate INT UNSIGNED,
+    lyrics_ipfs_hash VARCHAR(100),
+    audio_ipfs_hash VARCHAR(100),
+    waveform_data JSON,
+    audio_fingerprint VARCHAR(255),
+    ai_generated BOOLEAN DEFAULT FALSE,
+    ai_model_used VARCHAR(100),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_nft_music (nft_id),
+    INDEX idx_isrc (isrc),
+    INDEX idx_iswc (iswc),
+    INDEX idx_song (song_id),
+    INDEX idx_artist (artist_name),
+    INDEX idx_genre (genre, sub_genre),
+    INDEX idx_bpm_key (bpm, musical_key),
+    INDEX idx_release (release_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Stem File Access Control
+CREATE TABLE nft_stem_access (
+    stem_access_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    stem_type VARCHAR(50) NOT NULL, -- vocals, drums, bass, guitar, keys, other
+    stem_name VARCHAR(255),
+    file_ipfs_hash VARCHAR(100) NOT NULL,
+    file_format VARCHAR(50),
+    duration_seconds INT UNSIGNED,
+    access_type VARCHAR(50) NOT NULL, -- listen, download, remix, commercial
+    min_ownership_percentage DECIMAL(20,18),
+    requires_token_gate BOOLEAN DEFAULT FALSE,
+    token_gate_address VARCHAR(42),
+    token_gate_amount DECIMAL(36,18),
+    download_count INT UNSIGNED DEFAULT 0,
+    max_downloads INT UNSIGNED,
+    watermark_enabled BOOLEAN DEFAULT TRUE,
+    encryption_key_hash VARCHAR(64),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_nft_stems (nft_id, stem_type),
+    INDEX idx_access (access_type, requires_token_gate),
+    INDEX idx_token_gate (token_gate_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Remix Rights Management
+CREATE TABLE nft_remix_rights (
+    remix_rights_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    rights_type VARCHAR(50) NOT NULL, -- full, limited, non_commercial, attribution
+    commercial_use BOOLEAN DEFAULT FALSE,
+    derivative_works BOOLEAN DEFAULT TRUE,
+    territory_restrictions JSON,
+    genre_restrictions JSON,
+    platform_restrictions JSON,
+    attribution_required BOOLEAN DEFAULT TRUE,
+    approval_required BOOLEAN DEFAULT FALSE,
+    revenue_share_percentage DECIMAL(5,2),
+    master_royalty_percentage DECIMAL(5,2),
+    publishing_royalty_percentage DECIMAL(5,2),
+    remix_chain_tracking BOOLEAN DEFAULT TRUE,
+    max_derivatives INT UNSIGNED,
+    expires_at TIMESTAMP NULL,
+    terms_ipfs_hash VARCHAR(100),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_nft_remix (nft_id),
+    INDEX idx_rights_type (rights_type, commercial_use),
+    INDEX idx_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dynamic NFT Achievement Milestones
+CREATE TABLE nft_achievement_milestone (
+    milestone_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    milestone_type VARCHAR(50) NOT NULL, -- streams, sales, chart_position, social
+    milestone_name VARCHAR(255),
+    milestone_value BIGINT UNSIGNED NOT NULL,
+    achieved_value BIGINT UNSIGNED,
+    achieved_at TIMESTAMP NULL,
+    unlock_type VARCHAR(50), -- trait_upgrade, content_unlock, rarity_boost
+    unlock_data JSON,
+    verification_source VARCHAR(100),
+    verification_data JSON,
+    oracle_address VARCHAR(42),
+    points_awarded INT UNSIGNED,
+    badge_ipfs_hash VARCHAR(100),
+    notification_sent BOOLEAN DEFAULT FALSE,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_nft_milestones (nft_id, achieved_at),
+    INDEX idx_type (milestone_type, achieved_at),
+    INDEX idx_achieved (achieved_at),
+    INDEX idx_oracle (oracle_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Unlockable Content Management
+CREATE TABLE nft_unlockable_content (
+    unlockable_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    content_type VARCHAR(50) NOT NULL, -- audio, video, image, text, experience
+    content_name VARCHAR(255) NOT NULL,
+    content_description TEXT,
+    ipfs_hash VARCHAR(100),
+    encrypted_url VARCHAR(500),
+    unlock_condition VARCHAR(50) NOT NULL, -- ownership, milestone, time, token_gate
+    unlock_data JSON,
+    min_ownership_duration INT UNSIGNED, -- in seconds
+    min_ownership_percentage DECIMAL(20,18),
+    token_gate_address VARCHAR(42),
+    token_gate_amount DECIMAL(36,18),
+    available_from TIMESTAMP NULL,
+    available_until TIMESTAMP NULL,
+    total_unlocks INT UNSIGNED DEFAULT 0,
+    max_unlocks INT UNSIGNED,
+    is_transferable BOOLEAN DEFAULT TRUE,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_nft_unlockables (nft_id, unlock_condition),
+    INDEX idx_content_type (content_type),
+    INDEX idx_availability (available_from, available_until),
+    INDEX idx_token_gate_content (token_gate_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Multi-Artist Collaboration Splits
+CREATE TABLE nft_collaboration (
+    collaboration_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    collaborator_address VARCHAR(42) NOT NULL,
+    collaborator_role VARCHAR(50) NOT NULL, -- artist, producer, writer, featured
+    revenue_share_percentage DECIMAL(5,4) NOT NULL,
+    voting_power_percentage DECIMAL(5,4),
+    credit_name VARCHAR(255),
+    credit_type VARCHAR(50),
+    is_primary BOOLEAN DEFAULT FALSE,
+    approval_required BOOLEAN DEFAULT TRUE,
+    approved_at TIMESTAMP NULL,
+    split_contract_address VARCHAR(42),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_nft_collab (nft_id),
+    INDEX idx_collaborator (collaborator_address),
+    INDEX idx_role (collaborator_role),
+    INDEX idx_split_contract (split_contract_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Embedded License Terms
+CREATE TABLE nft_licensing_terms (
+    license_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    license_type VARCHAR(100) NOT NULL,
+    license_name VARCHAR(255),
+    usage_rights JSON,
+    territory VARCHAR(255) DEFAULT 'Worldwide',
+    term_length_days INT UNSIGNED,
+    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMP NULL,
+    exclusive BOOLEAN DEFAULT FALSE,
+    transferable BOOLEAN DEFAULT TRUE,
+    sublicensable BOOLEAN DEFAULT FALSE,
+    commercial_use BOOLEAN DEFAULT TRUE,
+    modification_allowed BOOLEAN DEFAULT FALSE,
+    attribution_text TEXT,
+    restrictions JSON,
+    fee_structure JSON,
+    payment_terms VARCHAR(100),
+    termination_conditions JSON,
+    governing_law VARCHAR(100),
+    dispute_resolution VARCHAR(100),
+    license_text_ipfs VARCHAR(100),
+    signature_hash VARCHAR(132),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_nft_license (nft_id),
+    INDEX idx_license_type (license_type),
+    INDEX idx_territory (territory),
+    INDEX idx_dates (start_date, end_date),
+    INDEX idx_exclusive (exclusive, transferable)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Performance Rights for Live Shows
+CREATE TABLE nft_performance_rights (
+    performance_rights_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    performance_type VARCHAR(50) NOT NULL, -- live, broadcast, streaming, sync
+    venue_restrictions JSON,
+    territory_allowed JSON,
+    max_performances INT UNSIGNED,
+    performances_used INT UNSIGNED DEFAULT 0,
+    revenue_share_percentage DECIMAL(5,2),
+    advance_notice_days INT UNSIGNED DEFAULT 30,
+    approval_required BOOLEAN DEFAULT TRUE,
+    setlist_submission_required BOOLEAN DEFAULT TRUE,
+    recording_allowed BOOLEAN DEFAULT FALSE,
+    streaming_allowed BOOLEAN DEFAULT FALSE,
+    merchandise_rights BOOLEAN DEFAULT FALSE,
+    valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    valid_until TIMESTAMP NULL,
+    blackout_dates JSON,
+    technical_requirements JSON,
+    insurance_requirements JSON,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_nft_performance (nft_id),
+    INDEX idx_performance_type (performance_type),
+    INDEX idx_validity (valid_from, valid_until),
+    INDEX idx_usage (performances_used, max_performances)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- ADVANCED FEATURES
+-- -----------------------------------------------------------------------------
+
+-- Fractional Ownership Records
+CREATE TABLE nft_fraction (
+    fraction_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    vault_address VARCHAR(42) NOT NULL,
+    token_address VARCHAR(42) NOT NULL,
+    token_symbol VARCHAR(10),
+    token_name VARCHAR(100),
+    total_supply DECIMAL(36,18) NOT NULL,
+    fractions_available DECIMAL(36,18),
+    fraction_price DECIMAL(20,8),
+    currency VARCHAR(10),
+    buyout_price DECIMAL(20,8),
+    curator_fee_percentage DECIMAL(5,2),
+    fractionalization_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reconstitution_date TIMESTAMP NULL,
+    status VARCHAR(50) DEFAULT 'active',
+    metadata JSON,
+    INDEX idx_nft_fractions (nft_id),
+    INDEX idx_vault (vault_address),
+    INDEX idx_token (token_address),
+    INDEX idx_status (status, fractionalization_date DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- AMM Liquidity Pools for Rights Trading
+CREATE TABLE nft_liquidity_pool (
+    pool_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    pool_address VARCHAR(42) NOT NULL,
+    token_a_address VARCHAR(42) NOT NULL,
+    token_b_address VARCHAR(42) NOT NULL,
+    token_a_symbol VARCHAR(10),
+    token_b_symbol VARCHAR(10),
+    token_a_reserves DECIMAL(36,18),
+    token_b_reserves DECIMAL(36,18),
+    total_liquidity DECIMAL(36,18),
+    fee_percentage DECIMAL(5,4) DEFAULT 0.3000,
+    price_ratio DECIMAL(36,18),
+    volume_24h DECIMAL(20,8),
+    volume_7d DECIMAL(20,8),
+    fees_earned_24h DECIMAL(20,8),
+    fees_earned_total DECIMAL(20,8),
+    apy DECIMAL(10,4),
+    impermanent_loss DECIMAL(10,4),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_swap_at TIMESTAMP NULL,
+    metadata JSON,
+    UNIQUE KEY uk_pool_address (pool_address),
+    INDEX idx_tokens (token_a_address, token_b_address),
+    INDEX idx_liquidity (total_liquidity DESC),
+    INDEX idx_volume (volume_24h DESC),
+    INDEX idx_apy (apy DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Governance Voting System
+CREATE TABLE nft_governance (
+    governance_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    proposal_id VARCHAR(100) NOT NULL,
+    nft_collection_id INT UNSIGNED,
+    token_address VARCHAR(42),
+    proposal_type VARCHAR(50) NOT NULL, -- parameter, upgrade, treasury, general
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    proposer_address VARCHAR(42) NOT NULL,
+    ipfs_hash VARCHAR(100),
+    voting_start TIMESTAMP NOT NULL,
+    voting_end TIMESTAMP NOT NULL,
+    quorum_required DECIMAL(20,18),
+    approval_threshold DECIMAL(5,2),
+    total_votes_for DECIMAL(36,18) DEFAULT 0,
+    total_votes_against DECIMAL(36,18) DEFAULT 0,
+    total_votes_abstain DECIMAL(36,18) DEFAULT 0,
+    unique_voters INT UNSIGNED DEFAULT 0,
+    execution_delay INT UNSIGNED, -- in seconds
+    execution_deadline TIMESTAMP NULL,
+    executed_at TIMESTAMP NULL,
+    execution_tx_hash VARCHAR(66),
+    status VARCHAR(50) DEFAULT 'pending',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_proposal_id (proposal_id),
+    INDEX idx_collection_gov (nft_collection_id),
+    INDEX idx_token_gov (token_address),
+    INDEX idx_status (status, voting_end),
+    INDEX idx_proposer (proposer_address),
+    INDEX idx_voting_period (voting_start, voting_end)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Staking Mechanisms
+CREATE TABLE nft_staking (
+    staking_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED,
+    token_address VARCHAR(42),
+    staker_address VARCHAR(42) NOT NULL,
+    staking_contract VARCHAR(42) NOT NULL,
+    amount_staked DECIMAL(36,18) NOT NULL,
+    reward_token_address VARCHAR(42),
+    reward_rate DECIMAL(36,18),
+    rewards_earned DECIMAL(36,18) DEFAULT 0,
+    rewards_claimed DECIMAL(36,18) DEFAULT 0,
+    multiplier DECIMAL(5,2) DEFAULT 1.00,
+    lock_period_days INT UNSIGNED,
+    stake_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unlock_date TIMESTAMP NULL,
+    last_claim_date TIMESTAMP NULL,
+    unstake_date TIMESTAMP NULL,
+    auto_compound BOOLEAN DEFAULT FALSE,
+    status VARCHAR(50) DEFAULT 'active',
+    metadata JSON,
+    INDEX idx_staker (staker_address, status),
+    INDEX idx_nft_staking (nft_id),
+    INDEX idx_token_staking (token_address),
+    INDEX idx_contract (staking_contract),
+    INDEX idx_unlock (unlock_date),
+    INDEX idx_rewards (rewards_earned)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Oracle Data Feeds for Dynamic NFTs
+CREATE TABLE nft_oracle_feed (
+    feed_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    oracle_address VARCHAR(42) NOT NULL,
+    feed_name VARCHAR(100) NOT NULL,
+    feed_type VARCHAR(50) NOT NULL, -- price, streaming_count, social_metrics
+    data_source VARCHAR(100),
+    update_frequency INT UNSIGNED, -- in seconds
+    last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_value VARCHAR(255),
+    last_value_numeric DECIMAL(36,18),
+    aggregation_method VARCHAR(50),
+    heartbeat_interval INT UNSIGNED,
+    deviation_threshold DECIMAL(10,4),
+    is_active BOOLEAN DEFAULT TRUE,
+    reliability_score DECIMAL(5,4),
+    total_updates BIGINT UNSIGNED DEFAULT 0,
+    failed_updates INT UNSIGNED DEFAULT 0,
+    metadata JSON,
+    INDEX idx_oracle (oracle_address),
+    INDEX idx_feed_type (feed_type, is_active),
+    INDEX idx_last_update (last_update),
+    INDEX idx_reliability (reliability_score DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Cross-Chain NFT Bridge Records
+CREATE TABLE nft_cross_chain (
+    bridge_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nft_id INT UNSIGNED NOT NULL,
+    source_chain VARCHAR(50) NOT NULL,
+    source_token_id VARCHAR(100),
+    source_contract VARCHAR(42),
+    destination_chain VARCHAR(50) NOT NULL,
+    destination_token_id VARCHAR(100),
+    destination_contract VARCHAR(42),
+    bridge_contract VARCHAR(42),
+    owner_address VARCHAR(42) NOT NULL,
+    bridge_type VARCHAR(50), -- lock_mint, burn_mint, wrapped
+    source_tx_hash VARCHAR(66),
+    destination_tx_hash VARCHAR(66),
+    bridge_fee DECIMAL(20,8),
+    status VARCHAR(50) DEFAULT 'initiated',
+    initiated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    metadata JSON,
+    INDEX idx_nft_bridge (nft_id),
+    INDEX idx_chains (source_chain, destination_chain),
+    INDEX idx_owner_bridge (owner_address, status),
+    INDEX idx_status (status, initiated_at DESC),
+    INDEX idx_tx (source_tx_hash, destination_tx_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- VIEWS FOR NFT ANALYTICS
+-- -----------------------------------------------------------------------------
+
+-- NFT Portfolio Overview
+CREATE VIEW vw_nft_portfolio AS
+SELECT 
+    o.owner_address,
+    COUNT(DISTINCT o.nft_id) as total_nfts,
+    SUM(o.fraction_amount) as total_fractions,
+    COUNT(DISTINCT CASE WHEN mm.music_metadata_id IS NOT NULL THEN o.nft_id END) as music_nfts,
+    COALESCE(SUM(l.price * o.fraction_percentage), 0) as portfolio_value,
+    MAX(o.acquisition_date) as last_acquisition
+FROM nft_ownership o
+LEFT JOIN nft_music_metadata mm ON o.nft_id = mm.nft_id
+LEFT JOIN nft_marketplace_listing l ON o.nft_id = l.nft_id AND l.status = 'active'
+GROUP BY o.owner_address;
+
+-- Music NFT Analytics
+CREATE VIEW vw_music_nft_analytics AS
+SELECT 
+    mm.nft_id,
+    mm.title,
+    mm.artist_name,
+    mm.genre,
+    COUNT(DISTINCT o.owner_address) as unique_holders,
+    COALESCE(SUM(s.sale_price), 0) as total_sales_volume,
+    COUNT(s.sale_id) as total_sales,
+    AVG(s.sale_price) as average_sale_price,
+    MAX(s.sale_date) as last_sale_date,
+    GROUP_CONCAT(DISTINCT t.trait_value) as dynamic_traits
+FROM nft_music_metadata mm
+LEFT JOIN nft_ownership o ON mm.nft_id = o.nft_id
+LEFT JOIN nft_sale s ON mm.nft_id = s.nft_id
+LEFT JOIN nft_trait t ON mm.nft_id = t.nft_id AND t.is_dynamic = TRUE
+GROUP BY mm.nft_id, mm.title, mm.artist_name, mm.genre;
+
+-- Token Holder Distribution
+CREATE VIEW vw_token_holder_distribution AS
+SELECT 
+    token_address,
+    COUNT(DISTINCT holder_address) as total_holders,
+    SUM(balance) as total_supply,
+    AVG(balance) as average_balance,
+    MAX(balance) as largest_holder_balance,
+    SUM(CASE WHEN balance >= 1000000 THEN 1 ELSE 0 END) as whale_count,
+    SUM(CASE WHEN staked_balance > 0 THEN 1 ELSE 0 END) as stakers_count,
+    SUM(staked_balance) as total_staked
+FROM token_holder
+WHERE balance > 0
+GROUP BY token_address;
+
+-- Active NFT Markets
+CREATE VIEW vw_active_nft_markets AS
+SELECT 
+    marketplace_name,
+    COUNT(DISTINCT listing_id) as active_listings,
+    COUNT(DISTINCT nft_id) as unique_nfts,
+    SUM(price) as total_listing_value,
+    AVG(price) as average_price,
+    MIN(price) as floor_price,
+    MAX(price) as ceiling_price,
+    COUNT(DISTINCT seller_address) as unique_sellers
+FROM nft_marketplace_listing
+WHERE status = 'active' AND expires_at > NOW()
+GROUP BY marketplace_name;
+
+-- -----------------------------------------------------------------------------
+-- INDEXES FOR OPTIMAL PERFORMANCE
+-- -----------------------------------------------------------------------------
+
+-- Additional composite indexes for complex queries
+CREATE INDEX idx_nft_trading ON nft_sale(nft_id, sale_date, sale_price);
+CREATE INDEX idx_holder_portfolio ON nft_ownership(owner_address, nft_id, fraction_amount);
+CREATE INDEX idx_dynamic_updates ON nft_trait(is_dynamic, update_frequency, last_updated);
+CREATE INDEX idx_token_analytics ON token_holder(token_address, balance DESC, holder_rank);
+CREATE INDEX idx_milestone_tracking ON nft_achievement_milestone(nft_id, milestone_type, achieved_at);
+
+-- Indexes for join performance
+CREATE INDEX idx_music_join ON nft_music_metadata(nft_id, artist_name, genre);
+CREATE INDEX idx_collab_join ON nft_collaboration(nft_id, collaborator_address, revenue_share_percentage);
+CREATE INDEX idx_remix_join ON nft_remix_rights(nft_id, rights_type, commercial_use);
+
+-- =============================================
+-- Section 11: FAN TOKENIZATION TABLES
+-- =============================================
+
+-- =============================================
+-- CORE INVESTMENT INFRASTRUCTURE
+-- =============================================
+
+-- Table: fan_investment
+-- Core investment transactions and terms
+CREATE TABLE IF NOT EXISTS fan_investment (
+    investment_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    investor_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    offering_id CHAR(36) NOT NULL,
+    
+    -- Investment details
+    investment_amount DECIMAL(20,8) NOT NULL CHECK (investment_amount > 0),
+    investment_currency VARCHAR(10) NOT NULL, -- USD, EUR, BTC, ETH, etc.
+    investment_amount_usd DECIMAL(20,8) NOT NULL, -- Normalized to USD
+    tokens_purchased DECIMAL(30,18) NOT NULL, -- Support fractional tokens
+    token_price DECIMAL(20,8) NOT NULL,
+    
+    -- Investment type and terms
+    investment_type VARCHAR(20) NOT NULL, -- PRE_RELEASE, POST_RELEASE, SECONDARY, CROWDFUND
+    revenue_share_percentage DECIMAL(10,6) NOT NULL, -- Percentage of revenue
+    investment_tier VARCHAR(50), -- BRONZE, SILVER, GOLD, PLATINUM
+    vesting_schedule JSON, -- {"cliff": 6, "duration": 24, "percentage": 100}
+    
+    -- Transaction details
+    transaction_hash VARCHAR(100),
+    blockchain_network VARCHAR(50),
+    gas_fee DECIMAL(20,8),
+    
+    -- Dates and status
+    investment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    maturity_date DATE,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, CONFIRMED, FAILED, REFUNDED, MATURED
+    
+    -- Compliance
+    kyc_verified BOOLEAN DEFAULT FALSE,
+    accredited_investor BOOLEAN DEFAULT FALSE,
+    investment_limit_check BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    investment_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_investor (investor_id),
+    INDEX idx_asset (asset_id),
+    INDEX idx_offering (offering_id),
+    INDEX idx_investment_date (investment_date),
+    INDEX idx_status (status),
+    FOREIGN KEY (investor_id) REFERENCES users(user_id),
+    FOREIGN KEY (asset_id) REFERENCES music_assets(asset_id),
+    FOREIGN KEY (offering_id) REFERENCES token_offering(offering_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: fan_investor_kyc
+-- Compliance and verification for investors
+CREATE TABLE IF NOT EXISTS fan_investor_kyc (
+    kyc_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    investor_id CHAR(36) NOT NULL,
+    
+    -- Identity verification
+    verification_status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, VERIFIED, REJECTED, EXPIRED
+    verification_level VARCHAR(20) DEFAULT 'BASIC', -- BASIC, ENHANCED, ACCREDITED
+    verification_date TIMESTAMP,
+    expiry_date DATE,
+    
+    -- Compliance data
+    country_code VARCHAR(3) NOT NULL,
+    state_province VARCHAR(100),
+    tax_id_hash VARCHAR(255), -- Encrypted tax ID
+    id_document_type VARCHAR(50),
+    id_document_hash VARCHAR(255), -- Encrypted document reference
+    
+    -- Investment limits
+    annual_income_range VARCHAR(50),
+    net_worth_range VARCHAR(50),
+    investment_experience VARCHAR(50),
+    risk_tolerance VARCHAR(20), -- CONSERVATIVE, MODERATE, AGGRESSIVE
+    
+    -- Accreditation
+    accredited_status BOOLEAN DEFAULT FALSE,
+    accreditation_type VARCHAR(100),
+    accreditation_verified_by VARCHAR(100),
+    accreditation_date DATE,
+    
+    -- Restrictions
+    restricted_countries JSON, -- ["US", "CN", "KP"]
+    investment_limit_annual DECIMAL(20,2),
+    investment_limit_per_asset DECIMAL(20,2),
+    
+    -- Anti-money laundering
+    aml_check_status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, CLEARED, FLAGGED, BLOCKED
+    aml_check_date TIMESTAMP,
+    aml_risk_score DECIMAL(5,2),
+    sanctions_check BOOLEAN DEFAULT FALSE,
+    pep_check BOOLEAN DEFAULT FALSE, -- Politically Exposed Person
+    
+    -- Metadata
+    kyc_provider VARCHAR(100),
+    provider_reference_id VARCHAR(255),
+    verification_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_investor (investor_id),
+    INDEX idx_verification_status (verification_status),
+    INDEX idx_country (country_code),
+    INDEX idx_accredited (accredited_status),
+    FOREIGN KEY (investor_id) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: revenue_share_token
+-- Tokenized revenue streams
+CREATE TABLE IF NOT EXISTS revenue_share_token (
+    token_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    asset_id CHAR(36) NOT NULL,
+    contract_address VARCHAR(100) NOT NULL,
+    
+    -- Token details
+    token_symbol VARCHAR(10) NOT NULL,
+    token_name VARCHAR(100) NOT NULL,
+    total_supply DECIMAL(30,18) NOT NULL,
+    decimals INT DEFAULT 18,
+    token_standard VARCHAR(20) DEFAULT 'ERC20', -- ERC20, ERC1155, SPL, BEP20
+    
+    -- Revenue share parameters
+    revenue_types JSON NOT NULL, -- ["STREAMING", "SYNC", "PERFORMANCE", "MECHANICAL"]
+    revenue_share_percentage DECIMAL(10,6) NOT NULL, -- Total % of revenue tokenized
+    minimum_distribution DECIMAL(20,8), -- Minimum amount before distribution
+    distribution_frequency VARCHAR(20) DEFAULT 'MONTHLY', -- REAL_TIME, DAILY, WEEKLY, MONTHLY, QUARTERLY
+    
+    -- Token economics
+    initial_price DECIMAL(20,8) NOT NULL,
+    current_price DECIMAL(20,8) NOT NULL,
+    market_cap DECIMAL(30,8),
+    circulating_supply DECIMAL(30,18),
+    locked_supply DECIMAL(30,18),
+    
+    -- Compliance
+    security_token BOOLEAN DEFAULT TRUE,
+    regulatory_approval JSON, -- {"SEC": "approved", "date": "2024-01-01"}
+    transfer_restrictions JSON, -- {"lockup_period": 180, "whitelist_required": true}
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'PLANNED', -- PLANNED, DEPLOYED, ACTIVE, PAUSED, RETIRED
+    deployment_date TIMESTAMP,
+    retirement_date TIMESTAMP,
+    
+    -- Metadata
+    token_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_contract_address (contract_address),
+    UNIQUE KEY uk_token_symbol (token_symbol),
+    INDEX idx_asset (asset_id),
+    INDEX idx_status (status),
+    INDEX idx_security_token (security_token),
+    FOREIGN KEY (asset_id) REFERENCES music_assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: token_offering
+-- Primary token sales/STOs
+CREATE TABLE IF NOT EXISTS token_offering (
+    offering_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    
+    -- Offering details
+    offering_type VARCHAR(30) NOT NULL, -- PRIVATE_SALE, PUBLIC_SALE, CROWDFUND, AUCTION, BONDING_CURVE
+    offering_name VARCHAR(200) NOT NULL,
+    offering_description TEXT,
+    
+    -- Token allocation
+    tokens_offered DECIMAL(30,18) NOT NULL,
+    tokens_sold DECIMAL(30,18) DEFAULT 0,
+    tokens_reserved DECIMAL(30,18) DEFAULT 0,
+    minimum_investment DECIMAL(20,8) NOT NULL,
+    maximum_investment DECIMAL(20,8),
+    
+    -- Pricing
+    token_price DECIMAL(20,8) NOT NULL,
+    pricing_model VARCHAR(20) DEFAULT 'FIXED', -- FIXED, DUTCH_AUCTION, BONDING_CURVE, DYNAMIC
+    price_parameters JSON, -- {"start_price": 1.0, "end_price": 0.5, "curve": "linear"}
+    accepted_currencies JSON, -- ["USD", "ETH", "BTC", "USDC"]
+    
+    -- Fundraising goals
+    soft_cap DECIMAL(20,2),
+    hard_cap DECIMAL(20,2) NOT NULL,
+    funds_raised DECIMAL(20,2) DEFAULT 0,
+    funds_raised_usd DECIMAL(20,2) DEFAULT 0,
+    
+    -- Timeline
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NOT NULL,
+    early_bird_end TIMESTAMP,
+    whitelist_end TIMESTAMP,
+    
+    -- Investor tiers
+    investor_tiers JSON, -- [{"tier": "GOLD", "discount": 20, "minimum": 10000}]
+    early_bird_bonus DECIMAL(5,2) DEFAULT 0,
+    referral_bonus DECIMAL(5,2) DEFAULT 0,
+    
+    -- Restrictions
+    kyc_required BOOLEAN DEFAULT TRUE,
+    accredited_only BOOLEAN DEFAULT FALSE,
+    geographic_restrictions JSON, -- {"allowed": ["US", "EU"], "blocked": ["CN"]}
+    max_investors INT,
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'DRAFT', -- DRAFT, UPCOMING, ACTIVE, COMPLETED, CANCELLED, FAILED
+    completion_date TIMESTAMP,
+    
+    -- Smart contract
+    offering_contract_address VARCHAR(100),
+    escrow_address VARCHAR(100),
+    
+    -- Metadata
+    offering_metadata JSON,
+    marketing_materials JSON, -- {"whitepaper": "url", "pitch_deck": "url"}
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_asset (asset_id),
+    INDEX idx_status (status),
+    INDEX idx_dates (start_date, end_date),
+    INDEX idx_offering_type (offering_type),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id),
+    FOREIGN KEY (asset_id) REFERENCES music_assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- DISTRIBUTION & RETURNS
+-- =============================================
+
+-- Table: token_dividend
+-- Automated distributions to token holders
+CREATE TABLE IF NOT EXISTS token_dividend (
+    dividend_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    calculation_id CHAR(36) NOT NULL,
+    
+    -- Distribution details
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    revenue_amount DECIMAL(20,8) NOT NULL,
+    distribution_amount DECIMAL(20,8) NOT NULL,
+    distribution_currency VARCHAR(10) NOT NULL,
+    
+    -- Per token metrics
+    amount_per_token DECIMAL(30,18) NOT NULL,
+    eligible_token_supply DECIMAL(30,18) NOT NULL,
+    snapshot_date TIMESTAMP NOT NULL,
+    
+    -- Distribution execution
+    distribution_date TIMESTAMP,
+    distribution_type VARCHAR(20) DEFAULT 'AUTOMATIC', -- AUTOMATIC, MANUAL, CLAIM_BASED
+    distribution_status VARCHAR(20) DEFAULT 'CALCULATING', -- CALCULATING, READY, IN_PROGRESS, COMPLETED, FAILED
+    
+    -- Blockchain details
+    distribution_tx_hash VARCHAR(100),
+    gas_cost_total DECIMAL(20,8),
+    distributions_count INT DEFAULT 0,
+    
+    -- Efficiency metrics
+    batch_size INT DEFAULT 100,
+    batches_completed INT DEFAULT 0,
+    total_batches INT,
+    
+    -- Metadata
+    calculation_metadata JSON,
+    distribution_report JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_period (period_start, period_end),
+    INDEX idx_status (distribution_status),
+    INDEX idx_distribution_date (distribution_date),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id),
+    FOREIGN KEY (calculation_id) REFERENCES dividend_calculation(calculation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dividend_calculation
+-- Complex calculation engine for distributions
+CREATE TABLE IF NOT EXISTS dividend_calculation (
+    calculation_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    
+    -- Calculation parameters
+    calculation_type VARCHAR(20) NOT NULL, -- REVENUE_SHARE, PROFIT_SHARE, MILESTONE, BONUS
+    calculation_period VARCHAR(50) NOT NULL, -- "2024-Q1", "2024-01", etc.
+    
+    -- Revenue sources
+    streaming_revenue DECIMAL(20,8) DEFAULT 0,
+    sync_revenue DECIMAL(20,8) DEFAULT 0,
+    performance_revenue DECIMAL(20,8) DEFAULT 0,
+    mechanical_revenue DECIMAL(20,8) DEFAULT 0,
+    merchandise_revenue DECIMAL(20,8) DEFAULT 0,
+    other_revenue DECIMAL(20,8) DEFAULT 0,
+    total_revenue DECIMAL(20,8) NOT NULL,
+    
+    -- Deductions
+    platform_fee DECIMAL(20,8) DEFAULT 0,
+    management_fee DECIMAL(20,8) DEFAULT 0,
+    expenses DECIMAL(20,8) DEFAULT 0,
+    reserves DECIMAL(20,8) DEFAULT 0,
+    
+    -- Distribution calculation
+    distributable_amount DECIMAL(20,8) NOT NULL,
+    token_holder_share DECIMAL(10,6) NOT NULL, -- Percentage
+    distribution_amount DECIMAL(20,8) NOT NULL,
+    
+    -- Token metrics at calculation time
+    total_supply DECIMAL(30,18) NOT NULL,
+    circulating_supply DECIMAL(30,18) NOT NULL,
+    excluded_tokens DECIMAL(30,18) DEFAULT 0, -- Treasury, locked, etc.
+    
+    -- Calculation details
+    calculation_formula TEXT,
+    calculation_parameters JSON,
+    calculation_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Verification
+    verified_by VARCHAR(100),
+    verification_date TIMESTAMP,
+    audit_trail JSON,
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'DRAFT', -- DRAFT, PENDING_VERIFICATION, VERIFIED, APPROVED, REJECTED
+    
+    -- Metadata
+    calculation_notes TEXT,
+    supporting_documents JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_period (calculation_period),
+    INDEX idx_status (status),
+    INDEX idx_calculation_type (calculation_type),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: investment_return
+-- ROI and performance tracking
+CREATE TABLE IF NOT EXISTS investment_return (
+    return_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    investment_id CHAR(36) NOT NULL,
+    investor_id CHAR(36) NOT NULL,
+    
+    -- Return calculation
+    calculation_date DATE NOT NULL,
+    initial_investment DECIMAL(20,8) NOT NULL,
+    current_value DECIMAL(20,8) NOT NULL,
+    total_distributions DECIMAL(20,8) DEFAULT 0,
+    unrealized_gain_loss DECIMAL(20,8),
+    realized_gain_loss DECIMAL(20,8) DEFAULT 0,
+    
+    -- Performance metrics
+    roi_percentage DECIMAL(10,4), -- Return on Investment %
+    irr_percentage DECIMAL(10,4), -- Internal Rate of Return %
+    multiple_on_money DECIMAL(10,4), -- e.g., 2.5x
+    
+    -- Time-based returns
+    daily_return DECIMAL(10,6),
+    weekly_return DECIMAL(10,6),
+    monthly_return DECIMAL(10,6),
+    annual_return DECIMAL(10,6),
+    
+    -- Benchmarking
+    benchmark_index VARCHAR(50), -- "MUSIC_INDEX", "SP500", etc.
+    benchmark_return DECIMAL(10,4),
+    alpha DECIMAL(10,4), -- Excess return vs benchmark
+    
+    -- Token metrics
+    tokens_held DECIMAL(30,18) NOT NULL,
+    average_token_price DECIMAL(20,8),
+    current_token_price DECIMAL(20,8),
+    
+    -- Ranking
+    percentile_rank DECIMAL(5,2), -- Among all investors
+    performance_tier VARCHAR(20), -- TOP_1, TOP_5, TOP_10, TOP_25, AVERAGE, BELOW_AVERAGE
+    
+    -- Metadata
+    calculation_method VARCHAR(50),
+    market_conditions JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_investment_date (investment_id, calculation_date),
+    INDEX idx_investor (investor_id),
+    INDEX idx_calculation_date (calculation_date),
+    INDEX idx_roi (roi_percentage),
+    INDEX idx_performance_tier (performance_tier),
+    FOREIGN KEY (investment_id) REFERENCES fan_investment(investment_id),
+    FOREIGN KEY (investor_id) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TRADING & LIQUIDITY
+-- =============================================
+
+-- Table: investor_wallet
+-- Wallet management and restrictions
+CREATE TABLE IF NOT EXISTS investor_wallet (
+    wallet_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    investor_id CHAR(36) NOT NULL,
+    
+    -- Wallet details
+    wallet_address VARCHAR(100) NOT NULL,
+    wallet_type VARCHAR(20) NOT NULL, -- CUSTODIAL, NON_CUSTODIAL, HARDWARE, MULTI_SIG
+    blockchain_network VARCHAR(50) NOT NULL,
+    
+    -- Verification
+    verified BOOLEAN DEFAULT FALSE,
+    verification_date TIMESTAMP,
+    verification_signature VARCHAR(255),
+    
+    -- Restrictions
+    withdrawal_whitelist JSON, -- ["0x123...", "0x456..."]
+    daily_withdrawal_limit DECIMAL(20,8),
+    requires_2fa BOOLEAN DEFAULT TRUE,
+    lockup_until DATE,
+    
+    -- Token balances (denormalized for performance)
+    token_balances JSON, -- {"TOKEN_ID": {"balance": 1000, "locked": 100}}
+    total_value_usd DECIMAL(20,2),
+    
+    -- Trading permissions
+    trading_enabled BOOLEAN DEFAULT TRUE,
+    trading_restrictions JSON, -- {"max_daily_volume": 10000, "blocked_tokens": []}
+    
+    -- Security
+    last_activity TIMESTAMP,
+    suspicious_activity_score DECIMAL(5,2) DEFAULT 0,
+    frozen BOOLEAN DEFAULT FALSE,
+    freeze_reason VARCHAR(255),
+    
+    -- Metadata
+    wallet_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_wallet_address (wallet_address, blockchain_network),
+    INDEX idx_investor (investor_id),
+    INDEX idx_verified (verified),
+    INDEX idx_network (blockchain_network),
+    FOREIGN KEY (investor_id) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: token_secondary_market
+-- P2P trading mechanisms
+CREATE TABLE IF NOT EXISTS token_secondary_market (
+    market_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    
+    -- Market configuration
+    market_type VARCHAR(20) NOT NULL, -- ORDER_BOOK, AMM, AUCTION, OTC
+    trading_enabled BOOLEAN DEFAULT TRUE,
+    
+    -- Liquidity metrics
+    total_volume_24h DECIMAL(30,8) DEFAULT 0,
+    total_volume_7d DECIMAL(30,8) DEFAULT 0,
+    total_volume_30d DECIMAL(30,8) DEFAULT 0,
+    unique_traders_24h INT DEFAULT 0,
+    
+    -- Price discovery
+    last_price DECIMAL(20,8),
+    price_change_24h DECIMAL(10,4),
+    high_24h DECIMAL(20,8),
+    low_24h DECIMAL(20,8),
+    vwap_24h DECIMAL(20,8), -- Volume Weighted Average Price
+    
+    -- Order book metrics (if applicable)
+    bid_ask_spread DECIMAL(10,6),
+    order_book_depth DECIMAL(30,8),
+    
+    -- Trading rules
+    minimum_trade_size DECIMAL(30,18),
+    maximum_trade_size DECIMAL(30,18),
+    tick_size DECIMAL(20,8),
+    
+    -- Fee structure
+    maker_fee_percentage DECIMAL(5,4) DEFAULT 0.1,
+    taker_fee_percentage DECIMAL(5,4) DEFAULT 0.2,
+    
+    -- Market hours (null = 24/7)
+    trading_hours JSON, -- {"monday": {"open": "09:00", "close": "17:00"}}
+    
+    -- Metadata
+    market_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_market_type (market_type),
+    INDEX idx_volume (total_volume_24h),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: token_liquidity_pool
+-- AMM pools for instant trading
+CREATE TABLE IF NOT EXISTS token_liquidity_pool (
+    pool_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    
+    -- Pool configuration
+    pool_type VARCHAR(20) NOT NULL, -- UNISWAP_V2, UNISWAP_V3, BALANCER, CURVE, CUSTOM
+    base_token VARCHAR(100) NOT NULL, -- Music token
+    quote_token VARCHAR(100) NOT NULL, -- USDC, ETH, etc.
+    
+    -- Liquidity
+    base_token_reserve DECIMAL(30,18) NOT NULL,
+    quote_token_reserve DECIMAL(30,18) NOT NULL,
+    total_liquidity_usd DECIMAL(30,8),
+    
+    -- Pool tokens
+    lp_token_address VARCHAR(100),
+    lp_token_supply DECIMAL(30,18),
+    
+    -- Pricing
+    current_price DECIMAL(30,18), -- Quote per base
+    price_impact_1_percent DECIMAL(10,6), -- Price impact for 1% of liquidity
+    
+    -- Volume and fees
+    volume_24h DECIMAL(30,8) DEFAULT 0,
+    fees_24h DECIMAL(30,8) DEFAULT 0,
+    total_fees_earned DECIMAL(30,8) DEFAULT 0,
+    
+    -- Pool parameters
+    fee_tier DECIMAL(5,4) DEFAULT 0.3, -- 0.3%
+    slippage_tolerance DECIMAL(5,4) DEFAULT 1.0, -- 1%
+    
+    -- Incentives
+    liquidity_mining_enabled BOOLEAN DEFAULT FALSE,
+    reward_token_address VARCHAR(100),
+    reward_rate_per_day DECIMAL(30,18),
+    
+    -- Status
+    active BOOLEAN DEFAULT TRUE,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Metadata
+    pool_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_pool_type (pool_type),
+    INDEX idx_liquidity (total_liquidity_usd),
+    INDEX idx_volume (volume_24h),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- GOVERNANCE & TERMS
+-- =============================================
+
+-- Table: investment_agreement
+-- Smart contract terms for investments
+CREATE TABLE IF NOT EXISTS investment_agreement (
+    agreement_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    investment_id CHAR(36) NOT NULL,
+    
+    -- Agreement details
+    agreement_type VARCHAR(30) NOT NULL, -- SAFE, TOKEN_PURCHASE, REVENUE_SHARE, CONVERTIBLE_NOTE
+    agreement_version VARCHAR(20) NOT NULL,
+    
+    -- Key terms
+    investment_terms JSON NOT NULL, -- Complete terms structure
+    revenue_share_terms JSON,
+    conversion_terms JSON, -- For convertible instruments
+    
+    -- Rights and restrictions
+    voting_rights BOOLEAN DEFAULT FALSE,
+    transfer_restrictions JSON,
+    right_of_first_refusal BOOLEAN DEFAULT FALSE,
+    tag_along_rights BOOLEAN DEFAULT FALSE,
+    
+    -- Milestones and conditions
+    performance_milestones JSON,
+    vesting_conditions JSON,
+    buyback_terms JSON,
+    
+    -- Legal
+    governing_law VARCHAR(100),
+    dispute_resolution VARCHAR(20), -- ARBITRATION, COURT, MEDIATION
+    
+    -- Signatures
+    investor_signature VARCHAR(255),
+    investor_signed_date TIMESTAMP,
+    issuer_signature VARCHAR(255),
+    issuer_signed_date TIMESTAMP,
+    
+    -- Smart contract
+    contract_address VARCHAR(100),
+    deployment_tx_hash VARCHAR(100),
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'DRAFT', -- DRAFT, PENDING_SIGNATURE, EXECUTED, AMENDED, TERMINATED
+    
+    -- Metadata
+    agreement_document_hash VARCHAR(255), -- IPFS hash
+    amendments JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_investment (investment_id),
+    INDEX idx_status (status),
+    INDEX idx_agreement_type (agreement_type),
+    FOREIGN KEY (investment_id) REFERENCES fan_investment(investment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: investment_milestone
+-- Funding release triggers
+CREATE TABLE IF NOT EXISTS investment_milestone (
+    milestone_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    offering_id CHAR(36) NOT NULL,
+    
+    -- Milestone details
+    milestone_name VARCHAR(200) NOT NULL,
+    milestone_description TEXT,
+    milestone_order INT NOT NULL,
+    
+    -- Release conditions
+    release_percentage DECIMAL(5,2) NOT NULL, -- % of funds to release
+    release_amount DECIMAL(20,8),
+    
+    -- Triggers
+    trigger_type VARCHAR(20) NOT NULL, -- DATE, STREAMS, REVENUE, DELIVERABLE, MANUAL
+    trigger_value VARCHAR(255), -- Date, stream count, revenue amount, etc.
+    trigger_parameters JSON,
+    
+    -- Verification
+    requires_verification BOOLEAN DEFAULT TRUE,
+    verification_method VARCHAR(20), -- AUTOMATIC, ORACLE, MANUAL, DAO_VOTE
+    verifiers JSON, -- List of authorized verifiers
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, ACHIEVED, VERIFIED, RELEASED, FAILED
+    achieved_date TIMESTAMP,
+    verified_date TIMESTAMP,
+    released_date TIMESTAMP,
+    
+    -- Evidence
+    evidence_required TEXT,
+    evidence_submitted JSON,
+    
+    -- Metadata
+    milestone_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_offering (offering_id),
+    INDEX idx_status (status),
+    INDEX idx_trigger_type (trigger_type),
+    INDEX idx_order (milestone_order),
+    FOREIGN KEY (offering_id) REFERENCES token_offering(offering_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: investor_voting
+-- Token holder governance
+CREATE TABLE IF NOT EXISTS investor_voting (
+    vote_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    proposal_id CHAR(36) NOT NULL,
+    investor_id CHAR(36) NOT NULL,
+    
+    -- Voting power
+    tokens_held DECIMAL(30,18) NOT NULL,
+    voting_power DECIMAL(30,18) NOT NULL, -- May differ due to quadratic voting, etc.
+    
+    -- Vote details
+    vote_choice VARCHAR(10) NOT NULL, -- FOR, AGAINST, ABSTAIN
+    vote_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    vote_tx_hash VARCHAR(100),
+    
+    -- Delegation
+    delegated_from VARCHAR(100), -- Address if voting power was delegated
+    delegation_tx_hash VARCHAR(100),
+    
+    -- Metadata
+    vote_reason TEXT,
+    vote_metadata JSON,
+    
+    UNIQUE KEY uk_proposal_investor (proposal_id, investor_id),
+    INDEX idx_investor (investor_id),
+    INDEX idx_vote_choice (vote_choice),
+    INDEX idx_timestamp (vote_timestamp),
+    FOREIGN KEY (investor_id) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: investment_performance
+-- Analytics and reporting
+CREATE TABLE IF NOT EXISTS investment_performance (
+    performance_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    asset_id CHAR(36) NOT NULL,
+    token_id CHAR(36),
+    
+    -- Performance period
+    period_type VARCHAR(20) NOT NULL, -- DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL
+    period_date DATE NOT NULL,
+    
+    -- Revenue metrics
+    streaming_revenue DECIMAL(20,8) DEFAULT 0,
+    sync_revenue DECIMAL(20,8) DEFAULT 0,
+    total_revenue DECIMAL(20,8) NOT NULL,
+    revenue_growth_rate DECIMAL(10,4),
+    
+    -- Investment metrics
+    total_invested DECIMAL(30,8) DEFAULT 0,
+    number_of_investors INT DEFAULT 0,
+    average_investment DECIMAL(20,8),
+    
+    -- Token metrics
+    token_price_open DECIMAL(20,8),
+    token_price_close DECIMAL(20,8),
+    token_price_high DECIMAL(20,8),
+    token_price_low DECIMAL(20,8),
+    price_change_percentage DECIMAL(10,4),
+    
+    -- Trading metrics
+    trading_volume DECIMAL(30,8) DEFAULT 0,
+    number_of_trades INT DEFAULT 0,
+    unique_traders INT DEFAULT 0,
+    
+    -- Distribution metrics
+    distributions_paid DECIMAL(30,8) DEFAULT 0,
+    distribution_yield DECIMAL(10,4), -- Annual yield %
+    
+    -- Market sentiment
+    sentiment_score DECIMAL(5,2), -- 0-100
+    social_mentions INT DEFAULT 0,
+    
+    -- Benchmarking
+    market_rank INT,
+    percentile_rank DECIMAL(5,2),
+    
+    -- Metadata
+    performance_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_asset_period (asset_id, period_type, period_date),
+    INDEX idx_token (token_id),
+    INDEX idx_period (period_date),
+    INDEX idx_period_type (period_type),
+    FOREIGN KEY (asset_id) REFERENCES music_assets(asset_id),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- ADVANCED FEATURES
+-- =============================================
+
+-- Table: token_bonding_curve
+-- Dynamic pricing mechanisms
+CREATE TABLE IF NOT EXISTS token_bonding_curve (
+    curve_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token_id CHAR(36) NOT NULL,
+    
+    -- Curve parameters
+    curve_type VARCHAR(20) NOT NULL, -- LINEAR, POLYNOMIAL, EXPONENTIAL, SIGMOID, CUSTOM
+    curve_formula TEXT NOT NULL,
+    
+    -- Price parameters
+    initial_price DECIMAL(20,8) NOT NULL,
+    current_price DECIMAL(20,8) NOT NULL,
+    reserve_ratio DECIMAL(5,4), -- For Bancor-style curves
+    
+    -- Supply parameters
+    current_supply DECIMAL(30,18) NOT NULL,
+    max_supply DECIMAL(30,18),
+    
+    -- Curve bounds
+    price_floor DECIMAL(20,8),
+    price_ceiling DECIMAL(20,8),
+    
+    -- Reserve pool
+    reserve_balance DECIMAL(30,8) NOT NULL,
+    reserve_currency VARCHAR(10) NOT NULL,
+    
+    -- Fee parameters
+    buy_fee_percentage DECIMAL(5,4) DEFAULT 0,
+    sell_fee_percentage DECIMAL(5,4) DEFAULT 0,
+    
+    -- Status
+    active BOOLEAN DEFAULT TRUE,
+    activation_date TIMESTAMP,
+    
+    -- Metadata
+    curve_parameters JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_token (token_id),
+    INDEX idx_curve_type (curve_type),
+    INDEX idx_active (active),
+    FOREIGN KEY (token_id) REFERENCES revenue_share_token(token_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: revenue_forecast
+-- AI-driven revenue projections
+CREATE TABLE IF NOT EXISTS revenue_forecast (
+    forecast_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    asset_id CHAR(36) NOT NULL,
+    
+    -- Forecast details
+    forecast_date DATE NOT NULL,
+    forecast_horizon_months INT NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
+    
+    -- Revenue projections (monthly)
+    projected_revenues JSON NOT NULL, -- Array of monthly projections
+    confidence_intervals JSON, -- Upper/lower bounds
+    
+    -- Growth metrics
+    projected_growth_rate DECIMAL(10,4),
+    breakeven_month INT,
+    
+    -- Model inputs
+    historical_data_points INT,
+    external_factors JSON, -- Genre trends, market conditions, etc.
+    
+    -- Accuracy metrics
+    model_accuracy DECIMAL(5,2), -- Historical accuracy %
+    r_squared DECIMAL(5,4),
+    
+    -- Scenario analysis
+    best_case_revenue DECIMAL(20,8),
+    base_case_revenue DECIMAL(20,8),
+    worst_case_revenue DECIMAL(20,8),
+    
+    -- Metadata
+    model_parameters JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_asset (asset_id),
+    INDEX idx_forecast_date (forecast_date),
+    FOREIGN KEY (asset_id) REFERENCES music_assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: investment_tier
+-- Tiered benefits system
+CREATE TABLE IF NOT EXISTS investment_tier (
+    tier_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    offering_id CHAR(36) NOT NULL,
+    
+    -- Tier details
+    tier_name VARCHAR(50) NOT NULL, -- BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+    tier_level INT NOT NULL,
+    minimum_investment DECIMAL(20,8) NOT NULL,
+    maximum_investors INT,
+    
+    -- Benefits
+    token_bonus_percentage DECIMAL(5,2) DEFAULT 0,
+    early_access_days INT DEFAULT 0,
+    
+    -- Perks
+    perks JSON NOT NULL, -- ["Meet & greet", "Signed merch", "Studio access"]
+    
+    -- Revenue share
+    enhanced_revenue_share DECIMAL(5,2) DEFAULT 0, -- Additional %
+    priority_distributions BOOLEAN DEFAULT FALSE,
+    
+    -- Governance
+    voting_power_multiplier DECIMAL(5,2) DEFAULT 1.0,
+    proposal_rights BOOLEAN DEFAULT FALSE,
+    
+    -- Access
+    exclusive_content BOOLEAN DEFAULT FALSE,
+    vip_events BOOLEAN DEFAULT FALSE,
+    
+    -- NFT benefits
+    exclusive_nft_drop BOOLEAN DEFAULT FALSE,
+    nft_rarity_boost DECIMAL(5,2) DEFAULT 0,
+    
+    -- Status
+    available_slots INT,
+    filled_slots INT DEFAULT 0,
+    
+    -- Metadata
+    tier_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_offering (offering_id),
+    INDEX idx_tier_level (tier_level),
+    INDEX idx_minimum_investment (minimum_investment),
+    FOREIGN KEY (offering_id) REFERENCES token_offering(offering_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: referral_program
+-- Viral growth incentives
+CREATE TABLE IF NOT EXISTS referral_program (
+    referral_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    referrer_id CHAR(36) NOT NULL,
+    referee_id CHAR(36) NOT NULL,
+    offering_id CHAR(36),
+    
+    -- Referral details
+    referral_code VARCHAR(20) NOT NULL,
+    referral_link VARCHAR(500),
+    
+    -- Status
+    referee_status VARCHAR(20) DEFAULT 'REGISTERED', -- REGISTERED, KYC_COMPLETE, INVESTED, ACTIVE
+    investment_amount DECIMAL(20,8) DEFAULT 0,
+    
+    -- Rewards
+    referrer_reward_percentage DECIMAL(5,2) DEFAULT 5.0,
+    referee_bonus_percentage DECIMAL(5,2) DEFAULT 2.5,
+    
+    -- Payouts
+    referrer_reward_earned DECIMAL(20,8) DEFAULT 0,
+    referrer_reward_paid DECIMAL(20,8) DEFAULT 0,
+    referee_bonus_earned DECIMAL(20,8) DEFAULT 0,
+    
+    -- Tracking
+    click_count INT DEFAULT 0,
+    conversion_rate DECIMAL(5,2),
+    
+    -- Dates
+    referral_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    investment_date TIMESTAMP,
+    
+    -- Metadata
+    utm_parameters JSON,
+    referral_metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_referrer_referee (referrer_id, referee_id),
+    INDEX idx_referral_code (referral_code),
+    INDEX idx_offering (offering_id),
+    INDEX idx_status (referee_status),
+    FOREIGN KEY (referrer_id) REFERENCES users(user_id),
+    FOREIGN KEY (referee_id) REFERENCES users(user_id),
+    FOREIGN KEY (offering_id) REFERENCES token_offering(offering_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- VIEWS FOR ANALYTICS AND DASHBOARDS
+-- =============================================
+
+-- View: investor_portfolio_summary
+CREATE OR REPLACE VIEW investor_portfolio_summary AS
+SELECT 
+    fi.investor_id,
+    COUNT(DISTINCT fi.asset_id) as assets_invested,
+    COUNT(DISTINCT fi.investment_id) as total_investments,
+    SUM(fi.investment_amount_usd) as total_invested_usd,
+    SUM(ir.current_value) as portfolio_value_usd,
+    AVG(ir.roi_percentage) as average_roi,
+    MAX(ir.roi_percentage) as best_performing_roi,
+    SUM(ir.total_distributions) as total_distributions_received
+FROM fan_investment fi
+LEFT JOIN investment_return ir ON fi.investment_id = ir.investment_id
+WHERE fi.status = 'CONFIRMED'
+  AND ir.calculation_date = CURDATE()
+GROUP BY fi.investor_id;
+
+-- View: token_market_overview  
+CREATE OR REPLACE VIEW token_market_overview AS
+SELECT 
+    rst.token_id,
+    rst.token_symbol,
+    rst.token_name,
+    ma.asset_title,
+    rst.current_price,
+    rst.market_cap,
+    tsm.total_volume_24h,
+    tsm.price_change_24h,
+    tlp.total_liquidity_usd,
+    COUNT(DISTINCT fi.investor_id) as total_investors
+FROM revenue_share_token rst
+JOIN music_assets ma ON rst.asset_id = ma.asset_id
+LEFT JOIN token_secondary_market tsm ON rst.token_id = tsm.token_id
+LEFT JOIN token_liquidity_pool tlp ON rst.token_id = tlp.token_id
+LEFT JOIN fan_investment fi ON rst.asset_id = fi.asset_id
+WHERE rst.status = 'ACTIVE'
+GROUP BY rst.token_id;
+
+-- View: upcoming_distributions
+CREATE OR REPLACE VIEW upcoming_distributions AS
+SELECT 
+    td.token_id,
+    rst.token_symbol,
+    td.period_end,
+    td.revenue_amount,
+    td.distribution_amount,
+    td.amount_per_token,
+    td.distribution_status,
+    COUNT(DISTINCT fi.investor_id) as affected_investors
+FROM token_dividend td
+JOIN revenue_share_token rst ON td.token_id = rst.token_id
+LEFT JOIN fan_investment fi ON rst.asset_id = fi.asset_id
+WHERE td.distribution_status IN ('CALCULATING', 'READY')
+  AND td.period_end >= CURDATE() - INTERVAL 30 DAY
+GROUP BY td.dividend_id
+ORDER BY td.period_end DESC;
+
+-- =============================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================
+
+-- High-frequency query indexes
+CREATE INDEX idx_investment_investor_date ON fan_investment(investor_id, investment_date);
+CREATE INDEX idx_dividend_token_period ON token_dividend(token_id, period_start, period_end);
+CREATE INDEX idx_return_investor_calc ON investment_return(investor_id, calculation_date);
+CREATE INDEX idx_performance_asset_type_date ON investment_performance(asset_id, period_type, period_date);
+
+-- =============================================
+-- TRIGGERS FOR AUTOMATION
+-- =============================================
+
+DELIMITER //
+
+-- Trigger: Update token price on trades
+CREATE TRIGGER update_token_price_on_trade
+AFTER INSERT ON token_secondary_market
+FOR EACH ROW
+BEGIN
+    UPDATE revenue_share_token 
+    SET current_price = NEW.last_price,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE token_id = NEW.token_id;
+END//
+
+-- Trigger: Calculate investment returns
+CREATE TRIGGER calculate_investment_return
+AFTER UPDATE ON revenue_share_token
+FOR EACH ROW
+BEGIN
+    IF NEW.current_price != OLD.current_price THEN
+        INSERT INTO investment_return (investment_id, investor_id, calculation_date, initial_investment, current_value, unrealized_gain_loss, tokens_held, current_token_price)
+        SELECT 
+            fi.investment_id,
+            fi.investor_id,
+            CURDATE(),
+            fi.investment_amount_usd,
+            fi.tokens_purchased * NEW.current_price,
+            (fi.tokens_purchased * NEW.current_price) - fi.investment_amount_usd,
+            fi.tokens_purchased,
+            NEW.current_price
+        FROM fan_investment fi
+        WHERE fi.asset_id = NEW.asset_id
+          AND fi.status = 'CONFIRMED'
+        ON DUPLICATE KEY UPDATE
+            current_value = VALUES(current_value),
+            unrealized_gain_loss = VALUES(unrealized_gain_loss),
+            current_token_price = VALUES(current_token_price);
+    END IF;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- ASTRO MUSIC RIGHTS ADMINISTRATION PLATFORM
+-- SECTION 12: REGISTRATION TABLES
+-- =====================================================
+-- Handles global registration of musical works with PROs,
+-- CMOs, and copyright offices worldwide
+-- =====================================================
+
+-- Table: registration_batch
+-- Purpose: Manages batch submissions to PROs/CMOs
+CREATE TABLE registration_batch (
+    batch_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_number VARCHAR(50) UNIQUE NOT NULL,
+    batch_type VARCHAR(50) NOT NULL DEFAULT 'STANDARD', -- STANDARD, URGENT, CORRECTION, WITHDRAWAL
+    society_id INT UNSIGNED NOT NULL,
+    submission_format VARCHAR(20) NOT NULL DEFAULT 'CWR3.1', -- CWR3.1, CWR2.2, CUSTOM_API, MANUAL
+    total_works INT UNSIGNED NOT NULL DEFAULT 0,
+    processed_works INT UNSIGNED NOT NULL DEFAULT 0,
+    successful_works INT UNSIGNED NOT NULL DEFAULT 0,
+    failed_works INT UNSIGNED NOT NULL DEFAULT 0,
+    batch_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, VALIDATING, QUEUED, TRANSMITTING, SENT, ACKNOWLEDGED, COMPLETED, FAILED
+    priority_level INT NOT NULL DEFAULT 5, -- 1-10, 1 being highest
+    submission_deadline DATETIME NULL,
+    submitted_at DATETIME NULL,
+    acknowledged_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    cwr_file_path TEXT NULL,
+    submission_file_hash VARCHAR(64) NULL,
+    response_file_path TEXT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retries INT NOT NULL DEFAULT 3,
+    next_retry_at DATETIME NULL,
+    error_summary TEXT NULL,
+    metadata JSON NULL, -- Society-specific metadata
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_batch_society (society_id, batch_status),
+    INDEX idx_batch_status_priority (batch_status, priority_level),
+    INDEX idx_batch_deadline (submission_deadline),
+    INDEX idx_batch_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: work_registration
+-- Purpose: Tracks individual work registrations within batches
+CREATE TABLE work_registration (
+    registration_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_id BIGINT UNSIGNED NULL,
+    work_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    registration_type VARCHAR(50) NOT NULL DEFAULT 'NEW', -- NEW, UPDATE, CORRECTION, WITHDRAWAL
+    registration_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, SUBMITTED, ACKNOWLEDGED, REGISTERED, REJECTED, CONFLICT, WITHDRAWN
+    society_work_code VARCHAR(50) NULL, -- Society's assigned work code
+    iswc VARCHAR(15) NULL, -- International Standard Musical Work Code
+    submission_reference VARCHAR(100) NULL,
+    priority_flag BOOLEAN DEFAULT FALSE,
+    validation_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, PASSED, FAILED, WARNING
+    validation_errors JSON NULL,
+    cwr_record_sequence INT NULL, -- Position in CWR file
+    acknowledgment_code VARCHAR(50) NULL,
+    acknowledgment_date DATE NULL,
+    rejection_reason TEXT NULL,
+    conflict_type VARCHAR(50) NULL, -- DUPLICATE, OWNERSHIP_DISPUTE, METADATA_MISMATCH
+    conflict_resolution_status VARCHAR(50) NULL,
+    registration_fee DECIMAL(10,2) NULL,
+    fee_currency VARCHAR(3) NULL,
+    metadata_snapshot JSON NULL, -- Work metadata at time of registration
+    custom_fields JSON NULL, -- Society-specific fields
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_work_reg_batch (batch_id),
+    INDEX idx_work_reg_work_society (work_id, society_id),
+    INDEX idx_work_reg_status (registration_status),
+    INDEX idx_work_reg_society_code (society_work_code),
+    INDEX idx_work_reg_iswc (iswc),
+    INDEX idx_work_reg_created (created_at),
+    UNIQUE KEY uk_work_society_active (work_id, society_id, registration_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: work_registration_history
+-- Purpose: Complete audit trail of all registration changes
+CREATE TABLE work_registration_history (
+    history_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    registration_id BIGINT UNSIGNED NOT NULL,
+    work_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    action_type VARCHAR(50) NOT NULL, -- CREATED, STATUS_CHANGE, METADATA_UPDATE, ACKNOWLEDGMENT, REJECTION, CONFLICT_DETECTED, RESOLVED
+    previous_status VARCHAR(50) NULL,
+    new_status VARCHAR(50) NULL,
+    change_description TEXT NULL,
+    changed_fields JSON NULL,
+    actor_type VARCHAR(50) NOT NULL, -- SYSTEM, USER, SOCIETY_API, MANUAL_PROCESS
+    actor_id BIGINT UNSIGNED NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_reg_history_registration (registration_id),
+    INDEX idx_reg_history_work (work_id),
+    INDEX idx_reg_history_created (created_at),
+    INDEX idx_reg_history_action (action_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: recording_registration
+-- Purpose: Tracks sound recording registrations (separate from musical works)
+CREATE TABLE recording_registration (
+    registration_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_id BIGINT UNSIGNED NULL,
+    recording_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    registration_type VARCHAR(50) NOT NULL DEFAULT 'NEW',
+    registration_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    isrc VARCHAR(12) NULL, -- International Standard Recording Code
+    society_recording_code VARCHAR(50) NULL,
+    submission_reference VARCHAR(100) NULL,
+    acknowledgment_code VARCHAR(50) NULL,
+    acknowledgment_date DATE NULL,
+    metadata_snapshot JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_recording_reg_batch (batch_id),
+    INDEX idx_recording_reg_recording (recording_id),
+    INDEX idx_recording_reg_isrc (isrc),
+    INDEX idx_recording_reg_status (registration_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: registration_response
+-- Purpose: Stores raw responses from PROs/CMOs
+CREATE TABLE registration_response (
+    response_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    response_type VARCHAR(50) NOT NULL, -- ACKNOWLEDGMENT, REGISTRATION_COMPLETE, ERROR_REPORT, STATUS_UPDATE
+    response_format VARCHAR(50) NOT NULL, -- CWR_ACK, JSON, XML, CSV, PDF
+    response_file_path TEXT NULL,
+    response_content LONGTEXT NULL, -- For smaller responses
+    response_hash VARCHAR(64) NULL,
+    received_at DATETIME NOT NULL,
+    processed_at DATETIME NULL,
+    processing_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, PROCESSING, COMPLETED, FAILED
+    total_records INT NULL,
+    accepted_records INT NULL,
+    rejected_records INT NULL,
+    warning_records INT NULL,
+    processing_notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_response_batch (batch_id),
+    INDEX idx_response_society (society_id),
+    INDEX idx_response_received (received_at),
+    INDEX idx_response_status (processing_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: registration_error
+-- Purpose: Detailed error tracking for failed registrations
+CREATE TABLE registration_error (
+    error_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    registration_id BIGINT UNSIGNED NULL,
+    batch_id BIGINT UNSIGNED NULL,
+    work_id BIGINT UNSIGNED NULL,
+    society_id INT UNSIGNED NOT NULL,
+    error_code VARCHAR(50) NOT NULL,
+    error_type VARCHAR(50) NOT NULL, -- VALIDATION, DUPLICATE, FORMAT, NETWORK, AUTHENTICATION, BUSINESS_RULE
+    error_severity VARCHAR(20) NOT NULL DEFAULT 'ERROR', -- WARNING, ERROR, CRITICAL
+    error_message TEXT NOT NULL,
+    error_details JSON NULL,
+    field_name VARCHAR(100) NULL,
+    field_value TEXT NULL,
+    suggested_resolution TEXT NULL,
+    cwr_line_number INT NULL,
+    cwr_record_type VARCHAR(3) NULL,
+    resolution_status VARCHAR(50) NOT NULL DEFAULT 'UNRESOLVED', -- UNRESOLVED, IN_PROGRESS, RESOLVED, IGNORED
+    resolved_by BIGINT UNSIGNED NULL,
+    resolved_at DATETIME NULL,
+    resolution_notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_error_registration (registration_id),
+    INDEX idx_error_batch (batch_id),
+    INDEX idx_error_work (work_id),
+    INDEX idx_error_society_type (society_id, error_type),
+    INDEX idx_error_severity_status (error_severity, resolution_status),
+    INDEX idx_error_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: registration_acknowledgment
+-- Purpose: Stores successful registration confirmations
+CREATE TABLE registration_acknowledgment (
+    acknowledgment_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    registration_id BIGINT UNSIGNED NOT NULL,
+    batch_id BIGINT UNSIGNED NULL,
+    society_id INT UNSIGNED NOT NULL,
+    acknowledgment_type VARCHAR(50) NOT NULL, -- RECEIVED, VALIDATED, REGISTERED, UPDATED
+    acknowledgment_code VARCHAR(100) NOT NULL,
+    acknowledgment_date DATE NOT NULL,
+    society_work_code VARCHAR(50) NULL,
+    iswc_assigned VARCHAR(15) NULL,
+    registration_date DATE NULL,
+    effective_date DATE NULL,
+    expiry_date DATE NULL,
+    acknowledgment_details JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_ack_registration (registration_id),
+    INDEX idx_ack_batch (batch_id),
+    INDEX idx_ack_society_date (society_id, acknowledgment_date),
+    INDEX idx_ack_code (acknowledgment_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: registration_conflict
+-- Purpose: Handles duplicate and conflicting registrations
+CREATE TABLE registration_conflict (
+    conflict_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    registration_id BIGINT UNSIGNED NOT NULL,
+    work_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    conflict_type VARCHAR(50) NOT NULL, -- DUPLICATE_WORK, OWNERSHIP_DISPUTE, SHARE_MISMATCH, TITLE_VARIATION
+    conflict_severity VARCHAR(20) NOT NULL DEFAULT 'MEDIUM', -- LOW, MEDIUM, HIGH, CRITICAL
+    existing_registration_id BIGINT UNSIGNED NULL,
+    existing_society_work_code VARCHAR(50) NULL,
+    conflicting_fields JSON NOT NULL,
+    our_values JSON NULL,
+    their_values JSON NULL,
+    detection_method VARCHAR(50) NOT NULL, -- AUTOMATED, SOCIETY_NOTIFICATION, MANUAL_REVIEW
+    resolution_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, INVESTIGATING, RESOLVED, ESCALATED, ABANDONED
+    resolution_method VARCHAR(50) NULL, -- ACCEPT_OURS, ACCEPT_THEIRS, MERGE, MANUAL_OVERRIDE
+    resolution_details TEXT NULL,
+    resolved_by BIGINT UNSIGNED NULL,
+    resolved_at DATETIME NULL,
+    escalation_level INT NOT NULL DEFAULT 0,
+    last_escalation_at DATETIME NULL,
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_conflict_registration (registration_id),
+    INDEX idx_conflict_work_society (work_id, society_id),
+    INDEX idx_conflict_status_severity (resolution_status, conflict_severity),
+    INDEX idx_conflict_type (conflict_type),
+    INDEX idx_conflict_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: society_account
+-- Purpose: Stores encrypted credentials and settings for each society
+CREATE TABLE society_account (
+    account_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    society_id INT UNSIGNED NOT NULL,
+    account_type VARCHAR(50) NOT NULL DEFAULT 'PUBLISHER', -- PUBLISHER, WRITER, LABEL, ADMINISTRATOR
+    account_name VARCHAR(200) NOT NULL,
+    account_number VARCHAR(100) NULL,
+    cae_ipi_number VARCHAR(20) NULL, -- CAE/IPI identifier
+    username_encrypted VARBINARY(500) NULL,
+    password_encrypted VARBINARY(500) NULL,
+    api_key_encrypted VARBINARY(500) NULL,
+    api_secret_encrypted VARBINARY(500) NULL,
+    certificate_path TEXT NULL,
+    certificate_password_encrypted VARBINARY(500) NULL,
+    authentication_method VARCHAR(50) NOT NULL DEFAULT 'BASIC', -- BASIC, OAUTH2, CERTIFICATE, API_KEY
+    oauth_token_encrypted VARBINARY(1000) NULL,
+    oauth_refresh_token_encrypted VARBINARY(1000) NULL,
+    oauth_expiry DATETIME NULL,
+    submission_endpoint TEXT NULL,
+    query_endpoint TEXT NULL,
+    test_mode BOOLEAN DEFAULT TRUE,
+    auto_submit BOOLEAN DEFAULT FALSE,
+    submission_schedule VARCHAR(50) NULL, -- DAILY, WEEKLY, MONTHLY, MANUAL
+    next_submission_date DATE NULL,
+    last_submission_date DATE NULL,
+    account_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, PENDING_VERIFICATION, INACTIVE
+    verification_status VARCHAR(50) NULL,
+    verification_date DATE NULL,
+    settings JSON NULL, -- Society-specific settings
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_society_account (society_id, account_type),
+    INDEX idx_account_status (account_status),
+    INDEX idx_account_cae_ipi (cae_ipi_number),
+    UNIQUE KEY uk_society_account_number (society_id, account_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: society_submission
+-- Purpose: Tracks all submissions to societies
+CREATE TABLE society_submission (
+    submission_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_id BIGINT UNSIGNED NOT NULL,
+    society_id INT UNSIGNED NOT NULL,
+    account_id INT UNSIGNED NOT NULL,
+    submission_method VARCHAR(50) NOT NULL, -- API, SFTP, EMAIL, WEB_PORTAL, MANUAL
+    submission_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, SENT, CONFIRMED, FAILED
+    submission_url TEXT NULL,
+    request_headers JSON NULL,
+    request_body LONGTEXT NULL,
+    response_code INT NULL,
+    response_headers JSON NULL,
+    response_body LONGTEXT NULL,
+    file_name VARCHAR(255) NULL,
+    file_size_bytes BIGINT NULL,
+    transfer_started_at DATETIME NULL,
+    transfer_completed_at DATETIME NULL,
+    transfer_duration_seconds INT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    error_message TEXT NULL,
+    confirmation_id VARCHAR(200) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_submission_batch (batch_id),
+    INDEX idx_submission_society (society_id),
+    INDEX idx_submission_status (submission_status),
+    INDEX idx_submission_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: eco_registration
+-- Purpose: Tracks US Copyright Office registrations (manual process)
+CREATE TABLE eco_registration (
+    eco_registration_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NULL,
+    recording_id BIGINT UNSIGNED NULL,
+    registration_type VARCHAR(10) NOT NULL, -- PA, SR, SE, TX, VA
+    registration_status VARCHAR(50) NOT NULL DEFAULT 'PREPARING', -- PREPARING, READY_TO_SUBMIT, SUBMITTED, EXAMINING, REGISTERED, REJECTED, WITHDRAWN
+    case_number VARCHAR(50) NULL, -- eCO case number
+    service_request_number VARCHAR(50) NULL,
+    registration_number VARCHAR(50) NULL, -- Final registration number
+    effective_date DATE NULL,
+    title_of_work VARCHAR(500) NOT NULL,
+    alternative_titles JSON NULL,
+    nature_of_work VARCHAR(200) NOT NULL DEFAULT 'Music', -- Music, Sound Recording, etc.
+    year_of_completion YEAR NOT NULL,
+    date_of_first_publication DATE NULL,
+    nation_of_first_publication VARCHAR(100) NULL,
+    authors JSON NOT NULL, -- Array of author objects
+    copyright_claimants JSON NOT NULL, -- Array of claimant objects
+    rights_and_permissions_contact JSON NULL,
+    correspondent_info JSON NOT NULL,
+    preexisting_material TEXT NULL,
+    material_excluded TEXT NULL,
+    new_material_included TEXT NULL,
+    deposit_copy_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, UPLOADED, MAILED, RECEIVED
+    deposit_copy_method VARCHAR(50) NULL, -- ELECTRONIC, PHYSICAL_MAIL
+    deposit_tracking_number VARCHAR(100) NULL,
+    application_fee DECIMAL(10,2) NULL,
+    fee_payment_method VARCHAR(50) NULL,
+    fee_payment_date DATE NULL,
+    fee_payment_reference VARCHAR(100) NULL,
+    examiner_name VARCHAR(200) NULL,
+    examiner_notes TEXT NULL,
+    user_notes TEXT NULL,
+    priority_flag BOOLEAN DEFAULT FALSE,
+    submission_deadline DATE NULL,
+    prepared_by BIGINT UNSIGNED NULL,
+    submitted_by BIGINT UNSIGNED NULL,
+    submitted_at DATETIME NULL,
+    last_status_check DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_eco_work (work_id),
+    INDEX idx_eco_recording (recording_id),
+    INDEX idx_eco_status (registration_status),
+    INDEX idx_eco_case (case_number),
+    INDEX idx_eco_registration (registration_number),
+    INDEX idx_eco_deadline (submission_deadline),
+    INDEX idx_eco_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: eco_submission
+-- Purpose: Tracks each submission attempt to copyright.gov
+CREATE TABLE eco_submission (
+    submission_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    eco_registration_id BIGINT UNSIGNED NOT NULL,
+    submission_type VARCHAR(50) NOT NULL, -- INITIAL, CORRECTION, SUPPLEMENTARY, RENEWAL
+    submission_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, COMPLETED, FAILED
+    submission_method VARCHAR(50) NOT NULL DEFAULT 'MANUAL', -- MANUAL, AUTOMATED_FUTURE
+    eco_system_url TEXT NULL,
+    browser_used VARCHAR(100) NULL,
+    session_start DATETIME NULL,
+    session_end DATETIME NULL,
+    form_data JSON NULL, -- All form fields as submitted
+    confirmation_screenshot_path TEXT NULL,
+    confirmation_text TEXT NULL,
+    error_messages JSON NULL,
+    submitted_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_eco_submission_registration (eco_registration_id),
+    INDEX idx_eco_submission_status (submission_status),
+    INDEX idx_eco_submission_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: manual_registration_queue
+-- Purpose: Items requiring human review before registration
+CREATE TABLE manual_registration_queue (
+    queue_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NULL,
+    registration_id BIGINT UNSIGNED NULL,
+    society_id INT UNSIGNED NULL,
+    queue_reason VARCHAR(100) NOT NULL, -- MISSING_DATA, CONFLICT, SPECIAL_HANDLING, HIGH_VALUE, VERIFICATION_REQUIRED
+    queue_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_REVIEW, APPROVED, REJECTED, ON_HOLD
+    priority_level INT NOT NULL DEFAULT 5,
+    review_deadline DATETIME NULL,
+    assigned_to BIGINT UNSIGNED NULL,
+    assigned_at DATETIME NULL,
+    review_notes TEXT NULL,
+    required_actions JSON NULL,
+    completed_actions JSON NULL,
+    resolution TEXT NULL,
+    reviewed_by BIGINT UNSIGNED NULL,
+    reviewed_at DATETIME NULL,
+    time_in_queue_hours DECIMAL(10,2) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_queue_status_priority (queue_status, priority_level),
+    INDEX idx_queue_assigned (assigned_to, queue_status),
+    INDEX idx_queue_deadline (review_deadline),
+    INDEX idx_queue_work (work_id),
+    INDEX idx_queue_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: registration_validation
+-- Purpose: Business rules engine for registration validation
+CREATE TABLE registration_validation (
+    validation_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    rule_name VARCHAR(100) NOT NULL,
+    rule_category VARCHAR(50) NOT NULL, -- DATA_INTEGRITY, BUSINESS_LOGIC, SOCIETY_SPECIFIC, COMPLIANCE
+    society_id INT UNSIGNED NULL, -- NULL for global rules
+    rule_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE, TESTING
+    rule_severity VARCHAR(20) NOT NULL DEFAULT 'ERROR', -- WARNING, ERROR, CRITICAL
+    rule_description TEXT NOT NULL,
+    validation_query TEXT NULL, -- SQL query for validation
+    validation_regex VARCHAR(500) NULL,
+    validation_function VARCHAR(100) NULL, -- Function name to call
+    field_mappings JSON NULL, -- Fields to validate
+    error_message_template TEXT NOT NULL,
+    auto_fix_available BOOLEAN DEFAULT FALSE,
+    auto_fix_query TEXT NULL,
+    bypass_roles JSON NULL, -- Roles that can bypass this rule
+    effective_date DATE NOT NULL,
+    expiry_date DATE NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_validation_category_status (rule_category, rule_status),
+    INDEX idx_validation_society (society_id),
+    INDEX idx_validation_effective (effective_date, expiry_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create the critical eCO Registration View
+-- This view provides ALL fields needed for manual copyright.gov registration
+CREATE VIEW eco_registration_view AS
+SELECT 
+    er.eco_registration_id,
+    er.registration_type,
+    er.registration_status,
+    er.case_number,
+    er.registration_number,
+    
+    -- Basic Work Information
+    er.title_of_work AS `Title of Work`,
+    er.alternative_titles AS `Alternative Titles`,
+    er.nature_of_work AS `Nature of Work`,
+    er.year_of_completion AS `Year of Completion`,
+    
+    -- Publication Information
+    er.date_of_first_publication AS `Date of First Publication`,
+    er.nation_of_first_publication AS `Nation of First Publication`,
+    CASE 
+        WHEN er.date_of_first_publication IS NULL THEN 'No'
+        ELSE 'Yes'
+    END AS `Has Been Published`,
+    
+    -- Authors (parsed from JSON)
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].name')) AS `Author 1 Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].citizenship')) AS `Author 1 Citizenship`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].domicile')) AS `Author 1 Domicile`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].year_of_birth')) AS `Author 1 Year of Birth`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].year_of_death')) AS `Author 1 Year of Death`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].work_for_hire')) AS `Author 1 Work for Hire`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[0].pseudonym')) AS `Author 1 Pseudonym`,
+    
+    -- Additional authors can be added similarly
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[1].name')) AS `Author 2 Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[1].citizenship')) AS `Author 2 Citizenship`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.authors, '$[1].domicile')) AS `Author 2 Domicile`,
+    
+    -- Copyright Claimants (parsed from JSON)
+    JSON_UNQUOTE(JSON_EXTRACT(er.copyright_claimants, '$[0].name')) AS `Claimant 1 Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.copyright_claimants, '$[0].address')) AS `Claimant 1 Address`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.copyright_claimants, '$[0].transfer_statement')) AS `Claimant 1 Transfer Statement`,
+    
+    JSON_UNQUOTE(JSON_EXTRACT(er.copyright_claimants, '$[1].name')) AS `Claimant 2 Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.copyright_claimants, '$[1].address')) AS `Claimant 2 Address`,
+    
+    -- Rights and Permissions
+    JSON_UNQUOTE(JSON_EXTRACT(er.rights_and_permissions_contact, '$.name')) AS `Rights Contact Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.rights_and_permissions_contact, '$.email')) AS `Rights Contact Email`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.rights_and_permissions_contact, '$.phone')) AS `Rights Contact Phone`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.rights_and_permissions_contact, '$.address')) AS `Rights Contact Address`,
+    
+    -- Correspondent Information
+    JSON_UNQUOTE(JSON_EXTRACT(er.correspondent_info, '$.name')) AS `Correspondent Name`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.correspondent_info, '$.email')) AS `Correspondent Email`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.correspondent_info, '$.phone')) AS `Correspondent Phone`,
+    JSON_UNQUOTE(JSON_EXTRACT(er.correspondent_info, '$.address')) AS `Correspondent Address`,
+    
+    -- Derivative Work Information
+    er.preexisting_material AS `Preexisting Material`,
+    er.material_excluded AS `Material Excluded`,
+    er.new_material_included AS `New Material Included`,
+    
+    -- Deposit Information
+    er.deposit_copy_status AS `Deposit Copy Status`,
+    er.deposit_copy_method AS `Deposit Method`,
+    er.deposit_tracking_number AS `Deposit Tracking Number`,
+    
+    -- Fee Information
+    er.application_fee AS `Application Fee`,
+    er.fee_payment_method AS `Payment Method`,
+    er.fee_payment_date AS `Payment Date`,
+    er.fee_payment_reference AS `Payment Reference`,
+    
+    -- Work Details (from linked tables)
+    w.title AS `Work Title from Catalog`,
+    w.duration_seconds AS `Duration (seconds)`,
+    w.genre AS `Genre`,
+    w.lyrics_language AS `Lyrics Language`,
+    
+    -- Sound Recording Details (if applicable)
+    r.isrc AS `ISRC`,
+    r.recording_date AS `Recording Date`,
+    r.release_date AS `Release Date`,
+    
+    -- Administrative
+    er.submission_deadline AS `Submission Deadline`,
+    er.priority_flag AS `Priority Registration`,
+    er.user_notes AS `Internal Notes`,
+    er.submitted_at AS `Date Submitted to eCO`,
+    er.created_at AS `Date Created in System`,
+    
+    -- User Information
+    u1.display_name AS `Prepared By`,
+    u2.display_name AS `Submitted By`
+    
+FROM eco_registration er
+LEFT JOIN works w ON er.work_id = w.work_id
+LEFT JOIN recordings r ON er.recording_id = r.recording_id
+LEFT JOIN users u1 ON er.prepared_by = u1.user_id
+LEFT JOIN users u2 ON er.submitted_by = u2.user_id
+WHERE er.registration_status IN ('PREPARING', 'READY_TO_SUBMIT')
+ORDER BY er.priority_flag DESC, er.submission_deadline ASC, er.created_at ASC;
+
+-- Create summary view for registration dashboard
+CREATE VIEW registration_summary_view AS
+SELECT 
+    s.society_code,
+    s.society_name,
+    s.territory,
+    COUNT(DISTINCT wr.work_id) as total_works_registered,
+    COUNT(DISTINCT CASE WHEN wr.registration_status = 'REGISTERED' THEN wr.work_id END) as successfully_registered,
+    COUNT(DISTINCT CASE WHEN wr.registration_status = 'PENDING' THEN wr.work_id END) as pending_registration,
+    COUNT(DISTINCT CASE WHEN wr.registration_status = 'REJECTED' THEN wr.work_id END) as rejected_registration,
+    COUNT(DISTINCT rc.conflict_id) as active_conflicts,
+    MAX(wr.created_at) as last_registration_date
+FROM societies s
+LEFT JOIN work_registration wr ON s.society_id = wr.society_id
+LEFT JOIN registration_conflict rc ON wr.registration_id = rc.registration_id 
+    AND rc.resolution_status NOT IN ('RESOLVED', 'ABANDONED')
+GROUP BY s.society_id, s.society_code, s.society_name, s.territory;
+
+-- Trigger: Update batch counts when work registration status changes
+DELIMITER //
+
+CREATE TRIGGER update_batch_counts_on_registration_change
+AFTER UPDATE ON work_registration
+FOR EACH ROW
+BEGIN
+    IF OLD.registration_status != NEW.registration_status AND NEW.batch_id IS NOT NULL THEN
+        UPDATE registration_batch
+        SET 
+            processed_works = (
+                SELECT COUNT(*) FROM work_registration 
+                WHERE batch_id = NEW.batch_id 
+                AND registration_status NOT IN ('PENDING', 'VALIDATING')
+            ),
+            successful_works = (
+                SELECT COUNT(*) FROM work_registration 
+                WHERE batch_id = NEW.batch_id 
+                AND registration_status = 'REGISTERED'
+            ),
+            failed_works = (
+                SELECT COUNT(*) FROM work_registration 
+                WHERE batch_id = NEW.batch_id 
+                AND registration_status IN ('REJECTED', 'FAILED')
+            )
+        WHERE batch_id = NEW.batch_id;
+        
+        -- Update batch status if all works are processed
+        UPDATE registration_batch
+        SET batch_status = CASE
+            WHEN processed_works = total_works THEN 'COMPLETED'
+            ELSE batch_status
+        END
+        WHERE batch_id = NEW.batch_id;
+    END IF;
+END//
+
+-- Trigger: Create history entry on registration status change
+CREATE TRIGGER create_registration_history
+AFTER UPDATE ON work_registration
+FOR EACH ROW
+BEGIN
+    IF OLD.registration_status != NEW.registration_status 
+       OR OLD.society_work_code != NEW.society_work_code 
+       OR OLD.iswc != NEW.iswc THEN
+        
+        INSERT INTO work_registration_history (
+            registration_id, work_id, society_id, action_type,
+            previous_status, new_status, change_description,
+            changed_fields, actor_type, actor_id
+        ) VALUES (
+            NEW.registration_id,
+            NEW.work_id,
+            NEW.society_id,
+            CASE 
+                WHEN OLD.registration_status != NEW.registration_status THEN 'STATUS_CHANGE'
+                WHEN OLD.society_work_code != NEW.society_work_code THEN 'METADATA_UPDATE'
+                WHEN OLD.iswc != NEW.iswc THEN 'METADATA_UPDATE'
+            END,
+            OLD.registration_status,
+            NEW.registration_status,
+            CONCAT('Registration updated: ', 
+                IF(OLD.registration_status != NEW.registration_status, 
+                   CONCAT('Status changed from ', OLD.registration_status, ' to ', NEW.registration_status), ''),
+                IF(OLD.society_work_code != NEW.society_work_code, 
+                   CONCAT(' Society code assigned: ', NEW.society_work_code), ''),
+                IF(OLD.iswc != NEW.iswc, 
+                   CONCAT(' ISWC assigned: ', NEW.iswc), '')
+            ),
+            JSON_OBJECT(
+                'registration_status', JSON_OBJECT('old', OLD.registration_status, 'new', NEW.registration_status),
+                'society_work_code', JSON_OBJECT('old', OLD.society_work_code, 'new', NEW.society_work_code),
+                'iswc', JSON_OBJECT('old', OLD.iswc, 'new', NEW.iswc)
+            ),
+            'SYSTEM',
+            NULL
+        );
+    END IF;
+END//
+
+-- Trigger: Validate eCO registration data before submission
+CREATE TRIGGER validate_eco_registration_before_submit
+BEFORE UPDATE ON eco_registration
+FOR EACH ROW
+BEGIN
+    IF NEW.registration_status = 'READY_TO_SUBMIT' AND OLD.registration_status = 'PREPARING' THEN
+        -- Validate required fields
+        IF NEW.title_of_work IS NULL OR NEW.title_of_work = '' THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Title of work is required for eCO submission';
+        END IF;
+        
+        IF NEW.year_of_completion IS NULL THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Year of completion is required for eCO submission';
+        END IF;
+        
+        IF JSON_LENGTH(NEW.authors) = 0 THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'At least one author is required for eCO submission';
+        END IF;
+        
+        IF JSON_LENGTH(NEW.copyright_claimants) = 0 THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'At least one copyright claimant is required for eCO submission';
+        END IF;
+        
+        IF NEW.correspondent_info IS NULL OR JSON_LENGTH(NEW.correspondent_info) = 0 THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Correspondent information is required for eCO submission';
+        END IF;
+    END IF;
+END//
+
+DELIMITER ;
+
+-- Create indexes for foreign key relationships
+ALTER TABLE registration_batch
+ADD CONSTRAINT fk_batch_society FOREIGN KEY (society_id) 
+REFERENCES societies(society_id) ON DELETE RESTRICT;
+
+ALTER TABLE work_registration
+ADD CONSTRAINT fk_work_reg_batch FOREIGN KEY (batch_id) 
+REFERENCES registration_batch(batch_id) ON DELETE SET NULL;
+
+ALTER TABLE registration_response
+ADD CONSTRAINT fk_response_batch FOREIGN KEY (batch_id) 
+REFERENCES registration_batch(batch_id) ON DELETE CASCADE;
+
+ALTER TABLE society_account
+ADD CONSTRAINT fk_account_society FOREIGN KEY (society_id) 
+REFERENCES societies(society_id) ON DELETE CASCADE;
+
+-- Stored Procedure: Submit batch to society
+DELIMITER //
+
+CREATE PROCEDURE submit_registration_batch(
+    IN p_batch_id BIGINT,
+    IN p_user_id BIGINT
+)
+BEGIN
+    DECLARE v_society_id INT;
+    DECLARE v_total_works INT;
+    DECLARE v_validation_errors INT;
+    
+    -- Get batch details
+    SELECT society_id, total_works
+    INTO v_society_id, v_total_works
+    FROM registration_batch
+    WHERE batch_id = p_batch_id;
+    
+    -- Check for validation errors
+    SELECT COUNT(DISTINCT wr.registration_id)
+    INTO v_validation_errors
+    FROM work_registration wr
+    WHERE wr.batch_id = p_batch_id
+    AND wr.validation_status = 'FAILED';
+    
+    IF v_validation_errors > 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Cannot submit batch with validation errors';
+    END IF;
+    
+    -- Update batch status
+    UPDATE registration_batch
+    SET 
+        batch_status = 'QUEUED',
+        submitted_at = NOW()
+    WHERE batch_id = p_batch_id;
+    
+    -- Update all work registrations
+    UPDATE work_registration
+    SET 
+        registration_status = 'SUBMITTED',
+        updated_at = NOW()
+    WHERE batch_id = p_batch_id
+    AND registration_status = 'PENDING';
+    
+    -- Log the submission
+    INSERT INTO society_submission (
+        batch_id, society_id, account_id, submission_method,
+        submission_status
+    )
+    SELECT 
+        p_batch_id, v_society_id, account_id, 'API', 'PENDING'
+    FROM society_account
+    WHERE society_id = v_society_id
+    AND account_status = 'ACTIVE'
+    LIMIT 1;
+    
+END//
+
+-- Stored Procedure: Process registration acknowledgment
+CREATE PROCEDURE process_registration_acknowledgment(
+    IN p_batch_id BIGINT,
+    IN p_acknowledgment_data JSON
+)
+BEGIN
+    DECLARE v_work_index INT DEFAULT 0;
+    DECLARE v_work_count INT;
+    DECLARE v_registration_id BIGINT;
+    DECLARE v_ack_code VARCHAR(100);
+    DECLARE v_society_work_code VARCHAR(50);
+    DECLARE v_status VARCHAR(50);
+    
+    -- Get count of acknowledgments
+    SET v_work_count = JSON_LENGTH(p_acknowledgment_data);
+    
+    -- Process each acknowledgment
+    WHILE v_work_index < v_work_count DO
+        SET v_registration_id = JSON_UNQUOTE(
+            JSON_EXTRACT(p_acknowledgment_data, 
+            CONCAT('$[', v_work_index, '].registration_id'))
+        );
+        SET v_ack_code = JSON_UNQUOTE(
+            JSON_EXTRACT(p_acknowledgment_data, 
+            CONCAT('$[', v_work_index, '].acknowledgment_code'))
+        );
+        SET v_society_work_code = JSON_UNQUOTE(
+            JSON_EXTRACT(p_acknowledgment_data, 
+            CONCAT('$[', v_work_index, '].society_work_code'))
+        );
+        SET v_status = JSON_UNQUOTE(
+            JSON_EXTRACT(p_acknowledgment_data, 
+            CONCAT('$[', v_work_index, '].status'))
+        );
+        
+        -- Update work registration
+        UPDATE work_registration
+        SET 
+            registration_status = v_status,
+            society_work_code = v_society_work_code,
+            acknowledgment_code = v_ack_code,
+            acknowledgment_date = CURDATE()
+        WHERE registration_id = v_registration_id;
+        
+        -- Insert acknowledgment record
+        INSERT INTO registration_acknowledgment (
+            registration_id, batch_id, society_id,
+            acknowledgment_type, acknowledgment_code,
+            acknowledgment_date, society_work_code
+        )
+        SELECT 
+            v_registration_id, p_batch_id, society_id,
+            'REGISTERED', v_ack_code, CURDATE(), v_society_work_code
+        FROM work_registration
+        WHERE registration_id = v_registration_id;
+        
+        SET v_work_index = v_work_index + 1;
+    END WHILE;
+    
+    -- Update batch status
+    UPDATE registration_batch
+    SET 
+        batch_status = 'ACKNOWLEDGED',
+        acknowledged_at = NOW()
+    WHERE batch_id = p_batch_id;
+    
+END//
+
+DELIMITER ;
+
+-- Grant permissions (adjust based on your user roles)
+-- GRANT SELECT, INSERT, UPDATE ON astro_registration.* TO 'astro_app'@'%';
+-- GRANT SELECT ON astro_registration.eco_registration_view TO 'astro_readonly'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_registration.submit_registration_batch TO 'astro_app'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_registration.process_registration_acknowledgment TO 'astro_app'@'%';
+
+-- Final check: Verify all tables created
+SELECT 
+    'Section 12: Registration Tables' as section,
+    COUNT(*) as tables_created,
+    GROUP_CONCAT(table_name ORDER BY table_name SEPARATOR ', ') as table_list
+FROM information_schema.tables 
+WHERE table_schema = DATABASE()
+AND table_name IN (
+    'registration_batch', 'work_registration', 'work_registration_history',
+    'recording_registration', 'registration_response', 'registration_error',
+    'registration_acknowledgment', 'registration_conflict', 'society_account',
+    'society_submission', 'eco_registration', 'eco_submission',
+    'manual_registration_queue', 'registration_validation'
+);
