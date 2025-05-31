@@ -21115,15 +21115,10 @@ END//
 DELIMITER ;
 
 -- =====================================================
--- ASTRO MUSIC RIGHTS ADMINISTRATION PLATFORM
 -- SECTION 12: REGISTRATION TABLES
--- =====================================================
--- Handles global registration of musical works with PROs,
--- CMOs, and copyright offices worldwide
 -- =====================================================
 
 -- Table: registration_batch
--- Purpose: Manages batch submissions to PROs/CMOs
 CREATE TABLE registration_batch (
     batch_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     batch_number VARCHAR(50) UNIQUE NOT NULL,
@@ -21159,7 +21154,6 @@ CREATE TABLE registration_batch (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: work_registration
--- Purpose: Tracks individual work registrations within batches
 CREATE TABLE work_registration (
     registration_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     batch_id BIGINT UNSIGNED NULL,
@@ -21196,7 +21190,6 @@ CREATE TABLE work_registration (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: work_registration_history
--- Purpose: Complete audit trail of all registration changes
 CREATE TABLE work_registration_history (
     history_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     registration_id BIGINT UNSIGNED NOT NULL,
@@ -21220,7 +21213,6 @@ CREATE TABLE work_registration_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: recording_registration
--- Purpose: Tracks sound recording registrations (separate from musical works)
 CREATE TABLE recording_registration (
     registration_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     batch_id BIGINT UNSIGNED NULL,
@@ -21244,7 +21236,6 @@ CREATE TABLE recording_registration (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: registration_response
--- Purpose: Stores raw responses from PROs/CMOs
 CREATE TABLE registration_response (
     response_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     batch_id BIGINT UNSIGNED NOT NULL,
@@ -21271,7 +21262,6 @@ CREATE TABLE registration_response (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: registration_error
--- Purpose: Detailed error tracking for failed registrations
 CREATE TABLE registration_error (
     error_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     registration_id BIGINT UNSIGNED NULL,
@@ -21303,7 +21293,6 @@ CREATE TABLE registration_error (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: registration_acknowledgment
--- Purpose: Stores successful registration confirmations
 CREATE TABLE registration_acknowledgment (
     acknowledgment_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     registration_id BIGINT UNSIGNED NOT NULL,
@@ -21968,3 +21957,11095 @@ AND table_name IN (
     'society_submission', 'eco_registration', 'eco_submission',
     'manual_registration_queue', 'registration_validation'
 );
+
+-- =====================================================
+-- Section 13: Society-Specific Tables
+-- =====================================================
+
+-- =====================================================
+-- ASCAP (American Society of Composers, Authors and Publishers)
+-- =====================================================
+
+-- ASCAP Member Profiles
+CREATE TABLE IF NOT EXISTS ascap_member (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    member_number VARCHAR(50) NOT NULL UNIQUE,
+    cae_number VARCHAR(20) COMMENT 'CAE/IPI Number',
+    member_type VARCHAR(20) NOT NULL DEFAULT 'WRITER' COMMENT 'WRITER, PUBLISHER',
+    membership_date DATE,
+    territory VARCHAR(2) DEFAULT 'US',
+    tax_id_encrypted VARBINARY(255) COMMENT 'AES-256 encrypted SSN/EIN',
+    bank_account_encrypted VARBINARY(500) COMMENT 'AES-256 encrypted banking info',
+    payment_method VARCHAR(20) DEFAULT 'ACH' COMMENT 'ACH, WIRE, CHECK',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    api_credentials_encrypted VARBINARY(500) COMMENT 'Encrypted API credentials',
+    last_sync_date DATETIME,
+    metadata JSON COMMENT 'Additional ASCAP-specific data',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_ascap_user (user_id),
+    INDEX idx_ascap_member_number (member_number),
+    INDEX idx_ascap_cae (cae_number),
+    INDEX idx_ascap_status (status),
+    INDEX idx_ascap_deleted (is_deleted),
+    FULLTEXT idx_ascap_member_search (member_number, cae_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ASCAP Work Registrations
+CREATE TABLE IF NOT EXISTS ascap_work (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    ascap_member_id BIGINT UNSIGNED NOT NULL,
+    title_code VARCHAR(50) UNIQUE,
+    work_number VARCHAR(50),
+    registration_type VARCHAR(20) DEFAULT 'ORIGINAL' COMMENT 'ORIGINAL, ARRANGEMENT, TRANSLATION',
+    genre_code VARCHAR(10),
+    performance_type VARCHAR(50) COMMENT 'FEATURE, BACKGROUND, THEME',
+    surveyed_flag TINYINT(1) DEFAULT 0,
+    live_performance_flag TINYINT(1) DEFAULT 0,
+    classical_flag TINYINT(1) DEFAULT 0,
+    jingle_flag TINYINT(1) DEFAULT 0,
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    rejection_reason TEXT,
+    metadata JSON COMMENT 'Additional ASCAP-specific fields',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_ascap_work_id (work_id),
+    INDEX idx_ascap_work_member (ascap_member_id),
+    INDEX idx_ascap_work_title_code (title_code),
+    INDEX idx_ascap_work_number (work_number),
+    INDEX idx_ascap_work_status (status),
+    INDEX idx_ascap_work_batch (registration_batch_id),
+    INDEX idx_ascap_work_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id),
+    FOREIGN KEY (ascap_member_id) REFERENCES ascap_member(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- BMI (Broadcast Music, Inc.)
+-- =====================================================
+
+-- BMI Member Accounts
+CREATE TABLE IF NOT EXISTS bmi_member (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    account_number VARCHAR(50) NOT NULL UNIQUE,
+    cae_number VARCHAR(20),
+    member_type VARCHAR(20) NOT NULL DEFAULT 'WRITER' COMMENT 'WRITER, PUBLISHER',
+    affiliate_date DATE,
+    territory VARCHAR(2) DEFAULT 'US',
+    tax_id_encrypted VARBINARY(255),
+    bank_account_encrypted VARBINARY(500),
+    payment_threshold DECIMAL(10,2) DEFAULT 25.00,
+    live_performance_eligible TINYINT(1) DEFAULT 1,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    api_key_encrypted VARBINARY(500),
+    last_sync_date DATETIME,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_bmi_user (user_id),
+    INDEX idx_bmi_account (account_number),
+    INDEX idx_bmi_cae (cae_number),
+    INDEX idx_bmi_status (status),
+    INDEX idx_bmi_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- BMI Work Registrations
+CREATE TABLE IF NOT EXISTS bmi_work (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    bmi_member_id BIGINT UNSIGNED NOT NULL,
+    work_number VARCHAR(50) UNIQUE,
+    catalog_number VARCHAR(50),
+    registration_type VARCHAR(20) DEFAULT 'ORIGINAL',
+    genre_code VARCHAR(10),
+    work_type VARCHAR(50) COMMENT 'SONG, INSTRUMENTAL, JINGLE',
+    live_performance_work TINYINT(1) DEFAULT 0,
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    rejection_code VARCHAR(20),
+    rejection_reason TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_bmi_work_id (work_id),
+    INDEX idx_bmi_work_member (bmi_member_id),
+    INDEX idx_bmi_work_number (work_number),
+    INDEX idx_bmi_work_catalog (catalog_number),
+    INDEX idx_bmi_work_status (status),
+    INDEX idx_bmi_work_batch (registration_batch_id),
+    INDEX idx_bmi_work_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id),
+    FOREIGN KEY (bmi_member_id) REFERENCES bmi_member(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SESAC
+-- =====================================================
+
+-- SESAC Affiliate Data
+CREATE TABLE IF NOT EXISTS sesac_affiliate (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    affiliate_code VARCHAR(50) NOT NULL UNIQUE,
+    cae_number VARCHAR(20),
+    affiliate_type VARCHAR(20) NOT NULL DEFAULT 'WRITER',
+    territory VARCHAR(2) DEFAULT 'US',
+    tax_id_encrypted VARBINARY(255),
+    bank_account_encrypted VARBINARY(500),
+    contract_date DATE,
+    contract_term_years INT DEFAULT 3,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    api_credentials_encrypted VARBINARY(500),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_sesac_user (user_id),
+    INDEX idx_sesac_affiliate_code (affiliate_code),
+    INDEX idx_sesac_status (status),
+    INDEX idx_sesac_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SoundExchange
+-- =====================================================
+
+-- SoundExchange Registrations (Digital Performance Rights)
+CREATE TABLE IF NOT EXISTS soundexchange_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    recording_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    member_code VARCHAR(50),
+    isrc VARCHAR(12) NOT NULL,
+    featured_artist_name VARCHAR(255) NOT NULL,
+    sound_recording_title VARCHAR(500) NOT NULL,
+    album_title VARCHAR(500),
+    label_name VARCHAR(255),
+    release_date DATE,
+    p_line VARCHAR(255) COMMENT 'Phonographic copyright',
+    registration_type VARCHAR(20) DEFAULT 'FEATURED' COMMENT 'FEATURED, NON-FEATURED',
+    performer_list JSON COMMENT 'Array of performer details',
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_sx_recording (recording_id),
+    INDEX idx_sx_user (user_id),
+    INDEX idx_sx_isrc (isrc),
+    INDEX idx_sx_status (status),
+    INDEX idx_sx_batch (registration_batch_id),
+    INDEX idx_sx_deleted (is_deleted),
+    FOREIGN KEY (recording_id) REFERENCES recordings(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MLC (Mechanical Licensing Collective)
+-- =====================================================
+
+-- MLC Member Profiles
+CREATE TABLE IF NOT EXISTS mlc_member (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    member_id VARCHAR(50) NOT NULL UNIQUE,
+    member_type VARCHAR(20) NOT NULL DEFAULT 'PUBLISHER' COMMENT 'PUBLISHER, ADMINISTRATOR',
+    ipi_number VARCHAR(20),
+    tax_id_encrypted VARBINARY(255),
+    bank_account_encrypted VARBINARY(500),
+    blanket_license_flag TINYINT(1) DEFAULT 1,
+    payment_threshold DECIMAL(10,2) DEFAULT 100.00,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    api_token_encrypted VARBINARY(500),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_mlc_user (user_id),
+    INDEX idx_mlc_member_id (member_id),
+    INDEX idx_mlc_status (status),
+    INDEX idx_mlc_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- MLC Work Registrations
+CREATE TABLE IF NOT EXISTS mlc_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    mlc_member_id BIGINT UNSIGNED NOT NULL,
+    mlc_work_id VARCHAR(50) UNIQUE,
+    iswc VARCHAR(11),
+    hfa_song_code VARCHAR(50) COMMENT 'Harry Fox song code if applicable',
+    ownership_share DECIMAL(6,4) NOT NULL DEFAULT 100.0000,
+    administration_share DECIMAL(6,4) DEFAULT 0.0000,
+    blanket_license_eligible TINYINT(1) DEFAULT 1,
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    dsp_list JSON COMMENT 'List of DSPs work is available on',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_mlc_work_id (work_id),
+    INDEX idx_mlc_member (mlc_member_id),
+    INDEX idx_mlc_work_code (mlc_work_id),
+    INDEX idx_mlc_iswc (iswc),
+    INDEX idx_mlc_status (status),
+    INDEX idx_mlc_batch (registration_batch_id),
+    INDEX idx_mlc_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id),
+    FOREIGN KEY (mlc_member_id) REFERENCES mlc_member(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Harry Fox Agency (HFA)
+-- =====================================================
+
+-- Harry Fox Mechanical Licenses
+CREATE TABLE IF NOT EXISTS harry_fox_license (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    hfa_song_code VARCHAR(50) UNIQUE,
+    license_number VARCHAR(50) UNIQUE,
+    license_type VARCHAR(50) DEFAULT 'MECHANICAL' COMMENT 'MECHANICAL, DIGITAL, SYNCHRONIZATION',
+    licensee_name VARCHAR(255),
+    licensee_contact JSON,
+    territory VARCHAR(100) DEFAULT 'UNITED STATES',
+    term_start_date DATE,
+    term_end_date DATE,
+    rate_type VARCHAR(50) COMMENT 'STATUTORY, NEGOTIATED',
+    rate_amount DECIMAL(10,4),
+    advance_amount DECIMAL(10,2) DEFAULT 0.00,
+    minimum_guarantee DECIMAL(10,2) DEFAULT 0.00,
+    units_authorized INT,
+    configuration VARCHAR(50) COMMENT 'CD, VINYL, DIGITAL, STREAMING',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_hfa_work (work_id),
+    INDEX idx_hfa_user (user_id),
+    INDEX idx_hfa_song_code (hfa_song_code),
+    INDEX idx_hfa_license_number (license_number),
+    INDEX idx_hfa_status (status),
+    INDEX idx_hfa_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Music Reports
+-- =====================================================
+
+-- Music Reports Registration & Claiming
+CREATE TABLE IF NOT EXISTS music_reports_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    mr_work_id VARCHAR(50) UNIQUE,
+    claiming_party VARCHAR(255),
+    admin_share DECIMAL(6,4) DEFAULT 0.0000,
+    ownership_share DECIMAL(6,4) NOT NULL DEFAULT 100.0000,
+    claiming_date DATE,
+    claiming_status VARCHAR(50) DEFAULT 'PENDING' COMMENT 'PENDING, APPROVED, DISPUTED, REJECTED',
+    dispute_reason TEXT,
+    resolution_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_mr_work (work_id),
+    INDEX idx_mr_user (user_id),
+    INDEX idx_mr_work_id (mr_work_id),
+    INDEX idx_mr_status (claiming_status),
+    INDEX idx_mr_batch (registration_batch_id),
+    INDEX idx_mr_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- PRS for Music (UK)
+-- =====================================================
+
+-- PRS Member Data
+CREATE TABLE IF NOT EXISTS prs_member (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    cae_number VARCHAR(20) NOT NULL,
+    member_number VARCHAR(50) UNIQUE,
+    member_type VARCHAR(20) NOT NULL DEFAULT 'WRITER',
+    territory VARCHAR(2) DEFAULT 'GB',
+    vat_number VARCHAR(50),
+    tax_id_encrypted VARBINARY(255),
+    bank_account_encrypted VARBINARY(500),
+    prs_online_access TINYINT(1) DEFAULT 1,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    api_credentials_encrypted VARBINARY(500),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_prs_user (user_id),
+    INDEX idx_prs_cae (cae_number),
+    INDEX idx_prs_member (member_number),
+    INDEX idx_prs_status (status),
+    INDEX idx_prs_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MCPS (Mechanical-Copyright Protection Society - UK)
+-- =====================================================
+
+-- MCPS Mechanical Rights Registration
+CREATE TABLE IF NOT EXISTS mcps_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    work_id BIGINT UNSIGNED NOT NULL,
+    prs_member_id BIGINT UNSIGNED NOT NULL,
+    mcps_work_id VARCHAR(50) UNIQUE,
+    iswc VARCHAR(11),
+    tunecode VARCHAR(50),
+    mechanical_share DECIMAL(6,4) NOT NULL DEFAULT 100.0000,
+    territory_list JSON COMMENT 'List of territories covered',
+    excluded_uses JSON COMMENT 'List of excluded uses',
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_mcps_work (work_id),
+    INDEX idx_mcps_member (prs_member_id),
+    INDEX idx_mcps_work_id (mcps_work_id),
+    INDEX idx_mcps_tunecode (tunecode),
+    INDEX idx_mcps_status (status),
+    INDEX idx_mcps_batch (registration_batch_id),
+    INDEX idx_mcps_deleted (is_deleted),
+    FOREIGN KEY (work_id) REFERENCES works(id),
+    FOREIGN KEY (prs_member_id) REFERENCES prs_member(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- PPL (UK Performer Rights)
+-- =====================================================
+
+-- PPL Recording Registration
+CREATE TABLE IF NOT EXISTS ppl_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    recording_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    ppl_recording_id VARCHAR(50) UNIQUE,
+    isrc VARCHAR(12) NOT NULL,
+    performer_line_up JSON COMMENT 'Detailed performer information',
+    recording_rightsholder VARCHAR(255),
+    rightsholder_share DECIMAL(6,4) DEFAULT 100.0000,
+    p_line VARCHAR(255),
+    release_date DATE,
+    territory_list JSON DEFAULT '["GB"]',
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_ppl_recording (recording_id),
+    INDEX idx_ppl_user (user_id),
+    INDEX idx_ppl_recording_id (ppl_recording_id),
+    INDEX idx_ppl_isrc (isrc),
+    INDEX idx_ppl_status (status),
+    INDEX idx_ppl_batch (registration_batch_id),
+    INDEX idx_ppl_deleted (is_deleted),
+    FOREIGN KEY (recording_id) REFERENCES recordings(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MDX (Music Data Exchange) Submissions
+-- =====================================================
+
+-- MDX Format Submissions
+CREATE TABLE IF NOT EXISTS mdx_submission (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    submission_type VARCHAR(50) NOT NULL COMMENT 'WORK, RECORDING, RELEASE',
+    entity_id BIGINT UNSIGNED NOT NULL COMMENT 'ID of work, recording, or release',
+    society_id INT UNSIGNED NOT NULL,
+    mdx_message_id VARCHAR(100) UNIQUE,
+    mdx_version VARCHAR(10) DEFAULT '3.0',
+    sender_party_id VARCHAR(50),
+    recipient_party_id VARCHAR(50),
+    message_type VARCHAR(50) COMMENT 'NEW, UPDATE, DELETE',
+    submission_data JSON COMMENT 'Complete MDX message content',
+    submission_date DATETIME,
+    acknowledgement_date DATETIME,
+    acknowledgement_status VARCHAR(50),
+    error_messages JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_mdx_type (submission_type),
+    INDEX idx_mdx_entity (entity_id),
+    INDEX idx_mdx_society (society_id),
+    INDEX idx_mdx_message_id (mdx_message_id),
+    INDEX idx_mdx_status (acknowledgement_status),
+    INDEX idx_mdx_deleted (is_deleted),
+    FOREIGN KEY (society_id) REFERENCES societies(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Xperi/HD Radio Registration
+-- =====================================================
+
+-- Xperi HD Radio Metadata
+CREATE TABLE IF NOT EXISTS xperi_registration (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    recording_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    xperi_content_id VARCHAR(50) UNIQUE,
+    artist_name VARCHAR(255) NOT NULL,
+    song_title VARCHAR(500) NOT NULL,
+    album_title VARCHAR(500),
+    genre VARCHAR(100),
+    mood VARCHAR(100),
+    era VARCHAR(50),
+    artist_image_url VARCHAR(500),
+    album_art_url VARCHAR(500),
+    registration_date DATE,
+    registration_batch_id BIGINT UNSIGNED,
+    broadcast_flag TINYINT(1) DEFAULT 1,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED,
+    updated_by BIGINT UNSIGNED,
+    is_deleted TINYINT(1) DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED,
+    INDEX idx_xperi_recording (recording_id),
+    INDEX idx_xperi_user (user_id),
+    INDEX idx_xperi_content_id (xperi_content_id),
+    INDEX idx_xperi_status (status),
+    INDEX idx_xperi_batch (registration_batch_id),
+    INDEX idx_xperi_deleted (is_deleted),
+    FOREIGN KEY (recording_id) REFERENCES recordings(id),
+    FOREIGN KEY (registration_batch_id) REFERENCES registration_batch(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Society API Integration Logging
+-- =====================================================
+
+-- Comprehensive API Log for All Societies
+CREATE TABLE IF NOT EXISTS society_api_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    society_id INT UNSIGNED NOT NULL,
+    api_endpoint VARCHAR(500) NOT NULL,
+    http_method VARCHAR(10) NOT NULL COMMENT 'GET, POST, PUT, DELETE',
+    request_type VARCHAR(50) COMMENT 'REGISTRATION, QUERY, UPDATE, DELETE',
+    entity_type VARCHAR(50) COMMENT 'WORK, RECORDING, MEMBER, LICENSE',
+    entity_id BIGINT UNSIGNED,
+    request_headers JSON,
+    request_body JSON,
+    response_status_code INT,
+    response_headers JSON,
+    response_body JSON,
+    response_time_ms INT COMMENT 'Response time in milliseconds',
+    rate_limit_remaining INT,
+    rate_limit_reset_at DATETIME,
+    error_type VARCHAR(50),
+    error_message TEXT,
+    retry_count INT DEFAULT 0,
+    user_id BIGINT UNSIGNED,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_api_society (society_id),
+    INDEX idx_api_endpoint (api_endpoint),
+    INDEX idx_api_entity (entity_type, entity_id),
+    INDEX idx_api_status (response_status_code),
+    INDEX idx_api_error (error_type),
+    INDEX idx_api_created (created_at),
+    INDEX idx_api_user (user_id),
+    FOREIGN KEY (society_id) REFERENCES societies(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(created_at)) (
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION p2027 VALUES LESS THAN (2028),
+    PARTITION p2028 VALUES LESS THAN (2029),
+    PARTITION p2029 VALUES LESS THAN (2030),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+-- Procedure to sync ASCAP member data
+DELIMITER //
+CREATE PROCEDURE sync_ascap_member_data(IN p_user_id BIGINT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error syncing ASCAP member data';
+    END;
+    
+    START TRANSACTION;
+    
+    -- Log API call
+    INSERT INTO society_api_log (society_id, api_endpoint, http_method, request_type, entity_type, user_id, created_at)
+    VALUES (1, 'https://api.ascap.com/members/sync', 'GET', 'QUERY', 'MEMBER', p_user_id, NOW());
+    
+    -- Update last sync date
+    UPDATE ascap_member 
+    SET last_sync_date = NOW() 
+    WHERE user_id = p_user_id;
+    
+    COMMIT;
+END//
+DELIMITER ;
+
+-- Procedure to register work with multiple societies
+DELIMITER //
+CREATE PROCEDURE register_work_multiple_societies(
+    IN p_work_id BIGINT,
+    IN p_user_id BIGINT,
+    IN p_societies JSON
+)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    DECLARE society_count INT;
+    DECLARE current_society VARCHAR(50);
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error registering work with societies';
+    END;
+    
+    START TRANSACTION;
+    
+    SET society_count = JSON_LENGTH(p_societies);
+    
+    WHILE i < society_count DO
+        SET current_society = JSON_UNQUOTE(JSON_EXTRACT(p_societies, CONCAT('$[', i, ']')));
+        
+        -- Add registration logic for each society
+        CASE current_society
+            WHEN 'ASCAP' THEN
+                INSERT INTO ascap_work (work_id, ascap_member_id, status, registration_date)
+                SELECT p_work_id, id, 'PENDING', CURDATE()
+                FROM ascap_member WHERE user_id = p_user_id LIMIT 1;
+                
+            WHEN 'BMI' THEN
+                INSERT INTO bmi_work (work_id, bmi_member_id, status, registration_date)
+                SELECT p_work_id, id, 'PENDING', CURDATE()
+                FROM bmi_member WHERE user_id = p_user_id LIMIT 1;
+                
+            WHEN 'MLC' THEN
+                INSERT INTO mlc_registration (work_id, mlc_member_id, status, registration_date)
+                SELECT p_work_id, id, 'PENDING', CURDATE()
+                FROM mlc_member WHERE user_id = p_user_id LIMIT 1;
+        END CASE;
+        
+        SET i = i + 1;
+    END WHILE;
+    
+    COMMIT;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+
+-- Trigger to validate ISRC format for SoundExchange
+DELIMITER //
+CREATE TRIGGER validate_soundexchange_isrc
+BEFORE INSERT ON soundexchange_registration
+FOR EACH ROW
+BEGIN
+    IF NEW.isrc NOT REGEXP '^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$' THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Invalid ISRC format. Must be 12 characters: CC-XXX-YY-NNNNN';
+    END IF;
+END//
+DELIMITER ;
+
+-- Trigger to validate ownership shares
+DELIMITER //
+CREATE TRIGGER validate_mlc_shares
+BEFORE INSERT ON mlc_registration
+FOR EACH ROW
+BEGIN
+    IF NEW.ownership_share < 0 OR NEW.ownership_share > 100 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Ownership share must be between 0 and 100';
+    END IF;
+    
+    IF NEW.administration_share < 0 OR NEW.administration_share > NEW.ownership_share THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Administration share cannot exceed ownership share';
+    END IF;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional composite indexes for common queries
+CREATE INDEX idx_ascap_work_composite ON ascap_work(work_id, status, is_deleted);
+CREATE INDEX idx_bmi_work_composite ON bmi_work(work_id, status, is_deleted);
+CREATE INDEX idx_soundexchange_composite ON soundexchange_registration(recording_id, status, is_deleted);
+CREATE INDEX idx_api_log_composite ON society_api_log(society_id, created_at, response_status_code);
+
+-- =====================================================
+-- VIEWS FOR REPORTING
+-- =====================================================
+
+-- View for active society memberships
+CREATE OR REPLACE VIEW v_active_society_memberships AS
+SELECT 
+    'ASCAP' as society_name,
+    user_id,
+    member_number as member_identifier,
+    member_type,
+    status,
+    created_at
+FROM ascap_member
+WHERE is_deleted = 0 AND status = 'ACTIVE'
+UNION ALL
+SELECT 
+    'BMI' as society_name,
+    user_id,
+    account_number as member_identifier,
+    member_type,
+    status,
+    created_at
+FROM bmi_member
+WHERE is_deleted = 0 AND status = 'ACTIVE'
+UNION ALL
+SELECT 
+    'SESAC' as society_name,
+    user_id,
+    affiliate_code as member_identifier,
+    affiliate_type as member_type,
+    status,
+    created_at
+FROM sesac_affiliate
+WHERE is_deleted = 0 AND status = 'ACTIVE';
+
+-- View for pending registrations across all societies
+CREATE OR REPLACE VIEW v_pending_society_registrations AS
+SELECT 
+    'ASCAP' as society_name,
+    'WORK' as registration_type,
+    aw.work_id as entity_id,
+    aw.status,
+    aw.registration_date,
+    aw.created_at
+FROM ascap_work aw
+WHERE aw.is_deleted = 0 AND aw.status = 'PENDING'
+UNION ALL
+SELECT 
+    'BMI' as society_name,
+    'WORK' as registration_type,
+    bw.work_id as entity_id,
+    bw.status,
+    bw.registration_date,
+    bw.created_at
+FROM bmi_work bw
+WHERE bw.is_deleted = 0 AND bw.status = 'PENDING'
+UNION ALL
+SELECT 
+    'SoundExchange' as society_name,
+    'RECORDING' as registration_type,
+    sr.recording_id as entity_id,
+    sr.status,
+    sr.registration_date,
+    sr.created_at
+FROM soundexchange_registration sr
+WHERE sr.is_deleted = 0 AND sr.status = 'PENDING';
+
+-- =====================================================
+-- MAINTENANCE PROCEDURES
+-- =====================================================
+
+-- Procedure to archive old API logs
+DELIMITER //
+CREATE PROCEDURE archive_old_api_logs(IN p_days_to_keep INT)
+BEGIN
+    DECLARE archived_count INT;
+    
+    -- Create archive table if not exists
+    CREATE TABLE IF NOT EXISTS society_api_log_archive LIKE society_api_log;
+    
+    -- Move old records to archive
+    INSERT INTO society_api_log_archive
+    SELECT * FROM society_api_log
+    WHERE created_at < DATE_SUB(NOW(), INTERVAL p_days_to_keep DAY);
+    
+    -- Get count of archived records
+    SET archived_count = ROW_COUNT();
+    
+    -- Delete archived records from main table
+    DELETE FROM society_api_log
+    WHERE created_at < DATE_SUB(NOW(), INTERVAL p_days_to_keep DAY);
+    
+    SELECT CONCAT('Archived ', archived_count, ' API log records') as result;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- GRANTS (Adjust based on your user setup)
+-- =====================================================
+
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.ascap_* TO 'astro_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.bmi_* TO 'astro_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.sesac_* TO 'astro_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.soundexchange_* TO 'astro_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.mlc_* TO 'astro_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.society_api_log TO 'astro_app'@'localhost';
+-- GRANT EXECUTE ON PROCEDURE astro_rights.* TO 'astro_app'@'localhost';
+
+-- ASTRO Music Rights Administration Platform
+-- Database Section 14: ROYALTY & FINANCIAL TABLES
+-- Version: 1.0
+-- Description: Comprehensive royalty processing, financial transactions, and payment management
+-- Compliance: GAAP/IFRS, SOX, PCI DSS, GDPR/CCPA, AML
+-- Performance: Designed for 1M+ royalty lines per statement with sub-second calculations
+
+-- =====================================================
+-- SECTION 14: ROYALTY & FINANCIAL TABLES
+-- =====================================================
+
+-- =====================================================
+-- 14.1 STATEMENT MANAGEMENT TABLES
+-- =====================================================
+
+-- Master statement records from all sources
+CREATE TABLE IF NOT EXISTS royalty_statement (
+    statement_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    statement_number VARCHAR(100) NOT NULL,
+    source_type VARCHAR(50) NOT NULL, -- 'PRO', 'LABEL', 'DISTRIBUTOR', 'DSP', 'PUBLISHER'
+    source_id CHAR(36) NOT NULL, -- Links to society/organization tables
+    source_name VARCHAR(255) NOT NULL,
+    statement_date DATE NOT NULL,
+    period_start_date DATE NOT NULL,
+    period_end_date DATE NOT NULL,
+    file_id CHAR(36), -- Links to royalty_statement_file
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    total_gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    total_net_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    total_withheld_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    line_item_count INT NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'PROCESSING', 'PROCESSED', 'FAILED', 'DISPUTED'
+    import_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'IMPORTING', 'IMPORTED', 'FAILED'
+    processed_date TIMESTAMP NULL,
+    processed_by CHAR(36) NULL,
+    blockchain_hash VARCHAR(255) NULL, -- For blockchain verification
+    metadata JSON NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    deleted_date TIMESTAMP NULL,
+    deleted_by CHAR(36) NULL,
+    
+    PRIMARY KEY (statement_id),
+    INDEX idx_statement_number (statement_number),
+    INDEX idx_source (source_type, source_id),
+    INDEX idx_period (period_start_date, period_end_date),
+    INDEX idx_status (status, import_status),
+    INDEX idx_blockchain (blockchain_hash),
+    INDEX idx_deleted (deleted_date),
+    
+    CONSTRAINT chk_statement_dates CHECK (period_end_date >= period_start_date),
+    CONSTRAINT chk_statement_amounts CHECK (total_gross_amount >= 0 AND total_net_amount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Statement metadata and header information
+CREATE TABLE IF NOT EXISTS royalty_statement_header (
+    header_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    statement_id CHAR(36) NOT NULL,
+    header_type VARCHAR(50) NOT NULL, -- 'MAIN', 'SUMMARY', 'DETAIL'
+    field_name VARCHAR(100) NOT NULL,
+    field_value TEXT NULL,
+    field_data_type VARCHAR(50) NOT NULL DEFAULT 'STRING', -- 'STRING', 'NUMBER', 'DATE', 'BOOLEAN'
+    sequence_number INT NOT NULL DEFAULT 1,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (header_id),
+    INDEX idx_statement_header (statement_id, header_type),
+    INDEX idx_field_name (field_name),
+    
+    FOREIGN KEY (statement_id) REFERENCES royalty_statement(statement_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Original statement files storage
+CREATE TABLE IF NOT EXISTS royalty_statement_file (
+    file_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    statement_id CHAR(36) NOT NULL,
+    file_name VARCHAR(500) NOT NULL,
+    file_type VARCHAR(50) NOT NULL, -- 'PDF', 'CSV', 'EXCEL', 'XML', 'JSON'
+    file_size_bytes BIGINT NOT NULL,
+    file_hash VARCHAR(255) NOT NULL, -- SHA-256 hash for integrity
+    storage_location VARCHAR(1000) NOT NULL, -- S3 or local path
+    mime_type VARCHAR(100) NOT NULL,
+    is_encrypted BOOLEAN NOT NULL DEFAULT TRUE,
+    encryption_key_id VARCHAR(255) NULL, -- KMS key reference
+    
+    -- Audit fields
+    uploaded_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    uploaded_by CHAR(36) NOT NULL,
+    deleted_date TIMESTAMP NULL,
+    deleted_by CHAR(36) NULL,
+    
+    PRIMARY KEY (file_id),
+    INDEX idx_statement_file (statement_id),
+    INDEX idx_file_hash (file_hash),
+    INDEX idx_deleted (deleted_date),
+    
+    FOREIGN KEY (statement_id) REFERENCES royalty_statement(statement_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.2 PERIOD & REPORTING TABLES
+-- =====================================================
+
+-- Standardized reporting periods across sources
+CREATE TABLE IF NOT EXISTS royalty_period (
+    period_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    period_name VARCHAR(100) NOT NULL,
+    period_type VARCHAR(50) NOT NULL, -- 'MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL', 'CUSTOM'
+    period_start_date DATE NOT NULL,
+    period_end_date DATE NOT NULL,
+    fiscal_year INT NOT NULL,
+    fiscal_quarter INT NULL,
+    fiscal_month INT NULL,
+    calendar_year INT NOT NULL,
+    calendar_quarter INT NOT NULL,
+    calendar_month INT NOT NULL,
+    is_closed BOOLEAN NOT NULL DEFAULT FALSE,
+    closed_date TIMESTAMP NULL,
+    closed_by CHAR(36) NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (period_id),
+    UNIQUE KEY uk_period_dates (period_start_date, period_end_date, period_type),
+    INDEX idx_period_type (period_type),
+    INDEX idx_fiscal (fiscal_year, fiscal_quarter, fiscal_month),
+    INDEX idx_calendar (calendar_year, calendar_quarter, calendar_month),
+    INDEX idx_closed (is_closed),
+    
+    CONSTRAINT chk_period_dates CHECK (period_end_date >= period_start_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.3 TRANSACTION DETAIL TABLES
+-- =====================================================
+
+-- Individual royalty line items (partitioned by year)
+CREATE TABLE IF NOT EXISTS royalty_detail (
+    detail_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    statement_id CHAR(36) NOT NULL,
+    line_number INT NOT NULL,
+    transaction_date DATE NOT NULL,
+    territory_code CHAR(2) NOT NULL,
+    
+    -- Work/Recording identification
+    work_id CHAR(36) NULL,
+    recording_id CHAR(36) NULL,
+    asset_title VARCHAR(500) NOT NULL,
+    iswc VARCHAR(15) NULL,
+    isrc VARCHAR(15) NULL,
+    
+    -- Usage information
+    usage_type VARCHAR(50) NOT NULL, -- 'STREAM', 'DOWNLOAD', 'BROADCAST', 'SYNC', 'PRINT'
+    income_type VARCHAR(50) NOT NULL, -- 'MECHANICAL', 'PERFORMANCE', 'SYNC', 'MASTER', 'NEIGHBORING'
+    quantity DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    unit_rate DECIMAL(19,8) NOT NULL DEFAULT 0.00000000,
+    
+    -- Financial amounts
+    gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    fee_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    net_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    local_currency_code CHAR(3) NOT NULL,
+    local_gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    exchange_rate DECIMAL(19,8) NOT NULL DEFAULT 1.00000000,
+    
+    -- Matching status
+    match_status VARCHAR(50) NOT NULL DEFAULT 'UNMATCHED', -- 'MATCHED', 'UNMATCHED', 'PARTIAL', 'DISPUTED'
+    match_confidence DECIMAL(5,2) NULL, -- Percentage confidence
+    match_method VARCHAR(50) NULL, -- 'EXACT', 'FUZZY', 'MANUAL', 'AI'
+    
+    -- Additional data
+    source_reference VARCHAR(255) NULL,
+    metadata JSON NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (detail_id, transaction_date),
+    INDEX idx_statement_detail (statement_id, line_number),
+    INDEX idx_work_recording (work_id, recording_id),
+    INDEX idx_identifiers (iswc, isrc),
+    INDEX idx_usage_income (usage_type, income_type),
+    INDEX idx_territory_date (territory_code, transaction_date),
+    INDEX idx_match_status (match_status),
+    INDEX idx_amounts (gross_amount, net_amount),
+    
+    FOREIGN KEY (statement_id) REFERENCES royalty_statement(statement_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(transaction_date)) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+-- Encrypted sensitive transaction data
+CREATE TABLE IF NOT EXISTS royalty_detail_encrypted (
+    detail_id CHAR(36) NOT NULL,
+    
+    -- Encrypted fields (AES-256)
+    payee_name_encrypted VARBINARY(500) NULL,
+    payee_tax_id_encrypted VARBINARY(255) NULL,
+    bank_account_encrypted VARBINARY(500) NULL,
+    payment_details_encrypted VARBINARY(1000) NULL,
+    
+    -- Encryption metadata
+    encryption_key_id VARCHAR(255) NOT NULL,
+    encryption_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (detail_id),
+    
+    FOREIGN KEY (detail_id) REFERENCES royalty_detail(detail_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Detailed usage data
+CREATE TABLE IF NOT EXISTS royalty_usage (
+    usage_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    detail_id CHAR(36) NOT NULL,
+    platform_name VARCHAR(255) NULL,
+    service_type VARCHAR(50) NULL, -- 'SUBSCRIPTION', 'AD_SUPPORTED', 'DOWNLOAD', 'RADIO'
+    user_type VARCHAR(50) NULL, -- 'PREMIUM', 'FREE', 'TRIAL'
+    device_type VARCHAR(50) NULL, -- 'MOBILE', 'DESKTOP', 'SMART_SPEAKER', 'TV'
+    
+    -- Detailed metrics
+    play_count BIGINT NULL,
+    skip_count BIGINT NULL,
+    completion_rate DECIMAL(5,2) NULL,
+    average_play_duration INT NULL, -- seconds
+    
+    -- Geographic data
+    country_code CHAR(2) NULL,
+    region VARCHAR(100) NULL,
+    city VARCHAR(100) NULL,
+    
+    -- Time-based data
+    usage_date DATE NULL,
+    usage_hour INT NULL, -- 0-23
+    day_of_week INT NULL, -- 1-7
+    
+    -- Additional metadata
+    metadata JSON NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (usage_id),
+    INDEX idx_detail_usage (detail_id),
+    INDEX idx_platform (platform_name, service_type),
+    INDEX idx_geography (country_code, region),
+    INDEX idx_usage_date (usage_date),
+    
+    FOREIGN KEY (detail_id) REFERENCES royalty_detail(detail_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.4 CALCULATION TABLES
+-- =====================================================
+
+-- Calculated royalty amounts with formulas
+CREATE TABLE IF NOT EXISTS royalty_calculation (
+    calculation_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    detail_id CHAR(36) NOT NULL,
+    participant_id CHAR(36) NOT NULL,
+    calculation_type VARCHAR(50) NOT NULL, -- 'STANDARD', 'ESCALATION', 'MINIMUM', 'MAXIMUM', 'ADVANCE'
+    
+    -- Ownership and rates
+    ownership_share DECIMAL(10,8) NOT NULL,
+    applicable_rate DECIMAL(10,8) NOT NULL,
+    rate_type VARCHAR(50) NOT NULL, -- 'PERCENTAGE', 'FLAT_FEE', 'PER_UNIT'
+    
+    -- Calculated amounts
+    gross_earned DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    fees_deducted DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    net_earned DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    
+    -- Adjustments
+    advance_applied DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    recoupment_applied DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    withholding_applied DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    final_payable DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    
+    -- Calculation formula (stored as JSON)
+    calculation_formula JSON NOT NULL,
+    calculation_version VARCHAR(20) NOT NULL DEFAULT '1.0',
+    
+    -- Blockchain readiness
+    calculation_hash VARCHAR(255) NOT NULL, -- SHA-256 of calculation
+    smart_contract_ready BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Audit fields
+    calculated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    calculated_by CHAR(36) NOT NULL,
+    verified_date TIMESTAMP NULL,
+    verified_by CHAR(36) NULL,
+    
+    PRIMARY KEY (calculation_id),
+    INDEX idx_detail_participant (detail_id, participant_id),
+    INDEX idx_calculation_type (calculation_type),
+    INDEX idx_amounts (gross_earned, final_payable),
+    INDEX idx_calculation_hash (calculation_hash),
+    
+    FOREIGN KEY (detail_id) REFERENCES royalty_detail(detail_id),
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Complete calculation history for audit
+CREATE TABLE IF NOT EXISTS royalty_calculation_log (
+    log_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    calculation_id CHAR(36) NOT NULL,
+    log_type VARCHAR(50) NOT NULL, -- 'INITIAL', 'RECALCULATION', 'ADJUSTMENT', 'CORRECTION'
+    
+    -- Previous values
+    previous_gross DECIMAL(19,4) NULL,
+    previous_net DECIMAL(19,4) NULL,
+    previous_payable DECIMAL(19,4) NULL,
+    
+    -- New values
+    new_gross DECIMAL(19,4) NOT NULL,
+    new_net DECIMAL(19,4) NOT NULL,
+    new_payable DECIMAL(19,4) NOT NULL,
+    
+    -- Change details
+    change_reason VARCHAR(500) NOT NULL,
+    change_formula JSON NULL,
+    approval_required BOOLEAN NOT NULL DEFAULT FALSE,
+    approval_status VARCHAR(50) NULL, -- 'PENDING', 'APPROVED', 'REJECTED'
+    approved_by CHAR(36) NULL,
+    approved_date TIMESTAMP NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (log_id),
+    INDEX idx_calculation_log (calculation_id, log_type),
+    INDEX idx_approval (approval_required, approval_status),
+    INDEX idx_created_date (created_date),
+    
+    FOREIGN KEY (calculation_id) REFERENCES royalty_calculation(calculation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.5 DISTRIBUTION TABLES
+-- =====================================================
+
+-- Distribution of royalties to participants
+CREATE TABLE IF NOT EXISTS royalty_distribution (
+    distribution_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    calculation_id CHAR(36) NOT NULL,
+    participant_id CHAR(36) NOT NULL,
+    distribution_type VARCHAR(50) NOT NULL, -- 'PRIMARY', 'SUB_PUBLISHER', 'ADMINISTRATOR'
+    
+    -- Distribution amounts
+    distributed_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Payment status
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'SCHEDULED', 'PROCESSING', 'PAID', 'FAILED'
+    payment_batch_id CHAR(36) NULL,
+    payment_date DATE NULL,
+    
+    -- Hold status
+    is_held BOOLEAN NOT NULL DEFAULT FALSE,
+    hold_reason VARCHAR(255) NULL,
+    hold_until_date DATE NULL,
+    
+    -- Distribution chain (for sub-publishing)
+    parent_distribution_id CHAR(36) NULL,
+    distribution_level INT NOT NULL DEFAULT 1,
+    
+    -- Blockchain readiness
+    distribution_hash VARCHAR(255) NOT NULL,
+    smart_contract_address VARCHAR(255) NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (distribution_id),
+    INDEX idx_calculation_distribution (calculation_id),
+    INDEX idx_participant_distribution (participant_id),
+    INDEX idx_payment_status (payment_status, payment_date),
+    INDEX idx_held (is_held, hold_until_date),
+    INDEX idx_parent_distribution (parent_distribution_id),
+    
+    FOREIGN KEY (calculation_id) REFERENCES royalty_calculation(calculation_id),
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id),
+    FOREIGN KEY (payment_batch_id) REFERENCES payment_batch(batch_id),
+    FOREIGN KEY (parent_distribution_id) REFERENCES royalty_distribution(distribution_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payee information and split percentages
+CREATE TABLE IF NOT EXISTS royalty_participant (
+    participant_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    participant_type VARCHAR(50) NOT NULL, -- 'CONTRIBUTOR', 'PUBLISHER', 'LABEL', 'ADMINISTRATOR'
+    entity_id CHAR(36) NOT NULL, -- Links to contributor/organization tables
+    entity_name VARCHAR(500) NOT NULL,
+    
+    -- Payment information
+    payment_name VARCHAR(500) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'BANK_TRANSFER', -- 'BANK_TRANSFER', 'PAYPAL', 'CRYPTO', 'CHECK'
+    payment_currency CHAR(3) NOT NULL DEFAULT 'USD',
+    minimum_payment_threshold DECIMAL(19,4) NOT NULL DEFAULT 100.0000,
+    
+    -- Tax information (encrypted)
+    tax_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'VERIFIED', 'EXEMPT', 'WITHHOLDING'
+    tax_rate DECIMAL(5,4) NULL,
+    tax_territory CHAR(2) NULL,
+    
+    -- Participation details
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    
+    -- Verification
+    kyc_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'VERIFIED', 'FAILED', 'EXPIRED'
+    kyc_verified_date TIMESTAMP NULL,
+    aml_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'CLEARED', 'FLAGGED', 'BLOCKED'
+    aml_checked_date TIMESTAMP NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    deleted_date TIMESTAMP NULL,
+    deleted_by CHAR(36) NULL,
+    
+    PRIMARY KEY (participant_id),
+    INDEX idx_entity (participant_type, entity_id),
+    INDEX idx_payment_method (payment_method),
+    INDEX idx_tax_status (tax_status, tax_territory),
+    INDEX idx_active (is_active, start_date, end_date),
+    INDEX idx_compliance (kyc_status, aml_status),
+    INDEX idx_deleted (deleted_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.6 FINANCIAL CONTROL TABLES
+-- =====================================================
+
+-- Held royalties (disputes, minimums, pending docs)
+CREATE TABLE IF NOT EXISTS royalty_hold (
+    hold_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    distribution_id CHAR(36) NOT NULL,
+    hold_type VARCHAR(50) NOT NULL, -- 'MINIMUM', 'DISPUTE', 'DOCUMENTATION', 'LEGAL', 'TAX'
+    hold_reason TEXT NOT NULL,
+    hold_amount DECIMAL(19,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Hold period
+    hold_start_date DATE NOT NULL,
+    hold_end_date DATE NULL,
+    auto_release BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Release information
+    release_status VARCHAR(50) NOT NULL DEFAULT 'HELD', -- 'HELD', 'PARTIAL_RELEASE', 'RELEASED', 'FORFEITED'
+    released_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    release_date TIMESTAMP NULL,
+    released_by CHAR(36) NULL,
+    release_notes TEXT NULL,
+    
+    -- Related entities
+    dispute_id CHAR(36) NULL,
+    legal_case_number VARCHAR(100) NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (hold_id),
+    INDEX idx_distribution_hold (distribution_id),
+    INDEX idx_hold_type_status (hold_type, release_status),
+    INDEX idx_hold_dates (hold_start_date, hold_end_date),
+    INDEX idx_dispute (dispute_id),
+    
+    FOREIGN KEY (distribution_id) REFERENCES royalty_distribution(distribution_id),
+    FOREIGN KEY (dispute_id) REFERENCES royalty_dispute(dispute_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dispute tracking and resolution
+CREATE TABLE IF NOT EXISTS royalty_dispute (
+    dispute_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    dispute_number VARCHAR(50) NOT NULL,
+    dispute_type VARCHAR(50) NOT NULL, -- 'OWNERSHIP', 'CALCULATION', 'USAGE', 'TERRITORY', 'PAYMENT'
+    priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM', -- 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+    
+    -- Dispute details
+    title VARCHAR(500) NOT NULL,
+    description TEXT NOT NULL,
+    disputed_amount DECIMAL(19,4) NULL,
+    currency_code CHAR(3) NULL DEFAULT 'USD',
+    
+    -- Related entities
+    work_id CHAR(36) NULL,
+    recording_id CHAR(36) NULL,
+    statement_id CHAR(36) NULL,
+    detail_id CHAR(36) NULL,
+    
+    -- Parties involved
+    claimant_id CHAR(36) NOT NULL,
+    claimant_type VARCHAR(50) NOT NULL, -- 'INTERNAL', 'CONTRIBUTOR', 'PUBLISHER', 'LABEL'
+    respondent_id CHAR(36) NULL,
+    respondent_type VARCHAR(50) NULL,
+    
+    -- Status tracking
+    status VARCHAR(50) NOT NULL DEFAULT 'OPEN', -- 'OPEN', 'INVESTIGATING', 'PENDING_RESOLUTION', 'RESOLVED', 'CLOSED'
+    resolution_type VARCHAR(50) NULL, -- 'ACCEPTED', 'REJECTED', 'COMPROMISE', 'WITHDRAWN'
+    resolution_date TIMESTAMP NULL,
+    resolved_by CHAR(36) NULL,
+    resolution_notes TEXT NULL,
+    
+    -- Financial impact
+    original_amount DECIMAL(19,4) NULL,
+    adjusted_amount DECIMAL(19,4) NULL,
+    impact_statements JSON NULL, -- Array of affected statement IDs
+    
+    -- Documentation
+    supporting_documents JSON NULL, -- Array of document references
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (dispute_id),
+    UNIQUE KEY uk_dispute_number (dispute_number),
+    INDEX idx_dispute_type_status (dispute_type, status),
+    INDEX idx_priority_status (priority, status),
+    INDEX idx_related_entities (work_id, recording_id, statement_id),
+    INDEX idx_parties (claimant_id, respondent_id),
+    INDEX idx_resolution (resolution_date, resolution_type),
+    
+    FOREIGN KEY (statement_id) REFERENCES royalty_statement(statement_id),
+    FOREIGN KEY (detail_id) REFERENCES royalty_detail(detail_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Manual adjustments with approval workflow
+CREATE TABLE IF NOT EXISTS royalty_adjustment (
+    adjustment_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    adjustment_number VARCHAR(50) NOT NULL,
+    adjustment_type VARCHAR(50) NOT NULL, -- 'CORRECTION', 'CREDIT', 'DEBIT', 'WRITE_OFF', 'REVERSAL'
+    
+    -- Adjustment details
+    detail_id CHAR(36) NULL,
+    calculation_id CHAR(36) NULL,
+    distribution_id CHAR(36) NULL,
+    
+    -- Financial impact
+    original_amount DECIMAL(19,4) NOT NULL,
+    adjustment_amount DECIMAL(19,4) NOT NULL,
+    adjusted_total DECIMAL(19,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Reason and documentation
+    reason_code VARCHAR(50) NOT NULL, -- 'DATA_ERROR', 'RATE_CHANGE', 'DISPUTE_RESOLUTION', 'AUDIT_FINDING'
+    reason_description TEXT NOT NULL,
+    supporting_documents JSON NULL,
+    
+    -- Approval workflow
+    requires_approval BOOLEAN NOT NULL DEFAULT TRUE,
+    approval_threshold DECIMAL(19,4) NOT NULL DEFAULT 1000.0000,
+    approval_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED', 'AUTO_APPROVED'
+    approval_chain JSON NULL, -- Required approvers based on amount
+    
+    -- Approval tracking
+    submitted_by CHAR(36) NOT NULL,
+    submitted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    approved_by CHAR(36) NULL,
+    approved_date TIMESTAMP NULL,
+    approval_notes TEXT NULL,
+    
+    -- Application status
+    is_applied BOOLEAN NOT NULL DEFAULT FALSE,
+    applied_date TIMESTAMP NULL,
+    applied_by CHAR(36) NULL,
+    reversal_adjustment_id CHAR(36) NULL, -- For reversals
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (adjustment_id),
+    UNIQUE KEY uk_adjustment_number (adjustment_number),
+    INDEX idx_adjustment_type (adjustment_type, approval_status),
+    INDEX idx_related_records (detail_id, calculation_id, distribution_id),
+    INDEX idx_approval (approval_status, requires_approval),
+    INDEX idx_applied (is_applied, applied_date),
+    INDEX idx_reversal (reversal_adjustment_id),
+    
+    FOREIGN KEY (detail_id) REFERENCES royalty_detail(detail_id),
+    FOREIGN KEY (calculation_id) REFERENCES royalty_calculation(calculation_id),
+    FOREIGN KEY (distribution_id) REFERENCES royalty_distribution(distribution_id),
+    FOREIGN KEY (reversal_adjustment_id) REFERENCES royalty_adjustment(adjustment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Advance payments and balances
+CREATE TABLE IF NOT EXISTS royalty_advance (
+    advance_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    advance_number VARCHAR(50) NOT NULL,
+    participant_id CHAR(36) NOT NULL,
+    agreement_id CHAR(36) NULL, -- Links to agreement tables
+    
+    -- Advance details
+    advance_type VARCHAR(50) NOT NULL, -- 'SIGNING', 'MILESTONE', 'MINIMUM_GUARANTEE', 'CUSTOM'
+    advance_amount DECIMAL(19,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Terms
+    recoupable BOOLEAN NOT NULL DEFAULT TRUE,
+    recoupment_rate DECIMAL(5,4) NOT NULL DEFAULT 1.0000, -- 100%
+    cross_collateralized BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Balance tracking
+    original_balance DECIMAL(19,4) NOT NULL,
+    current_balance DECIMAL(19,4) NOT NULL,
+    recouped_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    
+    -- Period
+    effective_date DATE NOT NULL,
+    expiry_date DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    
+    -- Payment information
+    payment_date DATE NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    payment_reference VARCHAR(255) NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (advance_id),
+    UNIQUE KEY uk_advance_number (advance_number),
+    INDEX idx_participant_advance (participant_id, is_active),
+    INDEX idx_advance_type (advance_type),
+    INDEX idx_balance (current_balance, recoupable),
+    INDEX idx_dates (effective_date, expiry_date),
+    INDEX idx_agreement (agreement_id),
+    
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Recoupment tracking and waterfall
+CREATE TABLE IF NOT EXISTS royalty_recoupment (
+    recoupment_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    advance_id CHAR(36) NOT NULL,
+    calculation_id CHAR(36) NOT NULL,
+    
+    -- Recoupment details
+    recoupment_date DATE NOT NULL,
+    gross_earnings DECIMAL(19,4) NOT NULL,
+    recoupable_amount DECIMAL(19,4) NOT NULL,
+    recouped_amount DECIMAL(19,4) NOT NULL,
+    
+    -- Balance tracking
+    balance_before DECIMAL(19,4) NOT NULL,
+    balance_after DECIMAL(19,4) NOT NULL,
+    
+    -- Waterfall position
+    waterfall_level INT NOT NULL DEFAULT 1,
+    waterfall_priority INT NOT NULL DEFAULT 1,
+    
+    -- Status
+    is_fully_recouped BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (recoupment_id),
+    INDEX idx_advance_recoupment (advance_id, recoupment_date),
+    INDEX idx_calculation_recoupment (calculation_id),
+    INDEX idx_waterfall (waterfall_level, waterfall_priority),
+    INDEX idx_fully_recouped (is_fully_recouped),
+    
+    FOREIGN KEY (advance_id) REFERENCES royalty_advance(advance_id),
+    FOREIGN KEY (calculation_id) REFERENCES royalty_calculation(calculation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.7 PAYMENT PROCESSING TABLES
+-- =====================================================
+
+-- Batch payment runs
+CREATE TABLE IF NOT EXISTS payment_batch (
+    batch_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    batch_number VARCHAR(50) NOT NULL,
+    batch_type VARCHAR(50) NOT NULL, -- 'SCHEDULED', 'MANUAL', 'EMERGENCY', 'RERUN'
+    
+    -- Batch details
+    payment_date DATE NOT NULL,
+    period_start_date DATE NOT NULL,
+    period_end_date DATE NOT NULL,
+    
+    -- Financial summary
+    total_payments INT NOT NULL DEFAULT 0,
+    total_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Status tracking
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'PARTIAL'
+    started_date TIMESTAMP NULL,
+    completed_date TIMESTAMP NULL,
+    
+    -- Payment methods in batch
+    payment_methods JSON NULL, -- Array of methods used
+    
+    -- Error tracking
+    failed_count INT NOT NULL DEFAULT 0,
+    error_details JSON NULL,
+    
+    -- Approval
+    requires_approval BOOLEAN NOT NULL DEFAULT TRUE,
+    approved_by CHAR(36) NULL,
+    approved_date TIMESTAMP NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (batch_id),
+    UNIQUE KEY uk_batch_number (batch_number),
+    INDEX idx_batch_type_status (batch_type, status),
+    INDEX idx_payment_date (payment_date),
+    INDEX idx_period (period_start_date, period_end_date),
+    INDEX idx_approval (requires_approval, approved_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Individual payment records
+CREATE TABLE IF NOT EXISTS payment_detail (
+    payment_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    batch_id CHAR(36) NOT NULL,
+    participant_id CHAR(36) NOT NULL,
+    
+    -- Payment amounts
+    payment_amount DECIMAL(19,4) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Payment method
+    payment_method VARCHAR(50) NOT NULL,
+    payment_method_id CHAR(36) NOT NULL, -- Links to payment_method table
+    
+    -- Transaction details
+    transaction_reference VARCHAR(255) NULL,
+    transaction_date TIMESTAMP NULL,
+    
+    -- Status
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'SENT', 'COMPLETED', 'FAILED', 'RETURNED'
+    status_message TEXT NULL,
+    
+    -- Fee tracking
+    transaction_fee DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+    net_paid_amount DECIMAL(19,4) NOT NULL,
+    
+    -- Retry information
+    retry_count INT NOT NULL DEFAULT 0,
+    last_retry_date TIMESTAMP NULL,
+    next_retry_date TIMESTAMP NULL,
+    
+    -- Blockchain
+    blockchain_tx_hash VARCHAR(255) NULL,
+    blockchain_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (payment_id),
+    INDEX idx_batch_payment (batch_id, status),
+    INDEX idx_participant_payment (participant_id, transaction_date),
+    INDEX idx_payment_status (status, retry_count),
+    INDEX idx_transaction_ref (transaction_reference),
+    INDEX idx_blockchain (blockchain_tx_hash),
+    
+    FOREIGN KEY (batch_id) REFERENCES payment_batch(batch_id),
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id),
+    FOREIGN KEY (payment_method_id) REFERENCES payment_method(method_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Encrypted payment methods
+CREATE TABLE IF NOT EXISTS payment_method (
+    method_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    participant_id CHAR(36) NOT NULL,
+    method_type VARCHAR(50) NOT NULL, -- 'BANK_TRANSFER', 'ACH', 'WIRE', 'PAYPAL', 'CRYPTO', 'CHECK'
+    
+    -- Encrypted payment details (AES-256)
+    account_holder_encrypted VARBINARY(500) NOT NULL,
+    account_details_encrypted VARBINARY(2000) NOT NULL, -- JSON with bank details
+    routing_info_encrypted VARBINARY(1000) NULL,
+    
+    -- Method metadata
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    country_code CHAR(2) NOT NULL,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    verified_date TIMESTAMP NULL,
+    
+    -- Crypto specific
+    blockchain_network VARCHAR(50) NULL, -- 'ETHEREUM', 'BITCOIN', 'SOLANA'
+    wallet_address VARCHAR(255) NULL, -- Public only
+    
+    -- Validation
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    validation_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'VALID', 'INVALID', 'EXPIRED'
+    last_validation_date TIMESTAMP NULL,
+    
+    -- Encryption metadata
+    encryption_key_id VARCHAR(255) NOT NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    deleted_date TIMESTAMP NULL,
+    deleted_by CHAR(36) NULL,
+    
+    PRIMARY KEY (method_id),
+    INDEX idx_participant_method (participant_id, is_active, is_primary),
+    INDEX idx_method_type (method_type, country_code),
+    INDEX idx_validation (validation_status, last_validation_date),
+    INDEX idx_deleted (deleted_date),
+    
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment verification and reconciliation
+CREATE TABLE IF NOT EXISTS payment_verification (
+    verification_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    payment_id CHAR(36) NOT NULL,
+    verification_type VARCHAR(50) NOT NULL, -- 'BANK_STATEMENT', 'PAYPAL_WEBHOOK', 'BLOCKCHAIN', 'MANUAL'
+    
+    -- Verification details
+    verification_date TIMESTAMP NOT NULL,
+    verification_status VARCHAR(50) NOT NULL, -- 'MATCHED', 'UNMATCHED', 'PARTIAL', 'DISPUTED'
+    
+    -- Amounts
+    expected_amount DECIMAL(19,4) NOT NULL,
+    actual_amount DECIMAL(19,4) NULL,
+    difference_amount DECIMAL(19,4) NULL,
+    
+    -- Reference data
+    external_reference VARCHAR(255) NULL,
+    verification_data JSON NULL,
+    
+    -- Resolution
+    resolution_status VARCHAR(50) NULL, -- 'PENDING', 'RESOLVED', 'WRITTEN_OFF'
+    resolution_notes TEXT NULL,
+    resolved_by CHAR(36) NULL,
+    resolved_date TIMESTAMP NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (verification_id),
+    INDEX idx_payment_verification (payment_id, verification_type),
+    INDEX idx_verification_status (verification_status, resolution_status),
+    INDEX idx_verification_date (verification_date),
+    
+    FOREIGN KEY (payment_id) REFERENCES payment_detail(payment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.8 FINANCIAL REFERENCE TABLES
+-- =====================================================
+
+-- Daily exchange rates from multiple sources
+CREATE TABLE IF NOT EXISTS currency_exchange (
+    exchange_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    rate_date DATE NOT NULL,
+    from_currency CHAR(3) NOT NULL,
+    to_currency CHAR(3) NOT NULL,
+    
+    -- Rate information
+    exchange_rate DECIMAL(19,8) NOT NULL,
+    rate_source VARCHAR(50) NOT NULL, -- 'ECB', 'FEDERAL_RESERVE', 'XE', 'OANDA'
+    
+    -- Additional rates
+    bid_rate DECIMAL(19,8) NULL,
+    ask_rate DECIMAL(19,8) NULL,
+    mid_rate DECIMAL(19,8) NULL,
+    
+    -- Validation
+    is_official BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (exchange_id),
+    UNIQUE KEY uk_rate_date_currencies (rate_date, from_currency, to_currency, rate_source),
+    INDEX idx_rate_date (rate_date),
+    INDEX idx_currencies (from_currency, to_currency),
+    INDEX idx_active (is_active, is_official)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Encrypted tax information by territory
+CREATE TABLE IF NOT EXISTS tax_withholding (
+    withholding_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    participant_id CHAR(36) NOT NULL,
+    tax_year INT NOT NULL,
+    
+    -- Tax details (encrypted)
+    tax_id_encrypted VARBINARY(255) NOT NULL,
+    tax_form_type VARCHAR(50) NOT NULL, -- 'W9', 'W8BEN', 'W8BENE', '1099', '1042S'
+    tax_form_data_encrypted VARBINARY(5000) NULL, -- JSON with form data
+    
+    -- Withholding rates
+    withholding_rate DECIMAL(5,4) NOT NULL,
+    treaty_rate DECIMAL(5,4) NULL,
+    backup_withholding BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Territory information
+    tax_residence_country CHAR(2) NOT NULL,
+    treaty_country CHAR(2) NULL,
+    
+    -- Document storage
+    form_file_id CHAR(36) NULL, -- Links to document storage
+    form_submitted_date DATE NULL,
+    form_expires_date DATE NULL,
+    
+    -- Validation
+    validation_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'VALID', 'INVALID', 'EXPIRED'
+    irs_tin_match VARCHAR(50) NULL, -- 'MATCHED', 'NOT_MATCHED', 'PENDING'
+    
+    -- Compliance
+    fatca_status VARCHAR(50) NULL,
+    crs_reportable BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Encryption metadata
+    encryption_key_id VARCHAR(255) NOT NULL,
+    
+    -- Audit fields
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_by CHAR(36) NOT NULL,
+    
+    PRIMARY KEY (withholding_id),
+    UNIQUE KEY uk_participant_year (participant_id, tax_year),
+    INDEX idx_tax_form (tax_form_type, validation_status),
+    INDEX idx_residence (tax_residence_country, treaty_country),
+    INDEX idx_expires (form_expires_date),
+    
+    FOREIGN KEY (participant_id) REFERENCES royalty_participant(participant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Immutable financial audit log
+CREATE TABLE IF NOT EXISTS financial_audit_trail (
+    audit_id CHAR(36) NOT NULL DEFAULT (UUID()),
+    audit_timestamp TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    
+    -- Event information
+    event_type VARCHAR(100) NOT NULL,
+    event_category VARCHAR(50) NOT NULL, -- 'CALCULATION', 'PAYMENT', 'ADJUSTMENT', 'DISPUTE'
+    
+    -- Related entities
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id CHAR(36) NOT NULL,
+    
+    -- Change details
+    operation VARCHAR(20) NOT NULL, -- 'CREATE', 'UPDATE', 'DELETE', 'EXECUTE'
+    field_changes JSON NULL, -- Before/after values
+    
+    -- Financial impact
+    financial_impact DECIMAL(19,4) NULL,
+    currency_code CHAR(3) NULL,
+    
+    -- User and system information
+    user_id CHAR(36) NOT NULL,
+    user_role VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    session_id VARCHAR(255) NULL,
+    
+    -- Blockchain
+    block_hash VARCHAR(255) NULL, -- For blockchain anchoring
+    
+    PRIMARY KEY (audit_id),
+    INDEX idx_audit_timestamp (audit_timestamp),
+    INDEX idx_event (event_type, event_category),
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_user (user_id, audit_timestamp),
+    INDEX idx_financial_impact (financial_impact)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 14.9 STORED PROCEDURES
+-- =====================================================
+
+-- Calculate royalties for a statement
+DELIMITER //
+CREATE PROCEDURE sp_calculate_royalties(
+    IN p_statement_id CHAR(36),
+    IN p_user_id CHAR(36)
+)
+BEGIN
+    DECLARE v_error_message VARCHAR(500);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        GET DIAGNOSTICS CONDITION 1 v_error_message = MESSAGE_TEXT;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_error_message;
+    END;
+
+    START TRANSACTION;
+
+    -- Update statement status
+    UPDATE royalty_statement 
+    SET status = 'PROCESSING',
+        modified_by = p_user_id,
+        modified_date = CURRENT_TIMESTAMP
+    WHERE statement_id = p_statement_id;
+
+    -- Calculate royalties for each detail line
+    INSERT INTO royalty_calculation (
+        detail_id,
+        participant_id,
+        calculation_type,
+        ownership_share,
+        applicable_rate,
+        rate_type,
+        gross_earned,
+        fees_deducted,
+        net_earned,
+        calculation_formula,
+        calculation_hash,
+        calculated_by
+    )
+    SELECT 
+        rd.detail_id,
+        rp.participant_id,
+        'STANDARD',
+        COALESCE(ro.ownership_percentage / 100, 1.0), -- From rights ownership
+        COALESCE(ra.royalty_rate / 100, 0.10), -- From agreements
+        'PERCENTAGE',
+        rd.net_amount * (COALESCE(ro.ownership_percentage / 100, 1.0)),
+        0, -- Fees calculated separately
+        rd.net_amount * (COALESCE(ro.ownership_percentage / 100, 1.0)),
+        JSON_OBJECT(
+            'formula', 'net_amount * ownership_share',
+            'variables', JSON_OBJECT(
+                'net_amount', rd.net_amount,
+                'ownership_share', COALESCE(ro.ownership_percentage / 100, 1.0)
+            )
+        ),
+        SHA2(CONCAT(rd.detail_id, rp.participant_id, rd.net_amount), 256),
+        p_user_id
+    FROM royalty_detail rd
+    LEFT JOIN rights_ownership ro ON rd.work_id = ro.work_id -- From Section 3
+    LEFT JOIN royalty_participant rp ON ro.rights_holder_id = rp.entity_id
+    LEFT JOIN agreement_royalty_rates ra ON ro.work_id = ra.work_id -- From Section 5
+    WHERE rd.statement_id = p_statement_id
+    AND rd.match_status = 'MATCHED';
+
+    -- Apply advances and recoupments
+    CALL sp_apply_recoupments(p_statement_id, p_user_id);
+
+    -- Create distributions
+    INSERT INTO royalty_distribution (
+        calculation_id,
+        participant_id,
+        distribution_type,
+        distributed_amount,
+        currency_code,
+        distribution_hash,
+        created_by,
+        modified_by
+    )
+    SELECT 
+        rc.calculation_id,
+        rc.participant_id,
+        'PRIMARY',
+        rc.final_payable,
+        rs.currency_code,
+        SHA2(CONCAT(rc.calculation_id, rc.participant_id, rc.final_payable), 256),
+        p_user_id,
+        p_user_id
+    FROM royalty_calculation rc
+    JOIN royalty_detail rd ON rc.detail_id = rd.detail_id
+    JOIN royalty_statement rs ON rd.statement_id = rs.statement_id
+    WHERE rs.statement_id = p_statement_id
+    AND rc.final_payable > 0;
+
+    -- Update statement totals
+    UPDATE royalty_statement rs
+    SET total_gross_amount = (
+            SELECT SUM(gross_amount) 
+            FROM royalty_detail 
+            WHERE statement_id = p_statement_id
+        ),
+        total_net_amount = (
+            SELECT SUM(net_amount) 
+            FROM royalty_detail 
+            WHERE statement_id = p_statement_id
+        ),
+        status = 'PROCESSED',
+        processed_date = CURRENT_TIMESTAMP,
+        processed_by = p_user_id,
+        modified_by = p_user_id,
+        modified_date = CURRENT_TIMESTAMP
+    WHERE statement_id = p_statement_id;
+
+    -- Log the calculation
+    INSERT INTO financial_audit_trail (
+        event_type,
+        event_category,
+        entity_type,
+        entity_id,
+        operation,
+        user_id,
+        user_role
+    )
+    VALUES (
+        'ROYALTY_CALCULATION_COMPLETED',
+        'CALCULATION',
+        'STATEMENT',
+        p_statement_id,
+        'EXECUTE',
+        p_user_id,
+        'SYSTEM'
+    );
+
+    COMMIT;
+END//
+
+-- Apply recoupments to calculations
+CREATE PROCEDURE sp_apply_recoupments(
+    IN p_statement_id CHAR(36),
+    IN p_user_id CHAR(36)
+)
+BEGIN
+    DECLARE v_done INT DEFAULT FALSE;
+    DECLARE v_calculation_id CHAR(36);
+    DECLARE v_participant_id CHAR(36);
+    DECLARE v_gross_earned DECIMAL(19,4);
+    DECLARE v_advance_id CHAR(36);
+    DECLARE v_advance_balance DECIMAL(19,4);
+    DECLARE v_recoup_amount DECIMAL(19,4);
+    
+    DECLARE cur_calculations CURSOR FOR
+        SELECT rc.calculation_id, rc.participant_id, rc.gross_earned
+        FROM royalty_calculation rc
+        JOIN royalty_detail rd ON rc.detail_id = rd.detail_id
+        WHERE rd.statement_id = p_statement_id
+        AND rc.gross_earned > 0
+        ORDER BY rc.participant_id, rc.gross_earned DESC;
+        
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
+    
+    OPEN cur_calculations;
+    
+    read_loop: LOOP
+        FETCH cur_calculations INTO v_calculation_id, v_participant_id, v_gross_earned;
+        IF v_done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- Find active advances for participant
+        SELECT advance_id, current_balance 
+        INTO v_advance_id, v_advance_balance
+        FROM royalty_advance
+        WHERE participant_id = v_participant_id
+        AND is_active = TRUE
+        AND current_balance > 0
+        AND recoupable = TRUE
+        ORDER BY effective_date
+        LIMIT 1;
+        
+        IF v_advance_id IS NOT NULL AND v_advance_balance > 0 THEN
+            -- Calculate recoupment amount
+            SET v_recoup_amount = LEAST(v_gross_earned, v_advance_balance);
+            
+            -- Update calculation with recoupment
+            UPDATE royalty_calculation
+            SET recoupment_applied = v_recoup_amount,
+                final_payable = net_earned - v_recoup_amount
+            WHERE calculation_id = v_calculation_id;
+            
+            -- Record recoupment
+            INSERT INTO royalty_recoupment (
+                advance_id,
+                calculation_id,
+                recoupment_date,
+                gross_earnings,
+                recoupable_amount,
+                recouped_amount,
+                balance_before,
+                balance_after,
+                created_by
+            )
+            VALUES (
+                v_advance_id,
+                v_calculation_id,
+                CURDATE(),
+                v_gross_earned,
+                v_gross_earned,
+                v_recoup_amount,
+                v_advance_balance,
+                v_advance_balance - v_recoup_amount,
+                p_user_id
+            );
+            
+            -- Update advance balance
+            UPDATE royalty_advance
+            SET current_balance = current_balance - v_recoup_amount,
+                recouped_amount = recouped_amount + v_recoup_amount,
+                modified_by = p_user_id,
+                modified_date = CURRENT_TIMESTAMP
+            WHERE advance_id = v_advance_id;
+        END IF;
+    END LOOP;
+    
+    CLOSE cur_calculations;
+END//
+
+-- Process payment batch
+CREATE PROCEDURE sp_process_payment_batch(
+    IN p_batch_id CHAR(36),
+    IN p_user_id CHAR(36)
+)
+BEGIN
+    DECLARE v_error_message VARCHAR(500);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        GET DIAGNOSTICS CONDITION 1 v_error_message = MESSAGE_TEXT;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_error_message;
+    END;
+
+    START TRANSACTION;
+
+    -- Update batch status
+    UPDATE payment_batch
+    SET status = 'PROCESSING',
+        started_date = CURRENT_TIMESTAMP,
+        modified_by = p_user_id
+    WHERE batch_id = p_batch_id;
+
+    -- Create payment details for distributions
+    INSERT INTO payment_detail (
+        batch_id,
+        participant_id,
+        payment_amount,
+        currency_code,
+        payment_method,
+        payment_method_id,
+        net_paid_amount,
+        created_by,
+        modified_by
+    )
+    SELECT 
+        p_batch_id,
+        rd.participant_id,
+        SUM(rd.distributed_amount),
+        rd.currency_code,
+        rp.payment_method,
+        pm.method_id,
+        SUM(rd.distributed_amount) - (SUM(rd.distributed_amount) * 0.025), -- 2.5% fee example
+        p_user_id,
+        p_user_id
+    FROM royalty_distribution rd
+    JOIN royalty_participant rp ON rd.participant_id = rp.participant_id
+    JOIN payment_method pm ON rp.participant_id = pm.participant_id AND pm.is_primary = TRUE
+    WHERE rd.payment_status = 'PENDING'
+    AND rd.distributed_amount >= rp.minimum_payment_threshold
+    AND NOT rd.is_held
+    GROUP BY rd.participant_id, rd.currency_code, rp.payment_method, pm.method_id;
+
+    -- Update distribution status
+    UPDATE royalty_distribution rd
+    JOIN payment_detail pd ON rd.participant_id = pd.participant_id
+    SET rd.payment_status = 'SCHEDULED',
+        rd.payment_batch_id = p_batch_id,
+        rd.modified_by = p_user_id,
+        rd.modified_date = CURRENT_TIMESTAMP
+    WHERE pd.batch_id = p_batch_id
+    AND rd.payment_status = 'PENDING';
+
+    -- Update batch totals
+    UPDATE payment_batch
+    SET total_payments = (
+            SELECT COUNT(*) FROM payment_detail WHERE batch_id = p_batch_id
+        ),
+        total_amount = (
+            SELECT SUM(payment_amount) FROM payment_detail WHERE batch_id = p_batch_id
+        ),
+        status = 'COMPLETED',
+        completed_date = CURRENT_TIMESTAMP,
+        modified_by = p_user_id
+    WHERE batch_id = p_batch_id;
+
+    -- Audit log
+    INSERT INTO financial_audit_trail (
+        event_type,
+        event_category,
+        entity_type,
+        entity_id,
+        operation,
+        financial_impact,
+        currency_code,
+        user_id,
+        user_role
+    )
+    SELECT 
+        'PAYMENT_BATCH_PROCESSED',
+        'PAYMENT',
+        'BATCH',
+        p_batch_id,
+        'EXECUTE',
+        total_amount,
+        currency_code,
+        p_user_id,
+        'SYSTEM'
+    FROM payment_batch
+    WHERE batch_id = p_batch_id;
+
+    COMMIT;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- 14.10 VIEWS
+-- =====================================================
+
+-- Royalty summary by participant
+CREATE VIEW vw_royalty_summary AS
+SELECT 
+    rp.participant_id,
+    rp.entity_name AS participant_name,
+    rp.participant_type,
+    COUNT(DISTINCT rc.calculation_id) AS total_calculations,
+    SUM(rc.gross_earned) AS total_gross_earned,
+    SUM(rc.net_earned) AS total_net_earned,
+    SUM(rc.final_payable) AS total_payable,
+    SUM(rd.distributed_amount) AS total_distributed,
+    SUM(CASE WHEN rd.payment_status = 'PAID' THEN rd.distributed_amount ELSE 0 END) AS total_paid,
+    SUM(CASE WHEN rd.is_held THEN rd.distributed_amount ELSE 0 END) AS total_held,
+    COUNT(DISTINCT ra.advance_id) AS active_advances,
+    SUM(ra.current_balance) AS total_advance_balance
+FROM royalty_participant rp
+LEFT JOIN royalty_calculation rc ON rp.participant_id = rc.participant_id
+LEFT JOIN royalty_distribution rd ON rc.calculation_id = rd.calculation_id
+LEFT JOIN royalty_advance ra ON rp.participant_id = ra.participant_id AND ra.is_active = TRUE
+WHERE rp.deleted_date IS NULL
+GROUP BY rp.participant_id, rp.entity_name, rp.participant_type;
+
+-- Outstanding payments view
+CREATE VIEW vw_outstanding_payments AS
+SELECT 
+    rp.participant_id,
+    rp.entity_name AS participant_name,
+    rp.payment_method,
+    SUM(rd.distributed_amount) AS total_outstanding,
+    rd.currency_code,
+    COUNT(DISTINCT rd.distribution_id) AS payment_count,
+    MIN(rc.calculated_date) AS oldest_payment_date,
+    MAX(rc.calculated_date) AS newest_payment_date,
+    DATEDIFF(CURDATE(), MIN(rc.calculated_date)) AS days_outstanding
+FROM royalty_distribution rd
+JOIN royalty_participant rp ON rd.participant_id = rp.participant_id
+JOIN royalty_calculation rc ON rd.calculation_id = rc.calculation_id
+WHERE rd.payment_status IN ('PENDING', 'SCHEDULED')
+AND NOT rd.is_held
+GROUP BY rp.participant_id, rp.entity_name, rp.payment_method, rd.currency_code
+HAVING total_outstanding >= rp.minimum_payment_threshold;
+
+-- =====================================================
+-- 14.11 TRIGGERS
+-- =====================================================
+
+-- Audit trigger for royalty calculations
+DELIMITER //
+CREATE TRIGGER trg_royalty_calculation_audit
+AFTER UPDATE ON royalty_calculation
+FOR EACH ROW
+BEGIN
+    IF OLD.final_payable != NEW.final_payable THEN
+        INSERT INTO royalty_calculation_log (
+            calculation_id,
+            log_type,
+            previous_gross,
+            previous_net,
+            previous_payable,
+            new_gross,
+            new_net,
+            new_payable,
+            change_reason,
+            created_by
+        )
+        VALUES (
+            NEW.calculation_id,
+            'RECALCULATION',
+            OLD.gross_earned,
+            OLD.net_earned,
+            OLD.final_payable,
+            NEW.gross_earned,
+            NEW.net_earned,
+            NEW.final_payable,
+            'System recalculation',
+            NEW.modified_by
+        );
+    END IF;
+END//
+
+-- Validate payment threshold
+CREATE TRIGGER trg_payment_detail_validate
+BEFORE INSERT ON payment_detail
+FOR EACH ROW
+BEGIN
+    DECLARE v_threshold DECIMAL(19,4);
+    
+    SELECT minimum_payment_threshold INTO v_threshold
+    FROM royalty_participant
+    WHERE participant_id = NEW.participant_id;
+    
+    IF NEW.payment_amount < v_threshold THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Payment amount below minimum threshold';
+    END IF;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- 14.12 INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_royalty_detail_perf ON royalty_detail(statement_id, match_status, transaction_date);
+CREATE INDEX idx_calculation_perf ON royalty_calculation(detail_id, participant_id, final_payable);
+CREATE INDEX idx_distribution_perf ON royalty_distribution(participant_id, payment_status, distributed_amount);
+CREATE INDEX idx_payment_perf ON payment_detail(batch_id, status, transaction_date);
+
+-- =====================================================
+-- 14.14 GRANTS
+-- =====================================================
+
+-- Grant appropriate permissions (adjust as needed)
+-- GRANT SELECT, INSERT, UPDATE ON astro_rights.* TO 'astro_app'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_rights.sp_calculate_royalties TO 'astro_app'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_rights.sp_process_payment_batch TO 'astro_app'@'%';
+
+-- =====================================================
+-- Section 15: DSP INTEGRATION TABLES
+-- =====================================================
+
+-- =====================================================
+-- ACCOUNT MANAGEMENT TABLES
+-- =====================================================
+
+-- DSP Account Management
+CREATE TABLE dsp_account (
+    account_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT UNSIGNED NOT NULL,
+    dsp_code VARCHAR(50) NOT NULL,
+    account_name VARCHAR(255) NOT NULL,
+    account_type VARCHAR(50) NOT NULL, -- 'artist', 'label', 'distributor', 'aggregator'
+    account_identifier VARCHAR(255), -- Platform-specific ID
+    account_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'active', 'suspended', 'terminated'
+    
+    -- Authentication
+    auth_method VARCHAR(50) NOT NULL, -- 'oauth2', 'api_key', 'jwt', 'basic', 'custom'
+    auth_endpoint VARCHAR(500),
+    token_endpoint VARCHAR(500),
+    refresh_token_expiry DATETIME(6),
+    
+    -- Configuration
+    api_version VARCHAR(20),
+    base_url VARCHAR(500),
+    webhook_url VARCHAR(500),
+    rate_limit_requests INT UNSIGNED DEFAULT 100,
+    rate_limit_window_seconds INT UNSIGNED DEFAULT 60,
+    
+    -- Features
+    supports_delivery BOOLEAN DEFAULT TRUE,
+    supports_analytics BOOLEAN DEFAULT TRUE,
+    supports_realtime BOOLEAN DEFAULT FALSE,
+    supports_content_id BOOLEAN DEFAULT FALSE,
+    supports_bulk_operations BOOLEAN DEFAULT TRUE,
+    max_batch_size INT UNSIGNED DEFAULT 100,
+    
+    -- Metadata
+    territory_restrictions JSON, -- ["US", "CA", "GB"]
+    content_types JSON, -- ["audio", "video", "shorts"]
+    required_metadata JSON, -- Platform-specific requirements
+    
+    -- Compliance
+    terms_accepted_date DATETIME(6),
+    terms_version VARCHAR(20),
+    data_retention_days INT UNSIGNED DEFAULT 365,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    last_sync_at DATETIME(6),
+    next_sync_at DATETIME(6),
+    
+    -- Audit
+    created_by INT UNSIGNED,
+    updated_by INT UNSIGNED,
+    notes TEXT,
+    
+    FOREIGN KEY (organization_id) REFERENCES organization(organization_id),
+    FOREIGN KEY (created_by) REFERENCES user(user_id),
+    FOREIGN KEY (updated_by) REFERENCES user(user_id),
+    
+    INDEX idx_dsp_account_org (organization_id),
+    INDEX idx_dsp_account_code (dsp_code),
+    INDEX idx_dsp_account_status (account_status),
+    INDEX idx_dsp_account_sync (next_sync_at),
+    UNIQUE KEY uk_dsp_account (organization_id, dsp_code, account_identifier)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP API Credentials (Encrypted Storage)
+CREATE TABLE dsp_api_credential (
+    credential_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    credential_type VARCHAR(50) NOT NULL, -- 'access_token', 'refresh_token', 'api_key', 'client_secret', 'private_key'
+    credential_name VARCHAR(100) NOT NULL,
+    
+    -- Encrypted Values (AES-256)
+    credential_value_encrypted VARBINARY(2048) NOT NULL, -- AES-256 encrypted
+    credential_salt BINARY(32) NOT NULL, -- Salt for encryption
+    encryption_version INT DEFAULT 1,
+    
+    -- Token Management
+    expires_at DATETIME(6),
+    issued_at DATETIME(6),
+    scope VARCHAR(500),
+    token_type VARCHAR(50), -- 'Bearer', 'Basic', etc.
+    
+    -- Security
+    last_rotated_at DATETIME(6),
+    rotation_required BOOLEAN DEFAULT FALSE,
+    rotation_frequency_days INT UNSIGNED,
+    allowed_ips JSON, -- IP whitelist if applicable
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    is_compromised BOOLEAN DEFAULT FALSE,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id) ON DELETE CASCADE,
+    
+    INDEX idx_credential_account (account_id),
+    INDEX idx_credential_type (credential_type),
+    INDEX idx_credential_expires (expires_at),
+    INDEX idx_credential_rotation (rotation_required, last_rotated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CONTENT DELIVERY TABLES
+-- =====================================================
+
+-- DSP Delivery Batches
+CREATE TABLE dsp_delivery (
+    delivery_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    delivery_type VARCHAR(50) NOT NULL, -- 'new_release', 'update', 'takedown', 'metadata_only'
+    delivery_status VARCHAR(50) NOT NULL DEFAULT 'preparing', -- 'preparing', 'validating', 'queued', 'delivering', 'completed', 'failed', 'partial'
+    
+    -- Delivery Details
+    batch_identifier VARCHAR(255) UNIQUE,
+    total_items INT UNSIGNED NOT NULL DEFAULT 0,
+    successful_items INT UNSIGNED DEFAULT 0,
+    failed_items INT UNSIGNED DEFAULT 0,
+    
+    -- Scheduling
+    scheduled_at DATETIME(6),
+    started_at DATETIME(6),
+    completed_at DATETIME(6),
+    retry_count INT UNSIGNED DEFAULT 0,
+    max_retries INT UNSIGNED DEFAULT 3,
+    
+    -- Delivery Configuration
+    priority VARCHAR(20) DEFAULT 'normal', -- 'urgent', 'high', 'normal', 'low'
+    delivery_format VARCHAR(50) NOT NULL, -- 'ddex_ern', 'api_json', 'csv', 'custom'
+    compression_type VARCHAR(20), -- 'zip', 'gzip', 'none'
+    
+    -- Validation
+    pre_validation_status VARCHAR(50),
+    pre_validation_errors JSON,
+    post_validation_status VARCHAR(50),
+    post_validation_errors JSON,
+    
+    -- Response
+    dsp_response_code VARCHAR(50),
+    dsp_response_message TEXT,
+    dsp_transaction_id VARCHAR(255),
+    dsp_receipt_url VARCHAR(500),
+    
+    -- Metadata
+    delivery_metadata JSON, -- Platform-specific metadata
+    error_summary JSON,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Audit
+    created_by INT UNSIGNED,
+    approved_by INT UNSIGNED,
+    approved_at DATETIME(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (created_by) REFERENCES user(user_id),
+    FOREIGN KEY (approved_by) REFERENCES user(user_id),
+    
+    INDEX idx_delivery_account (account_id),
+    INDEX idx_delivery_status (delivery_status),
+    INDEX idx_delivery_scheduled (scheduled_at),
+    INDEX idx_delivery_batch (batch_identifier),
+    INDEX idx_delivery_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP Delivery Items
+CREATE TABLE dsp_delivery_item (
+    item_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    delivery_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    item_type VARCHAR(50) NOT NULL, -- 'track', 'album', 'video', 'artwork'
+    item_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'delivered', 'failed', 'rejected'
+    
+    -- Platform Identifiers
+    dsp_item_id VARCHAR(255), -- ID assigned by DSP
+    dsp_uri VARCHAR(500), -- Spotify URI, Apple ID, etc.
+    isrc VARCHAR(12),
+    upc VARCHAR(20),
+    
+    -- Delivery Details
+    action VARCHAR(50) NOT NULL, -- 'create', 'update', 'delete', 'metadata_update'
+    sequence_number INT UNSIGNED,
+    
+    -- Territories
+    territories JSON, -- ["US", "CA", "GB"] or ["WORLD"]
+    excluded_territories JSON,
+    
+    -- Dates
+    release_date DATE,
+    availability_start DATETIME(6),
+    availability_end DATETIME(6),
+    pre_order_date DATE,
+    
+    -- Pricing
+    pricing_tier VARCHAR(50),
+    wholesale_price DECIMAL(10,4),
+    suggested_retail_price DECIMAL(10,4),
+    currency_code CHAR(3),
+    
+    -- Content Details
+    file_location VARCHAR(500),
+    file_size_bytes BIGINT UNSIGNED,
+    file_checksum VARCHAR(64),
+    duration_ms INT UNSIGNED,
+    
+    -- Validation
+    validation_status VARCHAR(50),
+    validation_errors JSON,
+    dsp_validation_result JSON,
+    
+    -- Response
+    dsp_response_code VARCHAR(50),
+    dsp_response_message TEXT,
+    delivered_at DATETIME(6),
+    
+    -- Metadata
+    item_metadata JSON, -- Platform-specific metadata
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id) ON DELETE CASCADE,
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    INDEX idx_delivery_item_delivery (delivery_id),
+    INDEX idx_delivery_item_asset (asset_id),
+    INDEX idx_delivery_item_status (item_status),
+    INDEX idx_delivery_item_isrc (isrc),
+    INDEX idx_delivery_item_dsp_id (dsp_item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP Delivery Validation
+CREATE TABLE dsp_delivery_validation (
+    validation_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    delivery_id INT UNSIGNED NOT NULL,
+    item_id INT UNSIGNED,
+    validation_type VARCHAR(50) NOT NULL, -- 'metadata', 'audio_quality', 'artwork', 'rights', 'territory'
+    validation_level VARCHAR(20) NOT NULL, -- 'error', 'warning', 'info'
+    
+    -- Validation Details
+    field_name VARCHAR(100),
+    field_value TEXT,
+    expected_value TEXT,
+    validation_rule VARCHAR(255),
+    
+    -- Error Information
+    error_code VARCHAR(50),
+    error_message TEXT,
+    suggestion TEXT,
+    is_blocking BOOLEAN DEFAULT FALSE,
+    
+    -- Resolution
+    resolution_status VARCHAR(50) DEFAULT 'unresolved', -- 'unresolved', 'ignored', 'fixed', 'accepted'
+    resolved_by INT UNSIGNED,
+    resolved_at DATETIME(6),
+    resolution_note TEXT,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES dsp_delivery_item(item_id) ON DELETE CASCADE,
+    FOREIGN KEY (resolved_by) REFERENCES user(user_id),
+    
+    INDEX idx_validation_delivery (delivery_id),
+    INDEX idx_validation_item (item_id),
+    INDEX idx_validation_type (validation_type),
+    INDEX idx_validation_level (validation_level),
+    INDEX idx_validation_status (resolution_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CONFIGURATION TABLES
+-- =====================================================
+
+-- DSP Territory Settings
+CREATE TABLE dsp_territory_setting (
+    setting_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    territory_code CHAR(2) NOT NULL,
+    
+    -- Availability
+    is_available BOOLEAN DEFAULT TRUE,
+    availability_start DATE,
+    availability_end DATE,
+    
+    -- Pricing
+    pricing_tier VARCHAR(50),
+    wholesale_price_adjustment DECIMAL(5,2), -- Percentage adjustment
+    retail_price_adjustment DECIMAL(5,2),
+    minimum_price DECIMAL(10,2),
+    maximum_price DECIMAL(10,2),
+    
+    -- Content Restrictions
+    explicit_content_allowed BOOLEAN DEFAULT TRUE,
+    content_rating VARCHAR(20),
+    required_certifications JSON,
+    
+    -- Tax Information
+    tax_rate DECIMAL(5,2),
+    tax_type VARCHAR(50), -- 'VAT', 'GST', 'sales_tax'
+    tax_inclusive BOOLEAN DEFAULT FALSE,
+    
+    -- Local Requirements
+    local_metadata_required JSON,
+    translation_required BOOLEAN DEFAULT FALSE,
+    censorship_rules JSON,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id) ON DELETE CASCADE,
+    
+    UNIQUE KEY uk_territory_setting (account_id, territory_code),
+    INDEX idx_territory_setting_account (account_id),
+    INDEX idx_territory_setting_territory (territory_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP Pricing Tiers
+CREATE TABLE dsp_pricing_tier (
+    tier_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    tier_code VARCHAR(50) NOT NULL,
+    tier_name VARCHAR(100) NOT NULL,
+    tier_type VARCHAR(50) NOT NULL, -- 'subscription', 'ad_supported', 'premium', 'family', 'student'
+    
+    -- Pricing
+    base_rate DECIMAL(10,6) NOT NULL, -- Per stream rate
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    minimum_payout DECIMAL(10,2),
+    
+    -- Rate Adjustments
+    territory_multiplier JSON, -- {"US": 1.0, "IN": 0.1}
+    length_multiplier JSON, -- {"0-30": 0, "31-60": 0.5, "61+": 1.0}
+    engagement_multiplier JSON, -- {"skip_before_30": 0, "full_play": 1.0}
+    
+    -- Features
+    offline_enabled BOOLEAN DEFAULT FALSE,
+    high_quality_enabled BOOLEAN DEFAULT FALSE,
+    exclusive_content_enabled BOOLEAN DEFAULT FALSE,
+    
+    -- Validity
+    effective_date DATE NOT NULL,
+    expiry_date DATE,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id) ON DELETE CASCADE,
+    
+    UNIQUE KEY uk_pricing_tier (account_id, tier_code, effective_date),
+    INDEX idx_pricing_tier_account (account_id),
+    INDEX idx_pricing_tier_dates (effective_date, expiry_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP Payout Rates History
+CREATE TABLE dsp_payout_rate (
+    rate_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    dsp_code VARCHAR(50) NOT NULL,
+    rate_type VARCHAR(50) NOT NULL, -- 'stream', 'download', 'video_view', 'tiktok_creation'
+    
+    -- Rate Information
+    base_rate DECIMAL(10,8) NOT NULL,
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+    
+    -- Breakdown
+    territory_code CHAR(2),
+    subscription_tier VARCHAR(50),
+    content_type VARCHAR(50), -- 'audio', 'video', 'podcast'
+    
+    -- Factors
+    platform_share DECIMAL(5,2), -- Platform's percentage
+    distributor_share DECIMAL(5,2), -- If using distributor
+    
+    -- Period
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    
+    -- Source
+    source VARCHAR(100), -- 'official', 'estimated', 'crowdsourced'
+    source_url VARCHAR(500),
+    confidence_score DECIMAL(3,2), -- 0.00 to 1.00
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    INDEX idx_payout_rate_dsp (dsp_code),
+    INDEX idx_payout_rate_period (period_start, period_end),
+    INDEX idx_payout_rate_territory (territory_code),
+    INDEX idx_payout_rate_type (rate_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- REPORT PROCESSING TABLES
+-- =====================================================
+
+-- DSP Reports
+CREATE TABLE dsp_report (
+    report_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    report_type VARCHAR(50) NOT NULL, -- 'streaming', 'sales', 'trending', 'playlist', 'analytics'
+    report_format VARCHAR(20) NOT NULL, -- 'csv', 'json', 'xml', 'xlsx', 'txt'
+    
+    -- Report Details
+    report_period_start DATE NOT NULL,
+    report_period_end DATE NOT NULL,
+    report_generated_at DATETIME(6),
+    report_received_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    -- File Information
+    file_name VARCHAR(255) NOT NULL,
+    file_location VARCHAR(500) NOT NULL,
+    file_size_bytes BIGINT UNSIGNED,
+    file_checksum VARCHAR(64),
+    
+    -- Processing
+    processing_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'parsing', 'validating', 'processed', 'failed'
+    processing_started_at DATETIME(6),
+    processing_completed_at DATETIME(6),
+    
+    -- Statistics
+    total_rows INT UNSIGNED,
+    processed_rows INT UNSIGNED DEFAULT 0,
+    error_rows INT UNSIGNED DEFAULT 0,
+    duplicate_rows INT UNSIGNED DEFAULT 0,
+    
+    -- Parsing
+    parser_id INT UNSIGNED,
+    parser_version VARCHAR(20),
+    parsing_errors JSON,
+    
+    -- Financial Summary
+    total_revenue DECIMAL(15,2),
+    total_units BIGINT UNSIGNED,
+    currency_code CHAR(3),
+    
+    -- Metadata
+    report_metadata JSON,
+    dsp_report_id VARCHAR(255), -- DSP's internal report ID
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (parser_id) REFERENCES dsp_report_parser(parser_id),
+    
+    INDEX idx_report_account (account_id),
+    INDEX idx_report_type (report_type),
+    INDEX idx_report_period (report_period_start, report_period_end),
+    INDEX idx_report_status (processing_status),
+    INDEX idx_report_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(report_period_start)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+-- DSP Report Parser Configuration
+CREATE TABLE dsp_report_parser (
+    parser_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    dsp_code VARCHAR(50) NOT NULL,
+    report_type VARCHAR(50) NOT NULL,
+    parser_name VARCHAR(100) NOT NULL,
+    parser_version VARCHAR(20) NOT NULL,
+    
+    -- Parser Configuration
+    file_format VARCHAR(20) NOT NULL, -- 'csv', 'json', 'xml', 'xlsx'
+    delimiter CHAR(1) DEFAULT ',',
+    enclosure CHAR(1) DEFAULT '"',
+    escape_char CHAR(1) DEFAULT '\\',
+    has_header BOOLEAN DEFAULT TRUE,
+    encoding VARCHAR(20) DEFAULT 'UTF-8',
+    
+    -- Field Configuration
+    date_format VARCHAR(50), -- 'YYYY-MM-DD', 'MM/DD/YYYY', etc.
+    number_format VARCHAR(20), -- 'decimal_point', 'decimal_comma'
+    
+    -- Processing Rules
+    skip_rows INT UNSIGNED DEFAULT 0,
+    skip_footer_rows INT UNSIGNED DEFAULT 0,
+    validation_rules JSON,
+    transformation_rules JSON,
+    
+    -- Column Mapping (stored in separate table)
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    UNIQUE KEY uk_report_parser (dsp_code, report_type, parser_version),
+    INDEX idx_parser_dsp (dsp_code),
+    INDEX idx_parser_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DSP Field Mapping
+CREATE TABLE dsp_field_mapping (
+    mapping_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    parser_id INT UNSIGNED NOT NULL,
+    
+    -- Source Field
+    source_field_name VARCHAR(100) NOT NULL,
+    source_field_type VARCHAR(50) NOT NULL, -- 'string', 'number', 'date', 'boolean'
+    source_field_position INT UNSIGNED, -- For CSV column position
+    
+    -- Target Field
+    target_table VARCHAR(100) NOT NULL,
+    target_field VARCHAR(100) NOT NULL,
+    target_field_type VARCHAR(50) NOT NULL,
+    
+    -- Transformation
+    transformation_type VARCHAR(50), -- 'direct', 'lookup', 'calculate', 'concatenate'
+    transformation_rule TEXT, -- SQL expression or function
+    
+    -- Validation
+    is_required BOOLEAN DEFAULT FALSE,
+    default_value VARCHAR(255),
+    validation_regex VARCHAR(255),
+    
+    -- Mapping
+    lookup_table VARCHAR(100),
+    lookup_key VARCHAR(100),
+    lookup_value VARCHAR(100),
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    FOREIGN KEY (parser_id) REFERENCES dsp_report_parser(parser_id) ON DELETE CASCADE,
+    
+    INDEX idx_field_mapping_parser (parser_id),
+    INDEX idx_field_mapping_source (source_field_name),
+    INDEX idx_field_mapping_target (target_table, target_field)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- PLATFORM-SPECIFIC TABLES
+-- =====================================================
+
+-- Spotify for Artists Data
+CREATE TABLE spotify_for_artists (
+    spotify_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    
+    -- Spotify Identifiers
+    spotify_uri VARCHAR(100) NOT NULL,
+    spotify_track_id VARCHAR(50) NOT NULL,
+    
+    -- Streaming Metrics
+    total_streams BIGINT UNSIGNED DEFAULT 0,
+    unique_listeners INT UNSIGNED DEFAULT 0,
+    average_stream_duration_ms INT UNSIGNED,
+    skip_rate DECIMAL(5,2),
+    
+    -- Playlist Data
+    playlist_adds INT UNSIGNED DEFAULT 0,
+    playlist_reach BIGINT UNSIGNED DEFAULT 0,
+    editorial_playlist_adds INT UNSIGNED DEFAULT 0,
+    algorithmic_playlist_adds INT UNSIGNED DEFAULT 0,
+    
+    -- Discovery
+    discovery_mode_streams BIGINT UNSIGNED DEFAULT 0,
+    radio_streams BIGINT UNSIGNED DEFAULT 0,
+    search_streams BIGINT UNSIGNED DEFAULT 0,
+    collection_streams BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Demographics
+    top_cities JSON, -- [{"city": "New York", "streams": 50000}]
+    top_countries JSON, -- [{"country": "US", "streams": 1000000}]
+    age_ranges JSON, -- {"18-24": 30, "25-34": 40}
+    gender_split JSON, -- {"male": 55, "female": 43, "other": 2}
+    
+    -- Engagement
+    saves INT UNSIGNED DEFAULT 0,
+    save_rate DECIMAL(5,2),
+    completion_rate DECIMAL(5,2),
+    
+    -- Canvas & Features
+    canvas_enabled BOOLEAN DEFAULT FALSE,
+    canvas_views INT UNSIGNED DEFAULT 0,
+    lyrics_views INT UNSIGNED DEFAULT 0,
+    
+    -- Period
+    report_date DATE NOT NULL,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    UNIQUE KEY uk_spotify_daily (spotify_track_id, report_date),
+    INDEX idx_spotify_account (account_id),
+    INDEX idx_spotify_asset (asset_id),
+    INDEX idx_spotify_date (report_date),
+    INDEX idx_spotify_streams (total_streams)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(report_date)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+-- Apple Music Analytics
+CREATE TABLE apple_music_analytics (
+    apple_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    
+    -- Apple Identifiers
+    apple_music_id VARCHAR(50) NOT NULL,
+    adam_id VARCHAR(50),
+    
+    -- Performance Metrics
+    plays INT UNSIGNED DEFAULT 0,
+    total_listening_time_minutes BIGINT UNSIGNED DEFAULT 0,
+    average_play_duration_seconds INT UNSIGNED,
+    
+    -- Discovery
+    browse_plays INT UNSIGNED DEFAULT 0,
+    radio_plays INT UNSIGNED DEFAULT 0,
+    playlist_plays INT UNSIGNED DEFAULT 0,
+    library_plays INT UNSIGNED DEFAULT 0,
+    
+    -- Shazam Integration
+    shazam_discoveries INT UNSIGNED DEFAULT 0,
+    shazam_plays INT UNSIGNED DEFAULT 0,
+    
+    -- Engagement
+    loves INT UNSIGNED DEFAULT 0,
+    downloads INT UNSIGNED DEFAULT 0,
+    airplay_plays INT UNSIGNED DEFAULT 0,
+    
+    -- Geographic Data
+    top_cities JSON,
+    top_countries JSON,
+    
+    -- Device Breakdown
+    device_types JSON, -- {"iPhone": 60, "Mac": 20, "HomePod": 20}
+    
+    -- Milestones
+    milestones_reached JSON, -- ["1M_plays", "top_100_chart"]
+    
+    -- Period
+    report_date DATE NOT NULL,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    UNIQUE KEY uk_apple_daily (apple_music_id, report_date),
+    INDEX idx_apple_account (account_id),
+    INDEX idx_apple_asset (asset_id),
+    INDEX idx_apple_date (report_date),
+    INDEX idx_apple_plays (plays)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(report_date)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+-- YouTube Content ID
+CREATE TABLE youtube_content_id (
+    youtube_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    
+    -- YouTube Identifiers
+    video_id VARCHAR(50),
+    claim_id VARCHAR(100) NOT NULL,
+    asset_id_youtube VARCHAR(50),
+    
+    -- Claim Details
+    claim_type VARCHAR(50) NOT NULL, -- 'sound_recording', 'composition', 'audiovisual'
+    claim_status VARCHAR(50) NOT NULL, -- 'active', 'released', 'disputed', 'inactive'
+    match_type VARCHAR(50), -- 'manual', 'automatic', 'bulk'
+    match_duration_seconds INT UNSIGNED,
+    match_percentage DECIMAL(5,2),
+    
+    -- Policy
+    policy_type VARCHAR(50) NOT NULL, -- 'monetize', 'track', 'block'
+    territories_monetized JSON,
+    territories_blocked JSON,
+    territories_tracked JSON,
+    
+    -- Performance
+    views BIGINT UNSIGNED DEFAULT 0,
+    watch_time_minutes BIGINT UNSIGNED DEFAULT 0,
+    estimated_revenue DECIMAL(10,2),
+    ad_impressions BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Channel Info
+    channel_id VARCHAR(50),
+    channel_name VARCHAR(255),
+    channel_subscribers INT UNSIGNED,
+    
+    -- Video Details
+    video_title TEXT,
+    video_duration_seconds INT UNSIGNED,
+    upload_date DATE,
+    
+    -- User Generated Content
+    is_ugc BOOLEAN DEFAULT TRUE,
+    is_official BOOLEAN DEFAULT FALSE,
+    
+    -- Period
+    report_date DATE NOT NULL,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    INDEX idx_youtube_account (account_id),
+    INDEX idx_youtube_asset (asset_id),
+    INDEX idx_youtube_claim (claim_id),
+    INDEX idx_youtube_video (video_id),
+    INDEX idx_youtube_date (report_date),
+    INDEX idx_youtube_revenue (estimated_revenue)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Amazon Music Data
+CREATE TABLE amazon_music_data (
+    amazon_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    
+    -- Amazon Identifiers
+    asin VARCHAR(50) NOT NULL,
+    amazon_track_id VARCHAR(50),
+    
+    -- Streaming Metrics
+    total_streams BIGINT UNSIGNED DEFAULT 0,
+    unique_customers INT UNSIGNED DEFAULT 0,
+    
+    -- Service Breakdown
+    unlimited_streams BIGINT UNSIGNED DEFAULT 0,
+    prime_streams BIGINT UNSIGNED DEFAULT 0,
+    hd_streams BIGINT UNSIGNED DEFAULT 0,
+    alexa_streams BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Engagement
+    customer_actions JSON, -- {"likes": 1000, "adds_to_library": 500}
+    voice_requests INT UNSIGNED DEFAULT 0,
+    
+    -- Discovery
+    station_streams BIGINT UNSIGNED DEFAULT 0,
+    playlist_streams BIGINT UNSIGNED DEFAULT 0,
+    recommendation_streams BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Geographic
+    top_countries JSON,
+    
+    -- Period
+    report_date DATE NOT NULL,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    UNIQUE KEY uk_amazon_daily (asin, report_date),
+    INDEX idx_amazon_account (account_id),
+    INDEX idx_amazon_asset (asset_id),
+    INDEX idx_amazon_date (report_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- TikTok Sound Analytics
+CREATE TABLE tiktok_sound (
+    tiktok_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    
+    -- TikTok Identifiers
+    sound_id VARCHAR(100) NOT NULL,
+    sound_name VARCHAR(255),
+    
+    -- Usage Metrics
+    total_videos INT UNSIGNED DEFAULT 0,
+    total_views BIGINT UNSIGNED DEFAULT 0,
+    total_likes BIGINT UNSIGNED DEFAULT 0,
+    total_shares BIGINT UNSIGNED DEFAULT 0,
+    total_comments BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Creator Metrics
+    unique_creators INT UNSIGNED DEFAULT 0,
+    verified_creators INT UNSIGNED DEFAULT 0,
+    
+    -- Virality Indicators
+    trending_score DECIMAL(5,2),
+    growth_rate DECIMAL(10,2), -- Percentage
+    peak_daily_creations INT UNSIGNED,
+    
+    -- Top Content
+    top_videos JSON, -- [{"video_id": "123", "views": 1000000, "creator": "@user"}]
+    
+    -- Demographics
+    creator_countries JSON,
+    audience_age_ranges JSON,
+    
+    -- Trends
+    hashtags JSON, -- Associated hashtags
+    challenges JSON, -- Associated challenges
+    
+    -- Period
+    report_date DATE NOT NULL,
+    week_number INT UNSIGNED,
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    UNIQUE KEY uk_tiktok_daily (sound_id, report_date),
+    INDEX idx_tiktok_account (account_id),
+    INDEX idx_tiktok_asset (asset_id),
+    INDEX idx_tiktok_date (report_date),
+    INDEX idx_tiktok_trending (trending_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MONITORING TABLES
+-- =====================================================
+
+-- DSP Error Log
+CREATE TABLE dsp_error_log (
+    error_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED,
+    delivery_id INT UNSIGNED,
+    report_id INT UNSIGNED,
+    
+    -- Error Classification
+    error_type VARCHAR(50) NOT NULL, -- 'api_error', 'delivery_failure', 'parsing_error', 'validation_error'
+    error_severity VARCHAR(20) NOT NULL, -- 'critical', 'error', 'warning', 'info'
+    error_category VARCHAR(50), -- 'authentication', 'rate_limit', 'network', 'data_quality'
+    
+    -- Error Details
+    error_code VARCHAR(50),
+    error_message TEXT NOT NULL,
+    error_details JSON,
+    stack_trace TEXT,
+    
+    -- Context
+    api_endpoint VARCHAR(500),
+    http_status_code INT,
+    request_data JSON,
+    response_data JSON,
+    
+    -- Resolution
+    is_resolved BOOLEAN DEFAULT FALSE,
+    resolved_by INT UNSIGNED,
+    resolved_at DATETIME(6),
+    resolution_notes TEXT,
+    retry_count INT UNSIGNED DEFAULT 0,
+    
+    -- Impact
+    affected_items INT UNSIGNED,
+    estimated_revenue_impact DECIMAL(10,2),
+    
+    -- Timestamps
+    occurred_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id),
+    FOREIGN KEY (report_id) REFERENCES dsp_report(report_id),
+    FOREIGN KEY (resolved_by) REFERENCES user(user_id),
+    
+    INDEX idx_error_account (account_id),
+    INDEX idx_error_type (error_type),
+    INDEX idx_error_severity (error_severity),
+    INDEX idx_error_occurred (occurred_at),
+    INDEX idx_error_resolved (is_resolved)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+DELIMITER //
+
+-- Procedure to process DSP delivery
+CREATE PROCEDURE sp_process_dsp_delivery(
+    IN p_delivery_id INT UNSIGNED,
+    OUT p_status VARCHAR(50),
+    OUT p_message TEXT
+)
+BEGIN
+    DECLARE v_account_id INT UNSIGNED;
+    DECLARE v_delivery_type VARCHAR(50);
+    DECLARE v_total_items INT UNSIGNED;
+    DECLARE v_error_count INT DEFAULT 0;
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_status = 'error';
+        SET p_message = 'Database error occurred during delivery processing';
+    END;
+    
+    START TRANSACTION;
+    
+    -- Get delivery details
+    SELECT account_id, delivery_type, total_items
+    INTO v_account_id, v_delivery_type, v_total_items
+    FROM dsp_delivery
+    WHERE delivery_id = p_delivery_id;
+    
+    -- Update delivery status
+    UPDATE dsp_delivery
+    SET delivery_status = 'delivering',
+        started_at = NOW(6)
+    WHERE delivery_id = p_delivery_id;
+    
+    -- Validate delivery items
+    INSERT INTO dsp_delivery_validation (delivery_id, item_id, validation_type, validation_level, error_message)
+    SELECT 
+        di.delivery_id,
+        di.item_id,
+        'metadata',
+        CASE 
+            WHEN di.isrc IS NULL THEN 'error'
+            WHEN di.territories IS NULL THEN 'warning'
+            ELSE 'info'
+        END,
+        CASE 
+            WHEN di.isrc IS NULL THEN 'ISRC is required for delivery'
+            WHEN di.territories IS NULL THEN 'No territories specified'
+            ELSE 'Validation passed'
+        END
+    FROM dsp_delivery_item di
+    WHERE di.delivery_id = p_delivery_id;
+    
+    -- Count validation errors
+    SELECT COUNT(*)
+    INTO v_error_count
+    FROM dsp_delivery_validation
+    WHERE delivery_id = p_delivery_id
+    AND validation_level = 'error'
+    AND is_blocking = TRUE;
+    
+    IF v_error_count > 0 THEN
+        UPDATE dsp_delivery
+        SET delivery_status = 'failed',
+            completed_at = NOW(6)
+        WHERE delivery_id = p_delivery_id;
+        
+        SET p_status = 'failed';
+        SET p_message = CONCAT('Delivery failed with ', v_error_count, ' blocking errors');
+    ELSE
+        -- Process delivery (simulate API call)
+        UPDATE dsp_delivery
+        SET delivery_status = 'completed',
+            completed_at = NOW(6),
+            successful_items = v_total_items - v_error_count
+        WHERE delivery_id = p_delivery_id;
+        
+        -- Update item statuses
+        UPDATE dsp_delivery_item
+        SET item_status = 'delivered',
+            delivered_at = NOW(6)
+        WHERE delivery_id = p_delivery_id
+        AND item_id NOT IN (
+            SELECT item_id 
+            FROM dsp_delivery_validation 
+            WHERE validation_level = 'error' 
+            AND is_blocking = TRUE
+        );
+        
+        SET p_status = 'completed';
+        SET p_message = CONCAT('Successfully delivered ', v_total_items - v_error_count, ' items');
+    END IF;
+    
+    COMMIT;
+END//
+
+-- Procedure to aggregate streaming analytics
+CREATE PROCEDURE sp_aggregate_streaming_analytics(
+    IN p_report_date DATE
+)
+BEGIN
+    DECLARE v_total_streams BIGINT DEFAULT 0;
+    DECLARE v_total_revenue DECIMAL(15,2) DEFAULT 0;
+    
+    -- Aggregate Spotify data
+    INSERT INTO analytics_daily_summary (asset_id, metric_date, metric_type, metric_value, source)
+    SELECT 
+        asset_id,
+        report_date,
+        'spotify_streams',
+        total_streams,
+        'spotify_for_artists'
+    FROM spotify_for_artists
+    WHERE report_date = p_report_date
+    ON DUPLICATE KEY UPDATE
+        metric_value = VALUES(metric_value),
+        updated_at = NOW(6);
+    
+    -- Aggregate Apple Music data
+    INSERT INTO analytics_daily_summary (asset_id, metric_date, metric_type, metric_value, source)
+    SELECT 
+        asset_id,
+        report_date,
+        'apple_plays',
+        plays,
+        'apple_music_analytics'
+    FROM apple_music_analytics
+    WHERE report_date = p_report_date
+    ON DUPLICATE KEY UPDATE
+        metric_value = VALUES(metric_value),
+        updated_at = NOW(6);
+    
+    -- Calculate total cross-platform metrics
+    SELECT 
+        SUM(CASE 
+            WHEN metric_type = 'spotify_streams' THEN metric_value 
+            WHEN metric_type = 'apple_plays' THEN metric_value 
+            ELSE 0 
+        END),
+        SUM(CASE 
+            WHEN metric_type LIKE '%revenue%' THEN metric_value 
+            ELSE 0 
+        END)
+    INTO v_total_streams, v_total_revenue
+    FROM analytics_daily_summary
+    WHERE metric_date = p_report_date;
+    
+    -- Log aggregation
+    INSERT INTO system_log (log_type, log_message, log_data)
+    VALUES (
+        'analytics_aggregation',
+        CONCAT('Aggregated streaming data for ', p_report_date),
+        JSON_OBJECT(
+            'date', p_report_date,
+            'total_streams', v_total_streams,
+            'total_revenue', v_total_revenue
+        )
+    );
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS
+-- =====================================================
+
+-- Cross-platform streaming overview
+CREATE VIEW v_streaming_overview AS
+SELECT 
+    ca.asset_id,
+    ca.asset_title,
+    ca.isrc,
+    
+    -- Spotify metrics
+    COALESCE(s.total_streams, 0) AS spotify_streams,
+    COALESCE(s.playlist_adds, 0) AS spotify_playlist_adds,
+    
+    -- Apple Music metrics  
+    COALESCE(a.plays, 0) AS apple_plays,
+    COALESCE(a.shazam_discoveries, 0) AS shazam_discoveries,
+    
+    -- YouTube metrics
+    COALESCE(y.views, 0) AS youtube_views,
+    COALESCE(y.estimated_revenue, 0) AS youtube_revenue,
+    
+    -- TikTok metrics
+    COALESCE(t.total_videos, 0) AS tiktok_creations,
+    COALESCE(t.total_views, 0) AS tiktok_views,
+    
+    -- Calculated metrics
+    COALESCE(s.total_streams, 0) + COALESCE(a.plays, 0) AS total_streams,
+    GREATEST(
+        COALESCE(s.report_date, '1900-01-01'),
+        COALESCE(a.report_date, '1900-01-01'),
+        COALESCE(y.report_date, '1900-01-01'),
+        COALESCE(t.report_date, '1900-01-01')
+    ) AS last_updated
+FROM catalog_asset ca
+LEFT JOIN (
+    SELECT asset_id, SUM(total_streams) AS total_streams, 
+           SUM(playlist_adds) AS playlist_adds, MAX(report_date) AS report_date
+    FROM spotify_for_artists
+    GROUP BY asset_id
+) s ON ca.asset_id = s.asset_id
+LEFT JOIN (
+    SELECT asset_id, SUM(plays) AS plays, 
+           SUM(shazam_discoveries) AS shazam_discoveries, MAX(report_date) AS report_date
+    FROM apple_music_analytics
+    GROUP BY asset_id
+) a ON ca.asset_id = a.asset_id
+LEFT JOIN (
+    SELECT asset_id, SUM(views) AS views, 
+           SUM(estimated_revenue) AS estimated_revenue, MAX(report_date) AS report_date
+    FROM youtube_content_id
+    GROUP BY asset_id
+) y ON ca.asset_id = y.asset_id
+LEFT JOIN (
+    SELECT asset_id, SUM(total_videos) AS total_videos, 
+           SUM(total_views) AS total_views, MAX(report_date) AS report_date
+    FROM tiktok_sound
+    GROUP BY asset_id
+) t ON ca.asset_id = t.asset_id;
+
+-- DSP delivery status dashboard
+CREATE VIEW v_delivery_status AS
+SELECT 
+    da.dsp_code,
+    da.account_name,
+    dd.delivery_id,
+    dd.delivery_type,
+    dd.delivery_status,
+    dd.total_items,
+    dd.successful_items,
+    dd.failed_items,
+    dd.scheduled_at,
+    dd.completed_at,
+    TIMESTAMPDIFF(MINUTE, dd.started_at, dd.completed_at) AS processing_time_minutes,
+    
+    -- Error summary
+    (SELECT COUNT(*) FROM dsp_delivery_validation dv 
+     WHERE dv.delivery_id = dd.delivery_id 
+     AND dv.validation_level = 'error') AS error_count,
+     
+    -- Last error message
+    (SELECT error_message FROM dsp_delivery_validation dv 
+     WHERE dv.delivery_id = dd.delivery_id 
+     AND dv.validation_level = 'error'
+     ORDER BY dv.validation_id DESC LIMIT 1) AS last_error
+     
+FROM dsp_delivery dd
+JOIN dsp_account da ON dd.account_id = da.account_id
+ORDER BY dd.created_at DESC;
+
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+
+DELIMITER //
+
+-- Trigger to update delivery statistics
+CREATE TRIGGER trg_delivery_item_status_update
+AFTER UPDATE ON dsp_delivery_item
+FOR EACH ROW
+BEGIN
+    IF NEW.item_status != OLD.item_status THEN
+        UPDATE dsp_delivery d
+        SET 
+            successful_items = (
+                SELECT COUNT(*) 
+                FROM dsp_delivery_item 
+                WHERE delivery_id = NEW.delivery_id 
+                AND item_status = 'delivered'
+            ),
+            failed_items = (
+                SELECT COUNT(*) 
+                FROM dsp_delivery_item 
+                WHERE delivery_id = NEW.delivery_id 
+                AND item_status IN ('failed', 'rejected')
+            ),
+            updated_at = NOW(6)
+        WHERE delivery_id = NEW.delivery_id;
+    END IF;
+END//
+
+-- Trigger to create audit log for API credential changes
+CREATE TRIGGER trg_api_credential_audit
+AFTER UPDATE ON dsp_api_credential
+FOR EACH ROW
+BEGIN
+    IF NEW.credential_value_encrypted != OLD.credential_value_encrypted THEN
+        INSERT INTO audit_log (
+            table_name,
+            record_id,
+            action,
+            changed_fields,
+            user_id,
+            ip_address,
+            user_agent,
+            created_at
+        ) VALUES (
+            'dsp_api_credential',
+            NEW.credential_id,
+            'credential_rotation',
+            JSON_OBJECT(
+                'credential_type', NEW.credential_type,
+                'rotated_at', NOW(6),
+                'previous_rotation', OLD.last_rotated_at
+            ),
+            @current_user_id,
+            @current_ip_address,
+            @current_user_agent,
+            NOW(6)
+        );
+        
+        -- Update rotation timestamp
+        UPDATE dsp_api_credential
+        SET last_rotated_at = NOW(6),
+            rotation_required = FALSE
+        WHERE credential_id = NEW.credential_id;
+    END IF;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- PERFORMANCE OPTIMIZATION
+-- =====================================================
+
+-- Add partitioning to large streaming tables (already included in table definitions)
+
+-- Create summary tables for faster queries
+CREATE TABLE dsp_streaming_summary_daily (
+    summary_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT UNSIGNED NOT NULL,
+    summary_date DATE NOT NULL,
+    
+    -- Aggregated metrics
+    total_streams BIGINT UNSIGNED DEFAULT 0,
+    total_revenue DECIMAL(15,2) DEFAULT 0,
+    unique_platforms INT UNSIGNED DEFAULT 0,
+    
+    -- Platform breakdown
+    platform_metrics JSON, -- {"spotify": {"streams": 1000}, "apple": {"plays": 500}}
+    
+    -- Calculated metrics
+    average_stream_value DECIMAL(10,6),
+    growth_rate DECIMAL(10,2),
+    
+    -- Timestamps
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (asset_id) REFERENCES catalog_asset(asset_id),
+    
+    UNIQUE KEY uk_summary_daily (asset_id, summary_date),
+    INDEX idx_summary_date (summary_date),
+    INDEX idx_summary_revenue (total_revenue)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Section 15: DSP INTEGRATION TABLES
+-- =====================================================
+
+-- =====================================================
+-- ACCOUNT MANAGEMENT TABLES
+-- =====================================================
+
+-- Table: dsp_account
+-- Purpose: Master table for DSP platform accounts
+CREATE TABLE dsp_account (
+    account_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    company_id CHAR(36) NOT NULL,
+    dsp_code VARCHAR(50) NOT NULL, -- SPOTIFY, APPLE_MUSIC, YOUTUBE, etc.
+    account_name VARCHAR(255) NOT NULL,
+    account_type VARCHAR(50) NOT NULL, -- ARTIST, LABEL, DISTRIBUTOR, AGGREGATOR
+    account_status VARCHAR(50) NOT NULL, -- ACTIVE, SUSPENDED, PENDING, INACTIVE
+    platform_account_id VARCHAR(255), -- Platform's internal ID
+    platform_uri VARCHAR(500), -- Platform-specific URI/URL
+    
+    -- Authentication
+    auth_method VARCHAR(50) NOT NULL, -- OAUTH2, API_KEY, JWT, BASIC
+    oauth_provider VARCHAR(255),
+    
+    -- Account details
+    territory_scope VARCHAR(50) NOT NULL, -- GLOBAL, REGIONAL, SINGLE_TERRITORY
+    supported_territories JSON, -- ["US", "GB", "JP", etc.]
+    content_types JSON, -- ["MUSIC", "VIDEO", "PODCAST"]
+    
+    -- Configuration
+    auto_deliver BOOLEAN DEFAULT TRUE,
+    delivery_schedule VARCHAR(50), -- IMMEDIATE, DAILY, WEEKLY, RELEASE_DATE
+    priority_level INT DEFAULT 5, -- 1-10 scale
+    
+    -- Platform-specific settings
+    platform_settings JSON, -- Flexible platform-specific config
+    feature_flags JSON, -- Enabled features per platform
+    
+    -- Compliance
+    terms_accepted_date DATETIME,
+    terms_version VARCHAR(50),
+    compliance_status VARCHAR(50), -- COMPLIANT, REVIEW_NEEDED, NON_COMPLIANT
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by CHAR(36),
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at DATETIME,
+    deleted_by CHAR(36),
+    
+    INDEX idx_company_dsp (company_id, dsp_code),
+    INDEX idx_account_status (account_status),
+    INDEX idx_platform_account (platform_account_id),
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_api_credential
+-- Purpose: Secure storage of API credentials (FULLY ENCRYPTED)
+CREATE TABLE dsp_api_credential (
+    credential_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    credential_type VARCHAR(50) NOT NULL, -- ACCESS_TOKEN, REFRESH_TOKEN, API_KEY, CLIENT_SECRET
+    
+    -- Encrypted credential storage
+    encrypted_value TEXT NOT NULL, -- AES-256 encrypted
+    encryption_key_id VARCHAR(255) NOT NULL, -- Reference to key management system
+    
+    -- OAuth specific
+    token_type VARCHAR(50), -- Bearer, MAC, etc.
+    scope TEXT, -- OAuth scopes
+    expires_at DATETIME,
+    refresh_token_encrypted TEXT, -- AES-256 encrypted
+    
+    -- Key rotation
+    rotation_status VARCHAR(50) DEFAULT 'CURRENT', -- CURRENT, ROTATING, EXPIRED
+    rotated_from CHAR(36), -- Previous credential_id
+    rotation_scheduled_at DATETIME,
+    
+    -- Usage tracking
+    last_used_at DATETIME,
+    usage_count BIGINT DEFAULT 0,
+    last_response_code INT,
+    
+    -- Rate limiting
+    rate_limit_quota INT,
+    rate_limit_remaining INT,
+    rate_limit_reset_at DATETIME,
+    
+    -- Security
+    ip_whitelist JSON, -- Allowed IPs if applicable
+    requires_mfa BOOLEAN DEFAULT FALSE,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    deactivated_at DATETIME,
+    deactivated_reason VARCHAR(500),
+    
+    INDEX idx_account_type (account_id, credential_type),
+    INDEX idx_expires (expires_at),
+    INDEX idx_rotation (rotation_status, rotation_scheduled_at),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CONTENT DELIVERY TABLES
+-- =====================================================
+
+-- Table: dsp_delivery
+-- Purpose: Track content delivery batches to DSPs
+CREATE TABLE dsp_delivery (
+    delivery_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    delivery_type VARCHAR(50) NOT NULL, -- NEW_RELEASE, UPDATE, TAKEDOWN, REINSTATE
+    delivery_status VARCHAR(50) NOT NULL, -- PENDING, VALIDATING, QUEUED, IN_PROGRESS, COMPLETED, FAILED
+    
+    -- Delivery details
+    delivery_method VARCHAR(50) NOT NULL, -- API, SFTP, DDEX_FEED, MANUAL
+    priority INT DEFAULT 5,
+    scheduled_at DATETIME,
+    started_at DATETIME,
+    completed_at DATETIME,
+    
+    -- Content summary
+    total_items INT DEFAULT 0,
+    successful_items INT DEFAULT 0,
+    failed_items INT DEFAULT 0,
+    warning_items INT DEFAULT 0,
+    
+    -- DDEX compliance
+    ddex_version VARCHAR(20), -- 4.3, 4.2, etc.
+    ddex_message_id VARCHAR(255),
+    ddex_profile VARCHAR(100), -- AudioAlbum, AudioSingle, etc.
+    
+    -- Delivery package
+    package_format VARCHAR(50), -- ZIP, TAR, INDIVIDUAL
+    package_size_mb DECIMAL(10,2),
+    package_checksum VARCHAR(255),
+    storage_location VARCHAR(500), -- S3 bucket/key
+    
+    -- Response tracking
+    platform_response JSON,
+    platform_delivery_id VARCHAR(255),
+    acknowledgment_received BOOLEAN DEFAULT FALSE,
+    acknowledgment_at DATETIME,
+    
+    -- Error handling
+    retry_count INT DEFAULT 0,
+    max_retries INT DEFAULT 3,
+    last_error_message TEXT,
+    next_retry_at DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    notes TEXT,
+    
+    INDEX idx_account_status (account_id, delivery_status),
+    INDEX idx_scheduled (scheduled_at, delivery_status),
+    INDEX idx_platform_delivery (platform_delivery_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_delivery_item
+-- Purpose: Individual items within a delivery batch
+CREATE TABLE dsp_delivery_item (
+    item_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    delivery_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    item_type VARCHAR(50) NOT NULL, -- TRACK, ALBUM, VIDEO, ARTWORK
+    item_status VARCHAR(50) NOT NULL, -- PENDING, PROCESSING, DELIVERED, FAILED, REJECTED
+    
+    -- Content identifiers
+    isrc VARCHAR(20),
+    upc VARCHAR(20),
+    ean VARCHAR(20),
+    platform_content_id VARCHAR(255), -- Platform's ID after delivery
+    
+    -- Delivery specifics
+    action VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE, REINSTATE
+    territories JSON, -- Specific territories for this item
+    release_date DATE,
+    pre_order_date DATE,
+    
+    -- Validation results
+    validation_status VARCHAR(50), -- PASSED, FAILED, WARNING
+    validation_errors JSON,
+    validation_warnings JSON,
+    
+    -- Platform response
+    platform_status VARCHAR(100),
+    platform_message TEXT,
+    platform_metadata JSON,
+    delivered_at DATETIME,
+    
+    -- Content details
+    file_format VARCHAR(50),
+    file_size_mb DECIMAL(10,2),
+    duration_ms INT,
+    bitrate_kbps INT,
+    sample_rate_hz INT,
+    
+    -- Retry handling
+    retry_count INT DEFAULT 0,
+    last_retry_at DATETIME,
+    retry_after DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_delivery_status (delivery_id, item_status),
+    INDEX idx_asset (asset_id),
+    INDEX idx_isrc (isrc),
+    INDEX idx_platform_content (platform_content_id),
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_delivery_validation
+-- Purpose: Pre-delivery validation results
+CREATE TABLE dsp_delivery_validation (
+    validation_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    delivery_id CHAR(36) NOT NULL,
+    item_id CHAR(36),
+    validation_type VARCHAR(50) NOT NULL, -- METADATA, AUDIO_QUALITY, ARTWORK, RIGHTS, TERRITORY
+    validation_status VARCHAR(50) NOT NULL, -- PASSED, FAILED, WARNING, SKIPPED
+    
+    -- Validation details
+    rule_name VARCHAR(255),
+    rule_description TEXT,
+    field_name VARCHAR(255),
+    field_value TEXT,
+    expected_value TEXT,
+    
+    -- Severity and handling
+    severity VARCHAR(50) NOT NULL, -- ERROR, WARNING, INFO
+    is_blocking BOOLEAN DEFAULT FALSE,
+    auto_fixable BOOLEAN DEFAULT FALSE,
+    fix_applied BOOLEAN DEFAULT FALSE,
+    
+    -- Platform specific
+    dsp_code VARCHAR(50),
+    platform_requirement TEXT,
+    
+    -- Metadata
+    validated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    validated_by VARCHAR(50), -- SYSTEM, MANUAL, DSP_API
+    
+    INDEX idx_delivery_validation (delivery_id, validation_status),
+    INDEX idx_item_validation (item_id, validation_type),
+    INDEX idx_severity (severity, is_blocking),
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id),
+    FOREIGN KEY (item_id) REFERENCES dsp_delivery_item(item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- CONFIGURATION TABLES
+-- =====================================================
+
+-- Table: dsp_territory_setting
+-- Purpose: Territory-specific settings per DSP
+CREATE TABLE dsp_territory_setting (
+    setting_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    dsp_code VARCHAR(50) NOT NULL,
+    territory_code VARCHAR(10) NOT NULL,
+    
+    -- Availability
+    is_available BOOLEAN DEFAULT TRUE,
+    launch_date DATE,
+    sunset_date DATE,
+    
+    -- Pricing and currency
+    default_currency VARCHAR(10),
+    min_price DECIMAL(10,2),
+    max_price DECIMAL(10,2),
+    price_tiers JSON, -- Platform-specific price points
+    
+    -- Content restrictions
+    explicit_content_allowed BOOLEAN DEFAULT TRUE,
+    content_rating_system VARCHAR(50), -- RIAA, PEGI, USK, etc.
+    required_certifications JSON,
+    
+    -- Tax and compliance
+    tax_rate DECIMAL(5,2),
+    withholding_rate DECIMAL(5,2),
+    requires_tax_form BOOLEAN DEFAULT FALSE,
+    tax_form_type VARCHAR(50),
+    
+    -- Delivery settings
+    lead_time_days INT DEFAULT 5,
+    pre_order_allowed BOOLEAN DEFAULT TRUE,
+    max_pre_order_days INT DEFAULT 90,
+    
+    -- Metadata requirements
+    required_metadata_fields JSON,
+    language_requirements JSON,
+    translation_required BOOLEAN DEFAULT FALSE,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by CHAR(36),
+    
+    UNIQUE KEY uk_dsp_territory (dsp_code, territory_code),
+    INDEX idx_territory (territory_code),
+    INDEX idx_available (is_available, dsp_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_pricing_tier
+-- Purpose: Platform pricing tiers and subscription levels
+CREATE TABLE dsp_pricing_tier (
+    tier_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    dsp_code VARCHAR(50) NOT NULL,
+    tier_name VARCHAR(100) NOT NULL,
+    tier_type VARCHAR(50) NOT NULL, -- FREE, PREMIUM, FAMILY, STUDENT, HI_FI
+    
+    -- Pricing
+    monthly_price DECIMAL(10,2),
+    currency VARCHAR(10),
+    billing_period VARCHAR(50), -- MONTHLY, ANNUAL, LIFETIME
+    
+    -- Features
+    ad_supported BOOLEAN DEFAULT FALSE,
+    offline_playback BOOLEAN DEFAULT TRUE,
+    max_skip_count INT,
+    audio_quality VARCHAR(50), -- NORMAL, HIGH, LOSSLESS, HI_RES
+    max_bitrate_kbps INT,
+    
+    -- User limits
+    max_devices INT,
+    max_simultaneous_streams INT,
+    family_members INT,
+    
+    -- Revenue share
+    revenue_share_percentage DECIMAL(5,2),
+    min_payout_threshold DECIMAL(10,2),
+    
+    -- Availability
+    territories JSON, -- Where this tier is available
+    launch_date DATE,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_dsp_tier (dsp_code, tier_type),
+    INDEX idx_active_tiers (is_active, dsp_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_payout_rate
+-- Purpose: Historical and current payout rates per platform
+CREATE TABLE dsp_payout_rate (
+    rate_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    dsp_code VARCHAR(50) NOT NULL,
+    tier_id CHAR(36),
+    territory_code VARCHAR(10),
+    
+    -- Rate period
+    effective_date DATE NOT NULL,
+    end_date DATE,
+    rate_type VARCHAR(50) NOT NULL, -- PER_STREAM, REVENUE_SHARE, HYBRID
+    
+    -- Rates
+    stream_rate DECIMAL(10,8), -- Per stream rate
+    revenue_share_rate DECIMAL(5,2), -- Percentage
+    min_rate DECIMAL(10,8),
+    max_rate DECIMAL(10,8),
+    
+    -- Factors
+    currency VARCHAR(10) NOT NULL,
+    user_type VARCHAR(50), -- FREE, PAID, FAMILY, STUDENT
+    content_type VARCHAR(50), -- MUSIC, VIDEO, PODCAST
+    
+    -- Additional factors
+    play_duration_threshold_ms INT DEFAULT 30000, -- Minimum play time
+    territory_modifier DECIMAL(5,2) DEFAULT 1.00,
+    time_of_day_modifier JSON, -- Peak/off-peak rates
+    
+    -- Source
+    source VARCHAR(100), -- OFFICIAL, ESTIMATED, CALCULATED
+    source_document VARCHAR(500),
+    confidence_level VARCHAR(50), -- HIGH, MEDIUM, LOW
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    notes TEXT,
+    
+    INDEX idx_dsp_effective (dsp_code, effective_date),
+    INDEX idx_territory_date (territory_code, effective_date),
+    INDEX idx_current_rates (end_date, dsp_code),
+    FOREIGN KEY (tier_id) REFERENCES dsp_pricing_tier(tier_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- REPORT PROCESSING TABLES
+-- =====================================================
+
+-- Table: dsp_report
+-- Purpose: Reports received from DSPs
+CREATE TABLE dsp_report (
+    report_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    report_type VARCHAR(50) NOT NULL, -- STREAMING, SALES, TRENDS, PLAYLIST, DEMOGRAPHIC
+    report_period_start DATE NOT NULL,
+    report_period_end DATE NOT NULL,
+    
+    -- Report details
+    report_format VARCHAR(50) NOT NULL, -- CSV, JSON, XML, EXCEL, TSV
+    report_version VARCHAR(20),
+    file_name VARCHAR(500),
+    file_size_mb DECIMAL(10,2),
+    file_checksum VARCHAR(255),
+    storage_location VARCHAR(500), -- S3 location
+    
+    -- Processing status
+    processing_status VARCHAR(50) NOT NULL, -- RECEIVED, PARSING, PROCESSED, FAILED
+    parse_started_at DATETIME,
+    parse_completed_at DATETIME,
+    rows_total BIGINT,
+    rows_processed BIGINT,
+    rows_failed BIGINT,
+    
+    -- Financial summary
+    total_streams BIGINT,
+    total_revenue DECIMAL(15,2),
+    currency VARCHAR(10),
+    exchange_rate DECIMAL(10,6),
+    
+    -- Validation
+    validation_status VARCHAR(50), -- VALID, INVALID, WARNINGS
+    validation_errors JSON,
+    checksum_verified BOOLEAN DEFAULT FALSE,
+    
+    -- Platform reference
+    platform_report_id VARCHAR(255),
+    platform_generated_at DATETIME,
+    download_url TEXT,
+    download_expires_at DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_by CHAR(36),
+    processing_notes TEXT,
+    
+    INDEX idx_account_period (account_id, report_period_start, report_period_end),
+    INDEX idx_processing_status (processing_status, created_at),
+    INDEX idx_report_type (report_type, account_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_report_parser
+-- Purpose: Parser configurations for each DSP/report type
+CREATE TABLE dsp_report_parser (
+    parser_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    dsp_code VARCHAR(50) NOT NULL,
+    report_type VARCHAR(50) NOT NULL,
+    parser_version VARCHAR(20) NOT NULL,
+    
+    -- Parser configuration
+    file_format VARCHAR(50) NOT NULL,
+    delimiter VARCHAR(10),
+    enclosure VARCHAR(10),
+    escape_char VARCHAR(10),
+    encoding VARCHAR(50) DEFAULT 'UTF-8',
+    
+    -- Header handling
+    has_header BOOLEAN DEFAULT TRUE,
+    header_row_num INT DEFAULT 1,
+    data_start_row INT DEFAULT 2,
+    footer_rows_skip INT DEFAULT 0,
+    
+    -- Date parsing
+    date_format VARCHAR(100), -- e.g., YYYY-MM-DD, MM/DD/YYYY
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    
+    -- Validation rules
+    required_columns JSON,
+    validation_rules JSON, -- Complex validation logic
+    
+    -- Processing logic
+    preprocessing_script TEXT, -- Clean/transform before parsing
+    postprocessing_script TEXT, -- Additional processing after parse
+    
+    -- Error handling
+    error_threshold_percentage DECIMAL(5,2) DEFAULT 5.00,
+    skip_on_error BOOLEAN DEFAULT TRUE,
+    quarantine_failed_rows BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    notes TEXT,
+    
+    UNIQUE KEY uk_dsp_report_parser (dsp_code, report_type, parser_version),
+    INDEX idx_active_parser (is_active, dsp_code, report_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: dsp_field_mapping
+-- Purpose: Map DSP-specific fields to ASTRO standard fields
+CREATE TABLE dsp_field_mapping (
+    mapping_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    parser_id CHAR(36) NOT NULL,
+    
+    -- Source (DSP) field
+    source_field_name VARCHAR(255) NOT NULL,
+    source_field_type VARCHAR(50), -- STRING, NUMBER, DATE, BOOLEAN
+    source_field_format VARCHAR(100), -- Additional format info
+    
+    -- Target (ASTRO) field
+    target_table VARCHAR(100) NOT NULL,
+    target_field VARCHAR(255) NOT NULL,
+    target_field_type VARCHAR(50),
+    
+    -- Transformation
+    transformation_type VARCHAR(50), -- DIRECT, CALCULATE, LOOKUP, CONCAT
+    transformation_rule TEXT, -- SQL expression or function
+    default_value VARCHAR(500),
+    
+    -- Validation
+    is_required BOOLEAN DEFAULT FALSE,
+    validation_regex VARCHAR(500),
+    allowed_values JSON,
+    
+    -- Metadata
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_parser_mapping (parser_id, source_field_name),
+    INDEX idx_target_field (target_table, target_field),
+    FOREIGN KEY (parser_id) REFERENCES dsp_report_parser(parser_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- PLATFORM-SPECIFIC TABLES
+-- =====================================================
+
+-- Table: spotify_for_artists
+-- Purpose: Spotify-specific analytics and features
+CREATE TABLE spotify_for_artists (
+    spotify_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    report_date DATE NOT NULL,
+    
+    -- Spotify identifiers
+    spotify_uri VARCHAR(255),
+    spotify_track_id VARCHAR(100),
+    spotify_album_id VARCHAR(100),
+    spotify_artist_id VARCHAR(100),
+    
+    -- Streaming metrics
+    total_streams BIGINT DEFAULT 0,
+    unique_listeners INT DEFAULT 0,
+    saves INT DEFAULT 0,
+    playlist_adds INT DEFAULT 0,
+    
+    -- Engagement metrics
+    average_listen_time_ms INT,
+    completion_rate DECIMAL(5,2),
+    skip_rate DECIMAL(5,2),
+    repeat_listens INT DEFAULT 0,
+    
+    -- Discovery
+    discover_weekly_adds INT DEFAULT 0,
+    release_radar_adds INT DEFAULT 0,
+    radio_plays INT DEFAULT 0,
+    algorithmic_plays INT DEFAULT 0,
+    
+    -- Playlist performance
+    playlist_reach BIGINT DEFAULT 0,
+    editorial_playlist_adds INT DEFAULT 0,
+    user_playlist_adds INT DEFAULT 0,
+    top_playlists JSON, -- [{name, followers, position, streams}]
+    
+    -- Demographics
+    top_cities JSON, -- [{city, country, listeners, streams}]
+    age_ranges JSON, -- [{range, percentage}]
+    gender_split JSON, -- {male: %, female: %, other: %}
+    
+    -- Viral metrics
+    viral_chart_position INT,
+    viral_chart_country VARCHAR(10),
+    social_shares INT DEFAULT 0,
+    
+    -- Canvas and features
+    canvas_enabled BOOLEAN DEFAULT FALSE,
+    canvas_views INT DEFAULT 0,
+    storyline_enabled BOOLEAN DEFAULT FALSE,
+    behind_the_lyrics_enabled BOOLEAN DEFAULT FALSE,
+    
+    -- Revenue
+    estimated_revenue DECIMAL(10,2),
+    premium_streams BIGINT DEFAULT 0,
+    ad_supported_streams BIGINT DEFAULT 0,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_spotify_asset_date (asset_id, report_date),
+    INDEX idx_account_date (account_id, report_date),
+    INDEX idx_spotify_ids (spotify_track_id, spotify_artist_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: apple_music_analytics
+-- Purpose: Apple Music for Artists data
+CREATE TABLE apple_music_analytics (
+    apple_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    report_date DATE NOT NULL,
+    
+    -- Apple identifiers
+    apple_music_id VARCHAR(100),
+    apple_album_id VARCHAR(100),
+    apple_artist_id VARCHAR(100),
+    upc VARCHAR(20),
+    
+    -- Play metrics
+    total_plays BIGINT DEFAULT 0,
+    unique_listeners INT DEFAULT 0,
+    average_daily_listeners INT DEFAULT 0,
+    total_minutes_played BIGINT DEFAULT 0,
+    
+    -- Engagement
+    loves INT DEFAULT 0,
+    dislikes INT DEFAULT 0,
+    library_adds INT DEFAULT 0,
+    playlist_adds INT DEFAULT 0,
+    
+    -- Discovery
+    browse_plays BIGINT DEFAULT 0,
+    radio_plays BIGINT DEFAULT 0,
+    search_plays BIGINT DEFAULT 0,
+    library_plays BIGINT DEFAULT 0,
+    playlist_plays BIGINT DEFAULT 0,
+    
+    -- Shazam integration
+    shazam_count INT DEFAULT 0,
+    shazam_cities JSON, -- Top cities from Shazam
+    
+    -- Geographic data
+    top_countries JSON, -- [{country, plays, listeners}]
+    top_cities JSON, -- [{city, state, country, plays}]
+    
+    -- Device breakdown
+    iphone_plays BIGINT DEFAULT 0,
+    ipad_plays BIGINT DEFAULT 0,
+    mac_plays BIGINT DEFAULT 0,
+    apple_tv_plays BIGINT DEFAULT 0,
+    homepod_plays BIGINT DEFAULT 0,
+    carplay_plays BIGINT DEFAULT 0,
+    
+    -- Features
+    lyrics_views INT DEFAULT 0,
+    music_video_views INT DEFAULT 0,
+    
+    -- Revenue
+    estimated_revenue DECIMAL(10,2),
+    downloads INT DEFAULT 0,
+    download_revenue DECIMAL(10,2),
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_apple_asset_date (asset_id, report_date),
+    INDEX idx_account_date (account_id, report_date),
+    INDEX idx_apple_ids (apple_music_id, apple_artist_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: youtube_content_id
+-- Purpose: YouTube Content ID claims and analytics
+CREATE TABLE youtube_content_id (
+    youtube_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    
+    -- YouTube identifiers
+    youtube_asset_id VARCHAR(100),
+    youtube_video_id VARCHAR(100),
+    claim_id VARCHAR(100),
+    channel_id VARCHAR(100),
+    
+    -- Claim details
+    claim_type VARCHAR(50) NOT NULL, -- VISUAL, AUDIO, AUDIOVISUAL
+    claim_status VARCHAR(50) NOT NULL, -- ACTIVE, RELEASED, DISPUTED, PENDING
+    claim_origin VARCHAR(50), -- MANUAL, AUTOMATIC, PARTNER
+    match_duration_seconds INT,
+    match_percentage DECIMAL(5,2),
+    
+    -- Content details
+    video_title VARCHAR(500),
+    video_duration_seconds INT,
+    upload_date DATE,
+    channel_name VARCHAR(255),
+    channel_subscribers BIGINT,
+    
+    -- Policy
+    policy_type VARCHAR(50), -- MONETIZE, TRACK, BLOCK
+    territory_policy JSON, -- Different policies per territory
+    
+    -- Performance metrics
+    views BIGINT DEFAULT 0,
+    watch_time_hours BIGINT DEFAULT 0,
+    estimated_revenue DECIMAL(10,2),
+    ad_revenue DECIMAL(10,2),
+    youtube_premium_revenue DECIMAL(10,2),
+    
+    -- Engagement
+    likes INT DEFAULT 0,
+    dislikes INT DEFAULT 0,
+    comments INT DEFAULT 0,
+    shares INT DEFAULT 0,
+    
+    -- Geographic data
+    top_countries JSON,
+    territory_views JSON,
+    
+    -- Dispute handling
+    dispute_status VARCHAR(50),
+    dispute_reason TEXT,
+    dispute_filed_at DATETIME,
+    dispute_resolved_at DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_checked_at DATETIME,
+    
+    INDEX idx_account_asset (account_id, asset_id),
+    INDEX idx_claim_status (claim_status, policy_type),
+    INDEX idx_youtube_ids (youtube_video_id, claim_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: amazon_music_data
+-- Purpose: Amazon Music for Artists metrics
+CREATE TABLE amazon_music_data (
+    amazon_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    report_date DATE NOT NULL,
+    
+    -- Amazon identifiers
+    asin VARCHAR(100), -- Amazon Standard Identification Number
+    amazon_track_id VARCHAR(100),
+    amazon_album_id VARCHAR(100),
+    
+    -- Streaming metrics
+    total_streams BIGINT DEFAULT 0,
+    unique_customers INT DEFAULT 0,
+    prime_streams BIGINT DEFAULT 0,
+    unlimited_streams BIGINT DEFAULT 0,
+    hd_streams BIGINT DEFAULT 0,
+    
+    -- Engagement
+    library_adds INT DEFAULT 0,
+    playlist_adds INT DEFAULT 0,
+    station_adds INT DEFAULT 0,
+    
+    -- Voice requests
+    alexa_requests INT DEFAULT 0,
+    voice_initiated_streams INT DEFAULT 0,
+    top_voice_queries JSON,
+    
+    -- Discovery
+    recommendation_streams BIGINT DEFAULT 0,
+    search_streams BIGINT DEFAULT 0,
+    browse_streams BIGINT DEFAULT 0,
+    
+    -- Geographic
+    top_countries JSON,
+    top_cities JSON,
+    
+    -- Device breakdown
+    echo_streams BIGINT DEFAULT 0,
+    mobile_streams BIGINT DEFAULT 0,
+    web_streams BIGINT DEFAULT 0,
+    fire_tv_streams BIGINT DEFAULT 0,
+    
+    -- Revenue
+    estimated_revenue DECIMAL(10,2),
+    digital_sales INT DEFAULT 0,
+    digital_sales_revenue DECIMAL(10,2),
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY uk_amazon_asset_date (asset_id, report_date),
+    INDEX idx_account_date (account_id, report_date),
+    INDEX idx_asin (asin),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: tiktok_sound
+-- Purpose: TikTok sound usage and virality metrics
+CREATE TABLE tiktok_sound (
+    tiktok_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36) NOT NULL,
+    asset_id CHAR(36) NOT NULL,
+    
+    -- TikTok identifiers
+    sound_id VARCHAR(100),
+    sound_name VARCHAR(500),
+    isrc VARCHAR(20),
+    
+    -- Usage metrics
+    total_videos BIGINT DEFAULT 0,
+    total_views BIGINT DEFAULT 0,
+    total_likes BIGINT DEFAULT 0,
+    total_shares BIGINT DEFAULT 0,
+    total_comments BIGINT DEFAULT 0,
+    
+    -- Creator metrics
+    unique_creators INT DEFAULT 0,
+    verified_creators INT DEFAULT 0,
+    top_creators JSON, -- [{username, followers, video_views}]
+    
+    -- Viral metrics
+    trending_position INT,
+    trending_country VARCHAR(10),
+    viral_coefficient DECIMAL(5,2), -- Growth rate
+    peak_daily_videos INT,
+    peak_date DATE,
+    
+    -- Content analysis
+    top_hashtags JSON,
+    content_categories JSON,
+    average_video_duration_seconds INT,
+    
+    -- Geographic distribution
+    top_countries JSON,
+    territory_breakdown JSON,
+    
+    -- Engagement rates
+    average_completion_rate DECIMAL(5,2),
+    average_loop_count DECIMAL(5,2),
+    engagement_rate DECIMAL(5,2),
+    
+    -- UGC rights
+    ugc_policy VARCHAR(50), -- ALLOWED, RESTRICTED, BLOCKED
+    commercial_use_allowed BOOLEAN DEFAULT TRUE,
+    
+    -- Revenue
+    estimated_revenue DECIMAL(10,2),
+    creator_fund_eligible BOOLEAN DEFAULT FALSE,
+    
+    -- Temporal data
+    first_use_date DATE,
+    last_use_date DATE,
+    days_trending INT DEFAULT 0,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_synced_at DATETIME,
+    
+    INDEX idx_account_asset (account_id, asset_id),
+    INDEX idx_sound_id (sound_id),
+    INDEX idx_trending (trending_position, trending_country),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MONITORING TABLES
+-- =====================================================
+
+-- Table: dsp_error_log
+-- Purpose: Log API errors, delivery failures, and parsing issues
+CREATE TABLE dsp_error_log (
+    error_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    account_id CHAR(36),
+    error_type VARCHAR(50) NOT NULL, -- API_ERROR, DELIVERY_FAILURE, PARSE_ERROR, AUTH_ERROR
+    error_source VARCHAR(100) NOT NULL, -- API endpoint or process name
+    
+    -- Error details
+    error_code VARCHAR(100),
+    error_message TEXT,
+    error_details JSON,
+    stack_trace TEXT,
+    
+    -- Context
+    request_id VARCHAR(255),
+    delivery_id CHAR(36),
+    report_id CHAR(36),
+    api_endpoint VARCHAR(500),
+    http_method VARCHAR(20),
+    
+    -- Request/Response
+    request_headers JSON,
+    request_body TEXT,
+    response_code INT,
+    response_headers JSON,
+    response_body TEXT,
+    
+    -- Timing
+    occurred_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    request_duration_ms INT,
+    
+    -- Resolution
+    is_resolved BOOLEAN DEFAULT FALSE,
+    resolved_at DATETIME,
+    resolved_by CHAR(36),
+    resolution_notes TEXT,
+    
+    -- Impact
+    severity VARCHAR(50) DEFAULT 'MEDIUM', -- LOW, MEDIUM, HIGH, CRITICAL
+    affected_items INT DEFAULT 0,
+    requires_manual_intervention BOOLEAN DEFAULT FALSE,
+    
+    -- Retry information
+    retry_count INT DEFAULT 0,
+    is_retryable BOOLEAN DEFAULT TRUE,
+    next_retry_at DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    environment VARCHAR(50), -- PRODUCTION, STAGING, DEVELOPMENT
+    server_id VARCHAR(100),
+    
+    INDEX idx_account_errors (account_id, error_type, occurred_at),
+    INDEX idx_unresolved (is_resolved, severity, occurred_at),
+    INDEX idx_error_source (error_source, error_type),
+    INDEX idx_delivery_errors (delivery_id),
+    INDEX idx_report_errors (report_id),
+    FOREIGN KEY (account_id) REFERENCES dsp_account(account_id),
+    FOREIGN KEY (delivery_id) REFERENCES dsp_delivery(delivery_id),
+    FOREIGN KEY (report_id) REFERENCES dsp_report(report_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- INITIAL CONFIGURATION DATA
+-- =====================================================
+
+-- Insert DSP configurations
+INSERT INTO dsp_territory_setting (dsp_code, territory_code, is_available, default_currency, lead_time_days, pre_order_allowed, max_pre_order_days, required_metadata_fields) VALUES
+-- Spotify
+('SPOTIFY', 'US', TRUE, 'USD', 5, TRUE, 90, '["title", "artist", "isrc", "language", "genre", "release_date"]'),
+('SPOTIFY', 'GB', TRUE, 'GBP', 5, TRUE, 90, '["title", "artist", "isrc", "language", "genre", "release_date"]'),
+('SPOTIFY', 'JP', TRUE, 'JPY', 7, TRUE, 60, '["title", "artist", "isrc", "language", "genre", "release_date", "romanized_title"]'),
+-- Apple Music
+('APPLE_MUSIC', 'US', TRUE, 'USD', 7, TRUE, 365, '["title", "artist", "isrc", "upc", "language", "genre", "release_date", "copyright"]'),
+('APPLE_MUSIC', 'CN', TRUE, 'CNY', 10, TRUE, 90, '["title", "artist", "isrc", "upc", "language", "genre", "release_date", "copyright", "censorship_cert"]'),
+-- YouTube Music
+('YOUTUBE_MUSIC', 'US', TRUE, 'USD', 3, FALSE, 0, '["title", "artist", "isrc", "language", "genre"]'),
+('YOUTUBE_MUSIC', 'IN', TRUE, 'INR', 3, FALSE, 0, '["title", "artist", "isrc", "language", "genre", "content_rating"]');
+
+-- Insert pricing tiers
+INSERT INTO dsp_pricing_tier (dsp_code, tier_name, tier_type, monthly_price, currency, ad_supported, audio_quality, max_bitrate_kbps, revenue_share_percentage) VALUES
+-- Spotify tiers
+('SPOTIFY', 'Spotify Free', 'FREE', 0.00, 'USD', TRUE, 'NORMAL', 160, 65.00),
+('SPOTIFY', 'Spotify Premium', 'PREMIUM', 9.99, 'USD', FALSE, 'HIGH', 320, 70.00),
+('SPOTIFY', 'Spotify Family', 'FAMILY', 14.99, 'USD', FALSE, 'HIGH', 320, 70.00),
+-- Apple Music tiers
+('APPLE_MUSIC', 'Individual', 'PREMIUM', 9.99, 'USD', FALSE, 'LOSSLESS', 1411, 71.50),
+('APPLE_MUSIC', 'Family', 'FAMILY', 14.99, 'USD', FALSE, 'LOSSLESS', 1411, 71.50),
+-- YouTube Music tiers
+('YOUTUBE_MUSIC', 'Free', 'FREE', 0.00, 'USD', TRUE, 'NORMAL', 128, 55.00),
+('YOUTUBE_MUSIC', 'Premium', 'PREMIUM', 9.99, 'USD', FALSE, 'HIGH', 256, 68.00);
+
+-- Insert payout rates
+INSERT INTO dsp_payout_rate (dsp_code, territory_code, effective_date, rate_type, stream_rate, currency, user_type, source) VALUES
+-- Spotify rates
+('SPOTIFY', 'US', '2025-01-01', 'PER_STREAM', 0.003000, 'USD', 'PAID', 'ESTIMATED'),
+('SPOTIFY', 'US', '2025-01-01', 'PER_STREAM', 0.001200, 'USD', 'FREE', 'ESTIMATED'),
+-- Apple Music rates
+('APPLE_MUSIC', 'US', '2025-01-01', 'PER_STREAM', 0.007500, 'USD', 'PAID', 'OFFICIAL'),
+-- YouTube Music rates
+('YOUTUBE_MUSIC', 'US', '2025-01-01', 'PER_STREAM', 0.000800, 'USD', 'FREE', 'ESTIMATED'),
+('YOUTUBE_MUSIC', 'US', '2025-01-01', 'PER_STREAM', 0.005000, 'USD', 'PAID', 'ESTIMATED');
+
+-- Insert report parsers
+INSERT INTO dsp_report_parser (dsp_code, report_type, parser_version, file_format, delimiter, has_header, date_format, required_columns) VALUES
+('SPOTIFY', 'STREAMING', '2.0', 'CSV', ',', TRUE, 'YYYY-MM-DD', '["ISRC", "Track Name", "Artist", "Streams", "Country", "Date"]'),
+('APPLE_MUSIC', 'TRENDS', '1.0', 'TSV', '\t', TRUE, 'MM/DD/YYYY', '["Song_ID", "Song_Name", "Artist_Name", "Plays", "Territory", "Date"]'),
+('YOUTUBE_MUSIC', 'ANALYTICS', '3.1', 'JSON', NULL, FALSE, 'ISO8601', '["video_id", "asset_id", "views", "watch_time", "estimated_revenue"]');
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+DELIMITER //
+
+-- Procedure: Process DSP delivery
+CREATE PROCEDURE sp_process_dsp_delivery(
+    IN p_delivery_id CHAR(36)
+)
+BEGIN
+    DECLARE v_account_id CHAR(36);
+    DECLARE v_dsp_code VARCHAR(50);
+    DECLARE v_item_count INT;
+    DECLARE v_validated_count INT;
+    
+    -- Get delivery details
+    SELECT d.account_id, da.dsp_code, 
+           COUNT(DISTINCT di.item_id) as item_count
+    INTO v_account_id, v_dsp_code, v_item_count
+    FROM dsp_delivery d
+    JOIN dsp_account da ON d.account_id = da.account_id
+    LEFT JOIN dsp_delivery_item di ON d.delivery_id = di.delivery_id
+    WHERE d.delivery_id = p_delivery_id
+    GROUP BY d.account_id, da.dsp_code;
+    
+    -- Start transaction
+    START TRANSACTION;
+    
+    -- Update delivery status
+    UPDATE dsp_delivery 
+    SET delivery_status = 'VALIDATING',
+        started_at = NOW(),
+        total_items = v_item_count
+    WHERE delivery_id = p_delivery_id;
+    
+    -- Run validation rules
+    INSERT INTO dsp_delivery_validation (
+        delivery_id, item_id, validation_type, validation_status,
+        rule_name, severity, dsp_code
+    )
+    SELECT 
+        di.delivery_id,
+        di.item_id,
+        'METADATA',
+        CASE 
+            WHEN di.isrc IS NULL OR di.isrc = '' THEN 'FAILED'
+            WHEN LENGTH(di.isrc) != 12 THEN 'WARNING'
+            ELSE 'PASSED'
+        END,
+        'ISRC Validation',
+        CASE 
+            WHEN di.isrc IS NULL OR di.isrc = '' THEN 'ERROR'
+            ELSE 'WARNING'
+        END,
+        v_dsp_code
+    FROM dsp_delivery_item di
+    WHERE di.delivery_id = p_delivery_id;
+    
+    -- Check validation results
+    SELECT COUNT(*) INTO v_validated_count
+    FROM dsp_delivery_validation
+    WHERE delivery_id = p_delivery_id
+    AND validation_status = 'FAILED'
+    AND is_blocking = TRUE;
+    
+    -- Update delivery status based on validation
+    IF v_validated_count > 0 THEN
+        UPDATE dsp_delivery
+        SET delivery_status = 'FAILED',
+            completed_at = NOW(),
+            failed_items = v_validated_count
+        WHERE delivery_id = p_delivery_id;
+    ELSE
+        UPDATE dsp_delivery
+        SET delivery_status = 'QUEUED'
+        WHERE delivery_id = p_delivery_id;
+        
+        -- Queue for actual delivery
+        -- This would trigger the delivery process
+    END IF;
+    
+    COMMIT;
+END//
+
+-- Procedure: Aggregate streaming analytics
+CREATE PROCEDURE sp_aggregate_streaming_analytics(
+    IN p_date DATE
+)
+BEGIN
+    DECLARE v_total_streams BIGINT DEFAULT 0;
+    DECLARE v_total_revenue DECIMAL(15,2) DEFAULT 0;
+    
+    -- Aggregate Spotify data
+    INSERT INTO analytics_daily_summary (
+        date, platform, metric_type, metric_value, asset_count
+    )
+    SELECT 
+        p_date,
+        'SPOTIFY',
+        'TOTAL_STREAMS',
+        SUM(total_streams),
+        COUNT(DISTINCT asset_id)
+    FROM spotify_for_artists
+    WHERE report_date = p_date
+    GROUP BY report_date;
+    
+    -- Aggregate Apple Music data
+    INSERT INTO analytics_daily_summary (
+        date, platform, metric_type, metric_value, asset_count
+    )
+    SELECT 
+        p_date,
+        'APPLE_MUSIC',
+        'TOTAL_PLAYS',
+        SUM(total_plays),
+        COUNT(DISTINCT asset_id)
+    FROM apple_music_analytics
+    WHERE report_date = p_date
+    GROUP BY report_date;
+    
+    -- Calculate cross-platform totals
+    SELECT 
+        COALESCE(SUM(s.total_streams), 0) + 
+        COALESCE(SUM(a.total_plays), 0),
+        COALESCE(SUM(s.estimated_revenue), 0) + 
+        COALESCE(SUM(a.estimated_revenue), 0)
+    INTO v_total_streams, v_total_revenue
+    FROM spotify_for_artists s
+    FULL OUTER JOIN apple_music_analytics a 
+        ON s.asset_id = a.asset_id 
+        AND s.report_date = a.report_date
+    WHERE s.report_date = p_date OR a.report_date = p_date;
+    
+    -- Log summary
+    INSERT INTO platform_analytics_log (
+        log_date, total_streams, total_revenue, platforms_processed
+    ) VALUES (
+        p_date, v_total_streams, v_total_revenue, 
+        JSON_ARRAY('SPOTIFY', 'APPLE_MUSIC')
+    );
+END//
+
+-- Procedure: Calculate platform royalties
+CREATE PROCEDURE sp_calculate_platform_royalties(
+    IN p_account_id CHAR(36),
+    IN p_start_date DATE,
+    IN p_end_date DATE
+)
+BEGIN
+    DECLARE v_dsp_code VARCHAR(50);
+    DECLARE v_total_royalties DECIMAL(15,2) DEFAULT 0;
+    DECLARE done INT DEFAULT FALSE;
+    
+    -- Cursor for DSP accounts
+    DECLARE dsp_cursor CURSOR FOR
+        SELECT DISTINCT dsp_code 
+        FROM dsp_account 
+        WHERE account_id = p_account_id 
+        AND account_status = 'ACTIVE';
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    OPEN dsp_cursor;
+    
+    read_loop: LOOP
+        FETCH dsp_cursor INTO v_dsp_code;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- Calculate royalties per platform
+        IF v_dsp_code = 'SPOTIFY' THEN
+            INSERT INTO royalty_calculation (
+                asset_id, platform, period_start, period_end,
+                stream_count, rate_per_stream, total_royalty
+            )
+            SELECT 
+                s.asset_id,
+                'SPOTIFY',
+                p_start_date,
+                p_end_date,
+                SUM(s.total_streams),
+                AVG(r.stream_rate),
+                SUM(s.total_streams) * AVG(r.stream_rate)
+            FROM spotify_for_artists s
+            JOIN dsp_payout_rate r ON r.dsp_code = 'SPOTIFY'
+            WHERE s.account_id = p_account_id
+            AND s.report_date BETWEEN p_start_date AND p_end_date
+            AND r.effective_date <= s.report_date
+            AND (r.end_date IS NULL OR r.end_date >= s.report_date)
+            GROUP BY s.asset_id;
+        END IF;
+        
+        -- Add other platforms...
+    END LOOP;
+    
+    CLOSE dsp_cursor;
+    
+    -- Calculate total royalties
+    SELECT SUM(total_royalty) INTO v_total_royalties
+    FROM royalty_calculation
+    WHERE period_start = p_start_date
+    AND period_end = p_end_date;
+    
+    -- Return summary
+    SELECT v_total_royalties as total_platform_royalties;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS
+-- =====================================================
+
+-- View: Active DSP integrations summary
+CREATE VIEW v_active_dsp_integrations AS
+SELECT 
+    da.company_id,
+    da.dsp_code,
+    da.account_name,
+    da.account_status,
+    da.territory_scope,
+    COUNT(DISTINCT dd.delivery_id) as total_deliveries,
+    COUNT(DISTINCT CASE WHEN dd.delivery_status = 'COMPLETED' THEN dd.delivery_id END) as successful_deliveries,
+    MAX(dd.completed_at) as last_delivery,
+    COUNT(DISTINCT dr.report_id) as total_reports,
+    MAX(dr.report_period_end) as latest_report_date
+FROM dsp_account da
+LEFT JOIN dsp_delivery dd ON da.account_id = dd.account_id
+LEFT JOIN dsp_report dr ON da.account_id = dr.account_id
+WHERE da.is_deleted = FALSE
+GROUP BY da.company_id, da.dsp_code, da.account_name, da.account_status, da.territory_scope;
+
+-- View: Cross-platform analytics
+CREATE VIEW v_cross_platform_analytics AS
+SELECT 
+    a.asset_id,
+    a.title,
+    a.isrc,
+    DATE(COALESCE(s.report_date, am.report_date, y.last_checked_at)) as report_date,
+    COALESCE(s.total_streams, 0) as spotify_streams,
+    COALESCE(am.total_plays, 0) as apple_plays,
+    COALESCE(y.views, 0) as youtube_views,
+    COALESCE(t.total_videos, 0) as tiktok_videos,
+    COALESCE(s.estimated_revenue, 0) + 
+    COALESCE(am.estimated_revenue, 0) + 
+    COALESCE(y.estimated_revenue, 0) as total_revenue
+FROM assets a
+LEFT JOIN spotify_for_artists s ON a.asset_id = s.asset_id
+LEFT JOIN apple_music_analytics am ON a.asset_id = am.asset_id 
+    AND s.report_date = am.report_date
+LEFT JOIN youtube_content_id y ON a.asset_id = y.asset_id
+LEFT JOIN tiktok_sound t ON a.asset_id = t.asset_id
+WHERE a.asset_type = 'RECORDING';
+
+-- View: Platform payout comparison
+CREATE VIEW v_platform_payout_comparison AS
+SELECT 
+    dsp_code,
+    territory_code,
+    effective_date,
+    user_type,
+    stream_rate,
+    currency,
+    stream_rate * 1000 as rate_per_thousand,
+    RANK() OVER (PARTITION BY territory_code, effective_date 
+                 ORDER BY stream_rate DESC) as payout_rank
+FROM dsp_payout_rate
+WHERE end_date IS NULL
+AND rate_type = 'PER_STREAM';
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_delivery_scheduled ON dsp_delivery(scheduled_at, delivery_status);
+CREATE INDEX idx_report_processing ON dsp_report(processing_status, created_at);
+CREATE INDEX idx_error_recent ON dsp_error_log(occurred_at, is_resolved);
+CREATE INDEX idx_spotify_date_range ON spotify_for_artists(report_date, account_id);
+CREATE INDEX idx_apple_date_range ON apple_music_analytics(report_date, account_id);
+
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+
+DELIMITER //
+
+-- Trigger: Auto-validate delivery items
+CREATE TRIGGER trg_validate_delivery_item
+BEFORE INSERT ON dsp_delivery_item
+FOR EACH ROW
+BEGIN
+    -- Validate ISRC format
+    IF NEW.isrc IS NOT NULL AND LENGTH(NEW.isrc) != 12 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'ISRC must be exactly 12 characters';
+    END IF;
+    
+    -- Set default status
+    IF NEW.item_status IS NULL THEN
+        SET NEW.item_status = 'PENDING';
+    END IF;
+END//
+
+-- Trigger: Update delivery counts
+CREATE TRIGGER trg_update_delivery_counts
+AFTER UPDATE ON dsp_delivery_item
+FOR EACH ROW
+BEGIN
+    IF OLD.item_status != NEW.item_status THEN
+        UPDATE dsp_delivery d
+        SET 
+            successful_items = (
+                SELECT COUNT(*) FROM dsp_delivery_item 
+                WHERE delivery_id = NEW.delivery_id 
+                AND item_status = 'DELIVERED'
+            ),
+            failed_items = (
+                SELECT COUNT(*) FROM dsp_delivery_item 
+                WHERE delivery_id = NEW.delivery_id 
+                AND item_status IN ('FAILED', 'REJECTED')
+            )
+        WHERE d.delivery_id = NEW.delivery_id;
+    END IF;
+END//
+
+DELIMITER ;
+
+-- =====================================================
+-- GRANTS (Example - adjust to your security model)
+-- =====================================================
+
+-- GRANT SELECT, INSERT, UPDATE ON astro_platform.dsp_* TO 'astro_app'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_platform.sp_process_dsp_delivery TO 'astro_app'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_platform.sp_aggregate_streaming_analytics TO 'astro_app'@'%';
+
+-- =====================================================
+-- Section 16: USER & ACCESS TABLES
+-- =====================================================
+
+-- =====================================================
+-- CORE USER MANAGEMENT
+-- =====================================================
+
+-- User table: Core user information
+CREATE TABLE user (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    email_verified BOOLEAN DEFAULT FALSE,
+    username VARCHAR(100) UNIQUE,
+    display_name VARCHAR(255) NOT NULL,
+    
+    -- Profile information
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    phone_number VARCHAR(50),
+    phone_verified BOOLEAN DEFAULT FALSE,
+    avatar_url VARCHAR(500),
+    bio TEXT,
+    
+    -- Account status
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, ACTIVE, SUSPENDED, DEACTIVATED
+    account_type VARCHAR(50) NOT NULL, -- ARTIST, SONGWRITER, PUBLISHER, LABEL, MANAGER, LAWYER, ACCOUNTANT, ADMIN
+    subscription_tier VARCHAR(50) DEFAULT 'LAUNCHPAD', -- LAUNCHPAD, ASCEND, PRO, ENTERPRISE
+    
+    -- Security settings
+    security_level VARCHAR(50) DEFAULT 'STANDARD', -- STANDARD, ENHANCED, MAXIMUM
+    require_mfa BOOLEAN DEFAULT FALSE,
+    password_expires_at DATETIME(6),
+    last_password_change DATETIME(6),
+    
+    -- Compliance
+    terms_accepted_at DATETIME(6),
+    terms_version VARCHAR(20),
+    privacy_accepted_at DATETIME(6),
+    privacy_version VARCHAR(20),
+    data_residency_region VARCHAR(50), -- US, EU, APAC, etc.
+    age_verified BOOLEAN DEFAULT FALSE,
+    age_verified_at DATETIME(6),
+    
+    -- Blockchain integration
+    primary_wallet_address VARCHAR(255),
+    wallet_verified BOOLEAN DEFAULT FALSE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by CHAR(36),
+    last_login_at DATETIME(6),
+    last_activity_at DATETIME(6),
+    login_count INT DEFAULT 0,
+    
+    -- Soft delete
+    deleted_at DATETIME(6),
+    deleted_by CHAR(36),
+    
+    INDEX idx_user_email (email),
+    INDEX idx_user_username (username),
+    INDEX idx_user_status (status),
+    INDEX idx_user_account_type (account_type),
+    INDEX idx_user_last_activity (last_activity_at),
+    INDEX idx_user_created_at (created_at),
+    INDEX idx_user_wallet (primary_wallet_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User credentials: Secure password and MFA storage
+CREATE TABLE user_credential (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Password (hashed with Argon2id)
+    password_hash VARCHAR(255),
+    password_salt VARCHAR(255),
+    password_algorithm VARCHAR(50) DEFAULT 'ARGON2ID',
+    
+    -- Multi-factor authentication (encrypted)
+    mfa_secret_encrypted TEXT, -- TOTP secret, AES-256 encrypted
+    mfa_backup_codes_encrypted TEXT, -- JSON array of backup codes, encrypted
+    mfa_enabled BOOLEAN DEFAULT FALSE,
+    mfa_method VARCHAR(50), -- TOTP, SMS, WEBAUTHN, EMAIL
+    
+    -- WebAuthn/FIDO2 credentials (for hardware keys)
+    webauthn_credentials_encrypted TEXT, -- JSON array of registered devices
+    
+    -- Recovery
+    recovery_email VARCHAR(255),
+    recovery_email_verified BOOLEAN DEFAULT FALSE,
+    recovery_phone VARCHAR(50),
+    recovery_phone_verified BOOLEAN DEFAULT FALSE,
+    
+    -- Password history (encrypted)
+    password_history_encrypted TEXT, -- JSON array of previous hashes
+    
+    -- Security questions (encrypted)
+    security_questions_encrypted TEXT, -- JSON array of Q&A pairs
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_credential (user_id),
+    INDEX idx_credential_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User security log: Track all security-related events
+CREATE TABLE user_security_log (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36),
+    event_type VARCHAR(100) NOT NULL, -- LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGED, MFA_ENABLED, etc.
+    event_status VARCHAR(50) NOT NULL, -- SUCCESS, FAILED, BLOCKED
+    
+    -- Context
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    device_fingerprint VARCHAR(255),
+    geolocation JSON, -- {country, region, city, lat, lon}
+    
+    -- Risk assessment
+    risk_score DECIMAL(5,2), -- 0-100
+    risk_factors JSON, -- [{factor: "new_location", score: 20}, ...]
+    action_taken VARCHAR(100), -- ALLOWED, CHALLENGED, BLOCKED
+    
+    -- Additional data
+    failure_reason VARCHAR(255),
+    metadata JSON,
+    
+    -- Timestamp
+    occurred_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    INDEX idx_security_log_user (user_id),
+    INDEX idx_security_log_event (event_type),
+    INDEX idx_security_log_occurred (occurred_at),
+    INDEX idx_security_log_ip (ip_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(occurred_at)) (
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- User wallet: Blockchain wallet management
+CREATE TABLE user_wallet (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Wallet details
+    wallet_address VARCHAR(255) NOT NULL,
+    wallet_type VARCHAR(50) NOT NULL, -- ETHEREUM, SOLANA, POLYGON, etc.
+    wallet_name VARCHAR(100),
+    is_primary BOOLEAN DEFAULT FALSE,
+    
+    -- Verification
+    verified BOOLEAN DEFAULT FALSE,
+    verified_at DATETIME(6),
+    verification_signature TEXT,
+    
+    -- Permissions
+    can_sign_transactions BOOLEAN DEFAULT TRUE,
+    can_receive_royalties BOOLEAN DEFAULT TRUE,
+    daily_transaction_limit DECIMAL(20,8),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    last_used_at DATETIME(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_wallet_address (wallet_address, wallet_type),
+    INDEX idx_wallet_user (user_id),
+    INDEX idx_wallet_address (wallet_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- ACCESS CONTROL
+-- =====================================================
+
+-- User roles: Predefined and custom roles
+CREATE TABLE user_role (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    role_name VARCHAR(100) NOT NULL UNIQUE,
+    role_type VARCHAR(50) NOT NULL, -- SYSTEM, ORGANIZATION, CUSTOM
+    display_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    
+    -- Hierarchy
+    parent_role_id CHAR(36),
+    hierarchy_level INT DEFAULT 0,
+    
+    -- Scope
+    organization_id CHAR(36), -- NULL for system roles
+    is_assignable BOOLEAN DEFAULT TRUE,
+    max_assignments INT, -- Maximum users who can have this role
+    
+    -- Music industry specific
+    industry_category VARCHAR(100), -- CREATIVE, BUSINESS, ADMINISTRATIVE, TECHNICAL
+    can_manage_catalog BOOLEAN DEFAULT FALSE,
+    can_manage_royalties BOOLEAN DEFAULT FALSE,
+    can_sign_agreements BOOLEAN DEFAULT FALSE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by CHAR(36),
+    
+    FOREIGN KEY (parent_role_id) REFERENCES user_role(id),
+    INDEX idx_role_name (role_name),
+    INDEX idx_role_type (role_type),
+    INDEX idx_role_organization (organization_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User permissions: Granular permission definitions
+CREATE TABLE user_permission (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    permission_name VARCHAR(200) NOT NULL UNIQUE,
+    resource_type VARCHAR(100) NOT NULL, -- SONG, ALBUM, AGREEMENT, ROYALTY, USER, etc.
+    action VARCHAR(100) NOT NULL, -- VIEW, CREATE, UPDATE, DELETE, APPROVE, SIGN, etc.
+    
+    -- Permission details
+    display_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100), -- CATALOG, FINANCIAL, ADMINISTRATIVE, SECURITY
+    
+    -- Constraints
+    requires_mfa BOOLEAN DEFAULT FALSE,
+    requires_approval BOOLEAN DEFAULT FALSE,
+    risk_level VARCHAR(50) DEFAULT 'LOW', -- LOW, MEDIUM, HIGH, CRITICAL
+    
+    -- Scope modifiers (can be applied when granting)
+    supports_conditions BOOLEAN DEFAULT TRUE, -- Can have conditions attached
+    supports_delegation BOOLEAN DEFAULT TRUE, -- Can be delegated to others
+    supports_time_limit BOOLEAN DEFAULT TRUE, -- Can be time-limited
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    INDEX idx_permission_name (permission_name),
+    INDEX idx_permission_resource (resource_type),
+    INDEX idx_permission_action (action),
+    UNIQUE KEY unique_resource_action (resource_type, action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Role-permission mapping
+CREATE TABLE user_role_permission (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    role_id CHAR(36) NOT NULL,
+    permission_id CHAR(36) NOT NULL,
+    
+    -- Conditions
+    conditions JSON, -- {"territories": ["US", "CA"], "max_amount": 10000}
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by CHAR(36),
+    
+    FOREIGN KEY (role_id) REFERENCES user_role(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES user_permission(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_role_permission (role_id, permission_id),
+    INDEX idx_role_permission_role (role_id),
+    INDEX idx_role_permission_permission (permission_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User role assignments
+CREATE TABLE user_role_assignment (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    role_id CHAR(36) NOT NULL,
+    
+    -- Scope
+    organization_id CHAR(36),
+    team_id CHAR(36),
+    
+    -- Time limits
+    valid_from DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    valid_until DATETIME(6),
+    
+    -- Assignment details
+    assigned_by CHAR(36) NOT NULL,
+    assignment_reason TEXT,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES user_role(id),
+    FOREIGN KEY (assigned_by) REFERENCES user(id),
+    UNIQUE KEY unique_user_role_org (user_id, role_id, organization_id),
+    INDEX idx_role_assignment_user (user_id),
+    INDEX idx_role_assignment_role (role_id),
+    INDEX idx_role_assignment_active (is_active, valid_from, valid_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Direct permission grants (outside of roles)
+CREATE TABLE user_permission_grant (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    permission_id CHAR(36) NOT NULL,
+    
+    -- Specific resource (optional)
+    resource_type VARCHAR(100),
+    resource_id CHAR(36),
+    
+    -- Conditions
+    conditions JSON, -- {"territories": ["US"], "until": "2025-12-31"}
+    
+    -- Time limits
+    valid_from DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    valid_until DATETIME(6),
+    
+    -- Grant details
+    granted_by CHAR(36) NOT NULL,
+    grant_reason TEXT,
+    is_delegatable BOOLEAN DEFAULT FALSE,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES user_permission(id),
+    FOREIGN KEY (granted_by) REFERENCES user(id),
+    INDEX idx_permission_grant_user (user_id),
+    INDEX idx_permission_grant_permission (permission_id),
+    INDEX idx_permission_grant_resource (resource_type, resource_id),
+    INDEX idx_permission_grant_active (is_active, valid_from, valid_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- ORGANIZATION STRUCTURE
+-- =====================================================
+
+-- Organizations: Companies, labels, publishers
+CREATE TABLE user_organization (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    organization_name VARCHAR(255) NOT NULL,
+    organization_type VARCHAR(100) NOT NULL, -- LABEL, PUBLISHER, MANAGEMENT, DISTRIBUTOR, etc.
+    legal_name VARCHAR(255),
+    
+    -- Details
+    tax_id_encrypted TEXT, -- Encrypted tax ID
+    incorporation_country VARCHAR(2),
+    incorporation_date DATE,
+    
+    -- Contact
+    primary_email VARCHAR(255),
+    primary_phone VARCHAR(50),
+    website_url VARCHAR(500),
+    
+    -- Address
+    address_line1 VARCHAR(255),
+    address_line2 VARCHAR(255),
+    city VARCHAR(100),
+    state_province VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(2),
+    
+    -- Subscription
+    subscription_tier VARCHAR(50) DEFAULT 'PRO',
+    subscription_seats INT DEFAULT 5,
+    subscription_expires_at DATETIME(6),
+    
+    -- Settings
+    settings JSON, -- Organization-specific settings
+    branding JSON, -- Logo, colors, etc.
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, DEACTIVATED
+    verified BOOLEAN DEFAULT FALSE,
+    verified_at DATETIME(6),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by CHAR(36),
+    
+    INDEX idx_organization_name (organization_name),
+    INDEX idx_organization_type (organization_type),
+    INDEX idx_organization_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Organization members
+CREATE TABLE user_organization_member (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    organization_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    
+    -- Membership details
+    member_role VARCHAR(100) DEFAULT 'MEMBER', -- OWNER, ADMIN, MEMBER, GUEST
+    department VARCHAR(100),
+    title VARCHAR(255),
+    
+    -- Permissions
+    is_billing_contact BOOLEAN DEFAULT FALSE,
+    is_technical_contact BOOLEAN DEFAULT FALSE,
+    can_invite_members BOOLEAN DEFAULT FALSE,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, PENDING
+    joined_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    left_at DATETIME(6),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    invited_by CHAR(36),
+    
+    FOREIGN KEY (organization_id) REFERENCES user_organization(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_by) REFERENCES user(id),
+    UNIQUE KEY unique_org_member (organization_id, user_id),
+    INDEX idx_org_member_org (organization_id),
+    INDEX idx_org_member_user (user_id),
+    INDEX idx_org_member_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Teams within organizations
+CREATE TABLE user_team (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    organization_id CHAR(36) NOT NULL,
+    team_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    
+    -- Team type
+    team_type VARCHAR(100), -- A&R, MARKETING, LEGAL, FINANCE, etc.
+    
+    -- Settings
+    settings JSON,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by CHAR(36),
+    
+    FOREIGN KEY (organization_id) REFERENCES user_organization(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_org_team (organization_id, team_name),
+    INDEX idx_team_org (organization_id),
+    INDEX idx_team_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Team members
+CREATE TABLE user_team_member (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    team_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    
+    -- Role in team
+    team_role VARCHAR(100) DEFAULT 'MEMBER', -- LEAD, MEMBER
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    joined_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    left_at DATETIME(6),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    added_by CHAR(36),
+    
+    FOREIGN KEY (team_id) REFERENCES user_team(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (added_by) REFERENCES user(id),
+    UNIQUE KEY unique_team_member (team_id, user_id),
+    INDEX idx_team_member_team (team_id),
+    INDEX idx_team_member_user (user_id),
+    INDEX idx_team_member_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User delegation: Temporary access delegation
+CREATE TABLE user_delegation (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    delegator_id CHAR(36) NOT NULL, -- Person granting access
+    delegate_id CHAR(36) NOT NULL, -- Person receiving access
+    
+    -- Delegation scope
+    delegation_type VARCHAR(100) NOT NULL, -- FULL_ACCESS, LIMITED_ACCESS, VACATION_COVERAGE
+    permissions JSON, -- Specific permissions being delegated
+    resource_restrictions JSON, -- Limit to specific songs, agreements, etc.
+    
+    -- Time bounds
+    valid_from DATETIME(6) NOT NULL,
+    valid_until DATETIME(6) NOT NULL,
+    
+    -- Reason
+    delegation_reason TEXT,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- ACTIVE, EXPIRED, REVOKED
+    revoked_at DATETIME(6),
+    revoked_by CHAR(36),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (delegator_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (delegate_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (revoked_by) REFERENCES user(id),
+    INDEX idx_delegation_delegator (delegator_id),
+    INDEX idx_delegation_delegate (delegate_id),
+    INDEX idx_delegation_active (status, valid_from, valid_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- AUTHENTICATION & SESSIONS
+-- =====================================================
+
+-- User sessions: Active login sessions
+CREATE TABLE user_session (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Session details
+    session_token_hash VARCHAR(255) NOT NULL, -- Hashed session token
+    refresh_token_hash VARCHAR(255), -- Hashed refresh token
+    
+    -- Device/Client info
+    device_id CHAR(36),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    client_type VARCHAR(50), -- WEB, MOBILE_IOS, MOBILE_ANDROID, API
+    client_version VARCHAR(20),
+    
+    -- Location
+    geolocation JSON, -- {country, region, city, lat, lon}
+    
+    -- Session properties
+    is_active BOOLEAN DEFAULT TRUE,
+    expires_at DATETIME(6) NOT NULL,
+    last_activity_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    activity_count INT DEFAULT 0,
+    
+    -- Security
+    security_level VARCHAR(50), -- STANDARD, ELEVATED (after MFA)
+    mfa_verified_at DATETIME(6),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    terminated_at DATETIME(6),
+    termination_reason VARCHAR(100), -- LOGOUT, TIMEOUT, SECURITY, ADMIN
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_session_token (session_token_hash),
+    INDEX idx_session_user (user_id),
+    INDEX idx_session_active (is_active, expires_at),
+    INDEX idx_session_device (device_id),
+    INDEX idx_session_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User devices: Trusted devices for 2FA
+CREATE TABLE user_device (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Device identification
+    device_fingerprint VARCHAR(255) NOT NULL,
+    device_name VARCHAR(100),
+    device_type VARCHAR(50), -- DESKTOP, MOBILE, TABLET
+    
+    -- Device details
+    operating_system VARCHAR(100),
+    browser VARCHAR(100),
+    
+    -- Trust status
+    is_trusted BOOLEAN DEFAULT FALSE,
+    trusted_at DATETIME(6),
+    trust_expires_at DATETIME(6),
+    
+    -- Usage
+    last_used_at DATETIME(6),
+    usage_count INT DEFAULT 0,
+    
+    -- Push notifications
+    push_token_encrypted TEXT, -- FCM/APNS token, encrypted
+    push_enabled BOOLEAN DEFAULT FALSE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_device (user_id, device_fingerprint),
+    INDEX idx_device_user (user_id),
+    INDEX idx_device_trusted (is_trusted),
+    INDEX idx_device_last_used (last_used_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User invitations: Pending invitations to join
+CREATE TABLE user_invitation (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    
+    -- Invitation details
+    email VARCHAR(255) NOT NULL,
+    invitation_token_hash VARCHAR(255) NOT NULL UNIQUE,
+    invitation_type VARCHAR(50) NOT NULL, -- ORGANIZATION, TEAM, COLLABORATION
+    
+    -- What they're being invited to
+    organization_id CHAR(36),
+    team_id CHAR(36),
+    role_id CHAR(36),
+    
+    -- Invitation message
+    personal_message TEXT,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'PENDING', -- PENDING, ACCEPTED, DECLINED, EXPIRED
+    expires_at DATETIME(6) NOT NULL,
+    
+    -- Response
+    accepted_at DATETIME(6),
+    declined_at DATETIME(6),
+    accepted_by_user_id CHAR(36),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by CHAR(36) NOT NULL,
+    
+    FOREIGN KEY (organization_id) REFERENCES user_organization(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES user_team(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES user_role(id),
+    FOREIGN KEY (created_by) REFERENCES user(id),
+    INDEX idx_invitation_email (email),
+    INDEX idx_invitation_token (invitation_token_hash),
+    INDEX idx_invitation_status (status),
+    INDEX idx_invitation_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- USER EXPERIENCE
+-- =====================================================
+
+-- User preferences: UI and notification preferences
+CREATE TABLE user_preference (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- UI preferences
+    theme VARCHAR(50) DEFAULT 'LIGHT', -- LIGHT, DARK, AUTO
+    language VARCHAR(10) DEFAULT 'en', -- ISO 639-1
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    date_format VARCHAR(20) DEFAULT 'YYYY-MM-DD',
+    currency VARCHAR(3) DEFAULT 'USD',
+    
+    -- Notification preferences
+    email_notifications JSON, -- {"royalty_payments": true, "new_agreements": false}
+    push_notifications JSON,
+    sms_notifications JSON,
+    in_app_notifications JSON,
+    
+    -- Dashboard preferences
+    default_dashboard VARCHAR(100),
+    dashboard_layout JSON,
+    favorite_sections JSON, -- ["catalog", "royalties", "analytics"]
+    
+    -- Privacy preferences
+    show_profile_publicly BOOLEAN DEFAULT FALSE,
+    allow_collaboration_requests BOOLEAN DEFAULT TRUE,
+    share_activity_status BOOLEAN DEFAULT TRUE,
+    
+    -- Music-specific preferences
+    default_territory VARCHAR(2) DEFAULT 'US',
+    preferred_pro VARCHAR(100), -- ASCAP, BMI, etc.
+    catalog_view_mode VARCHAR(50) DEFAULT 'GRID', -- GRID, LIST, COMPACT
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_preference (user_id),
+    INDEX idx_preference_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User notifications: In-app notifications
+CREATE TABLE user_notification (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Notification details
+    notification_type VARCHAR(100) NOT NULL, -- ROYALTY_PAYMENT, NEW_AGREEMENT, CATALOG_UPDATE, etc.
+    priority VARCHAR(50) DEFAULT 'NORMAL', -- LOW, NORMAL, HIGH, URGENT
+    
+    -- Content
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    action_url VARCHAR(500), -- Where to go when clicked
+    
+    -- Related entities
+    related_entity_type VARCHAR(100),
+    related_entity_id CHAR(36),
+    metadata JSON, -- Additional context
+    
+    -- Status
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at DATETIME(6),
+    is_archived BOOLEAN DEFAULT FALSE,
+    archived_at DATETIME(6),
+    
+    -- Delivery
+    delivered_via JSON, -- ["IN_APP", "EMAIL", "PUSH"]
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    expires_at DATETIME(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    INDEX idx_notification_user (user_id),
+    INDEX idx_notification_unread (user_id, is_read),
+    INDEX idx_notification_type (notification_type),
+    INDEX idx_notification_created (created_at),
+    INDEX idx_notification_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User activity log: Track user actions for audit
+CREATE TABLE user_activity_log (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    
+    -- Activity details
+    activity_type VARCHAR(100) NOT NULL, -- VIEWED_SONG, EDITED_AGREEMENT, DOWNLOADED_REPORT, etc.
+    activity_category VARCHAR(100), -- CATALOG, FINANCIAL, ADMINISTRATIVE
+    
+    -- Context
+    resource_type VARCHAR(100),
+    resource_id CHAR(36),
+    resource_name VARCHAR(255), -- For quick reference
+    
+    -- Action details
+    action VARCHAR(100) NOT NULL, -- VIEW, CREATE, UPDATE, DELETE, DOWNLOAD, EXPORT
+    previous_value JSON, -- For updates
+    new_value JSON,
+    
+    -- Session info
+    session_id CHAR(36),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    
+    -- Result
+    result_status VARCHAR(50) DEFAULT 'SUCCESS', -- SUCCESS, FAILED, PARTIAL
+    error_message TEXT,
+    
+    -- Performance
+    duration_ms INT, -- How long the action took
+    
+    -- Metadata
+    occurred_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    INDEX idx_activity_user (user_id),
+    INDEX idx_activity_type (activity_type),
+    INDEX idx_activity_resource (resource_type, resource_id),
+    INDEX idx_activity_occurred (occurred_at),
+    INDEX idx_activity_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(occurred_at)) (
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- =====================================================
+-- API MANAGEMENT
+-- =====================================================
+
+-- API keys: For third-party integrations
+CREATE TABLE api_key (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    organization_id CHAR(36),
+    
+    -- Key details
+    key_name VARCHAR(100) NOT NULL,
+    key_hash VARCHAR(255) NOT NULL UNIQUE, -- Hashed API key
+    key_prefix VARCHAR(20) NOT NULL, -- First few chars for identification
+    
+    -- Type and scope
+    key_type VARCHAR(50) NOT NULL, -- PERSONAL, ORGANIZATION, SERVICE
+    environment VARCHAR(50) DEFAULT 'PRODUCTION', -- SANDBOX, PRODUCTION
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, REVOKED
+    expires_at DATETIME(6),
+    
+    -- Usage stats
+    last_used_at DATETIME(6),
+    usage_count BIGINT DEFAULT 0,
+    
+    -- Restrictions
+    allowed_ips JSON, -- ["192.168.1.1", "10.0.0.0/8"]
+    allowed_origins JSON, -- ["https://example.com"]
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    revoked_at DATETIME(6),
+    revoked_by CHAR(36),
+    
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (organization_id) REFERENCES user_organization(id) ON DELETE CASCADE,
+    INDEX idx_api_key_user (user_id),
+    INDEX idx_api_key_org (organization_id),
+    INDEX idx_api_key_hash (key_hash),
+    INDEX idx_api_key_prefix (key_prefix),
+    INDEX idx_api_key_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- API permissions: What each API key can do
+CREATE TABLE api_permission (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    api_key_id CHAR(36) NOT NULL,
+    
+    -- Permission scope
+    endpoint_pattern VARCHAR(255) NOT NULL, -- /api/v1/songs/* or specific endpoint
+    http_methods JSON NOT NULL, -- ["GET", "POST"]
+    
+    -- Rate limits (overrides defaults)
+    rate_limit_per_minute INT,
+    rate_limit_per_hour INT,
+    rate_limit_per_day INT,
+    
+    -- Restrictions
+    allowed_fields JSON, -- For limiting response fields
+    denied_fields JSON, -- Fields to always exclude
+    max_results_per_request INT,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (api_key_id) REFERENCES api_key(id) ON DELETE CASCADE,
+    INDEX idx_api_permission_key (api_key_id),
+    INDEX idx_api_permission_endpoint (endpoint_pattern)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- API rate limits: Configure rate limiting
+CREATE TABLE api_rate_limit (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    
+    -- Scope
+    limit_type VARCHAR(50) NOT NULL, -- GLOBAL, USER, ORGANIZATION, API_KEY
+    limit_key VARCHAR(255), -- user_id, org_id, api_key_id, or NULL for global
+    
+    -- Limits
+    requests_per_minute INT,
+    requests_per_hour INT,
+    requests_per_day INT,
+    
+    -- Burst allowance
+    burst_size INT DEFAULT 10,
+    
+    -- Override for specific endpoints
+    endpoint_pattern VARCHAR(255),
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    UNIQUE KEY unique_rate_limit (limit_type, limit_key, endpoint_pattern),
+    INDEX idx_rate_limit_type (limit_type),
+    INDEX idx_rate_limit_key (limit_key),
+    INDEX idx_rate_limit_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- API usage log: Track all API calls
+CREATE TABLE api_usage_log (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    api_key_id CHAR(36),
+    
+    -- Request details
+    endpoint VARCHAR(500) NOT NULL,
+    http_method VARCHAR(10) NOT NULL,
+    request_headers JSON,
+    request_body_size INT,
+    
+    -- Response details
+    response_status_code INT,
+    response_body_size INT,
+    response_time_ms INT,
+    
+    -- Context
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    
+    -- Rate limiting
+    rate_limit_remaining INT,
+    rate_limit_reset_at DATETIME(6),
+    
+    -- Error info
+    error_type VARCHAR(100),
+    error_message TEXT,
+    
+    -- Metadata
+    requested_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    INDEX idx_api_usage_key (api_key_id),
+    INDEX idx_api_usage_endpoint (endpoint),
+    INDEX idx_api_usage_requested (requested_at),
+    INDEX idx_api_usage_status (response_status_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(requested_at)) (
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- =====================================================
+-- OAUTH INTEGRATION
+-- =====================================================
+
+-- OAuth clients: Third-party applications
+CREATE TABLE oauth_client (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    
+    -- Client details
+    client_id VARCHAR(255) NOT NULL UNIQUE,
+    client_secret_hash VARCHAR(255) NOT NULL,
+    client_name VARCHAR(255) NOT NULL,
+    client_type VARCHAR(50) NOT NULL, -- CONFIDENTIAL, PUBLIC
+    
+    -- OAuth settings
+    redirect_uris JSON NOT NULL, -- ["https://app.example.com/callback"]
+    allowed_grant_types JSON NOT NULL, -- ["authorization_code", "refresh_token"]
+    allowed_scopes JSON NOT NULL, -- ["read:catalog", "write:royalties"]
+    
+    -- Client info
+    logo_url VARCHAR(500),
+    homepage_url VARCHAR(500),
+    privacy_policy_url VARCHAR(500),
+    terms_of_service_url VARCHAR(500),
+    
+    -- Ownership
+    owner_user_id CHAR(36),
+    owner_organization_id CHAR(36),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, REVOKED
+    verified BOOLEAN DEFAULT FALSE,
+    
+    -- Usage stats
+    active_users INT DEFAULT 0,
+    total_authorizations BIGINT DEFAULT 0,
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (owner_user_id) REFERENCES user(id),
+    FOREIGN KEY (owner_organization_id) REFERENCES user_organization(id),
+    INDEX idx_oauth_client_id (client_id),
+    INDEX idx_oauth_client_owner_user (owner_user_id),
+    INDEX idx_oauth_client_owner_org (owner_organization_id),
+    INDEX idx_oauth_client_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- OAuth tokens: Access and refresh tokens
+CREATE TABLE oauth_token (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    
+    -- Token details
+    access_token_hash VARCHAR(255) NOT NULL UNIQUE,
+    refresh_token_hash VARCHAR(255) UNIQUE,
+    token_type VARCHAR(50) DEFAULT 'Bearer',
+    
+    -- Associations
+    client_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    
+    -- Scope and permissions
+    granted_scopes JSON NOT NULL, -- ["read:catalog", "write:royalties"]
+    
+    -- Expiration
+    access_token_expires_at DATETIME(6) NOT NULL,
+    refresh_token_expires_at DATETIME(6),
+    
+    -- Usage
+    last_used_at DATETIME(6),
+    usage_count INT DEFAULT 0,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    revoked_at DATETIME(6),
+    revocation_reason VARCHAR(100),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    FOREIGN KEY (client_id) REFERENCES oauth_client(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    INDEX idx_oauth_token_access (access_token_hash),
+    INDEX idx_oauth_token_refresh (refresh_token_hash),
+    INDEX idx_oauth_token_client (client_id),
+    INDEX idx_oauth_token_user (user_id),
+    INDEX idx_oauth_token_active (is_active, access_token_expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+DELIMITER $$
+
+-- Authenticate user and create session
+CREATE PROCEDURE sp_authenticate_user(
+    IN p_email VARCHAR(255),
+    IN p_password VARCHAR(255),
+    IN p_ip_address VARCHAR(45),
+    IN p_user_agent TEXT,
+    IN p_device_fingerprint VARCHAR(255),
+    OUT p_user_id CHAR(36),
+    OUT p_session_token VARCHAR(255),
+    OUT p_requires_mfa BOOLEAN
+)
+BEGIN
+    DECLARE v_user_id CHAR(36);
+    DECLARE v_password_hash VARCHAR(255);
+    DECLARE v_user_status VARCHAR(50);
+    DECLARE v_mfa_enabled BOOLEAN;
+    DECLARE v_login_attempts INT DEFAULT 0;
+    DECLARE v_last_failed_login DATETIME(6);
+    
+    -- Get user details
+    SELECT u.id, uc.password_hash, u.status, uc.mfa_enabled
+    INTO v_user_id, v_password_hash, v_user_status, v_mfa_enabled
+    FROM user u
+    JOIN user_credential uc ON u.id = uc.user_id
+    WHERE u.email = p_email
+    AND u.deleted_at IS NULL;
+    
+    -- Check if user exists and is active
+    IF v_user_id IS NULL THEN
+        -- Log failed attempt
+        INSERT INTO user_security_log (user_id, event_type, event_status, ip_address, user_agent, failure_reason)
+        VALUES (NULL, 'LOGIN_FAILED', 'FAILED', p_ip_address, p_user_agent, 'USER_NOT_FOUND');
+        
+        SET p_user_id = NULL;
+        SET p_session_token = NULL;
+        SET p_requires_mfa = FALSE;
+        
+    ELSEIF v_user_status != 'ACTIVE' THEN
+        -- Log failed attempt
+        INSERT INTO user_security_log (user_id, event_type, event_status, ip_address, user_agent, failure_reason)
+        VALUES (v_user_id, 'LOGIN_FAILED', 'FAILED', p_ip_address, p_user_agent, 'USER_NOT_ACTIVE');
+        
+        SET p_user_id = NULL;
+        SET p_session_token = NULL;
+        SET p_requires_mfa = FALSE;
+        
+    -- TODO: Verify password hash using application logic (Argon2)
+    -- For now, assuming password verification happens in application
+    
+    ELSE
+        -- Generate session token (in real implementation, use secure random)
+        SET p_session_token = UUID();
+        
+        -- Create session
+        INSERT INTO user_session (
+            user_id, 
+            session_token_hash, 
+            ip_address, 
+            user_agent, 
+            device_id,
+            expires_at,
+            client_type
+        )
+        VALUES (
+            v_user_id,
+            SHA2(p_session_token, 256),
+            p_ip_address,
+            p_user_agent,
+            (SELECT id FROM user_device WHERE user_id = v_user_id AND device_fingerprint = p_device_fingerprint),
+            DATE_ADD(NOW(6), INTERVAL 24 HOUR),
+            'WEB'
+        );
+        
+        -- Update last login
+        UPDATE user 
+        SET last_login_at = NOW(6), 
+            last_activity_at = NOW(6),
+            login_count = login_count + 1
+        WHERE id = v_user_id;
+        
+        -- Log successful login
+        INSERT INTO user_security_log (user_id, event_type, event_status, ip_address, user_agent)
+        VALUES (v_user_id, 'LOGIN_SUCCESS', 'SUCCESS', p_ip_address, p_user_agent);
+        
+        SET p_user_id = v_user_id;
+        SET p_requires_mfa = v_mfa_enabled;
+    END IF;
+END$$
+
+-- Check user permissions
+CREATE PROCEDURE sp_check_user_permission(
+    IN p_user_id CHAR(36),
+    IN p_resource_type VARCHAR(100),
+    IN p_action VARCHAR(100),
+    IN p_resource_id CHAR(36),
+    OUT p_has_permission BOOLEAN
+)
+BEGIN
+    DECLARE v_permission_count INT DEFAULT 0;
+    
+    -- Check direct permission grants
+    SELECT COUNT(*) INTO v_permission_count
+    FROM user_permission_grant upg
+    JOIN user_permission up ON upg.permission_id = up.id
+    WHERE upg.user_id = p_user_id
+    AND up.resource_type = p_resource_type
+    AND up.action = p_action
+    AND upg.is_active = TRUE
+    AND (upg.valid_from IS NULL OR upg.valid_from <= NOW(6))
+    AND (upg.valid_until IS NULL OR upg.valid_until >= NOW(6))
+    AND (upg.resource_id IS NULL OR upg.resource_id = p_resource_id);
+    
+    IF v_permission_count > 0 THEN
+        SET p_has_permission = TRUE;
+    ELSE
+        -- Check role-based permissions
+        SELECT COUNT(*) INTO v_permission_count
+        FROM user_role_assignment ura
+        JOIN user_role_permission urp ON ura.role_id = urp.role_id
+        JOIN user_permission up ON urp.permission_id = up.id
+        WHERE ura.user_id = p_user_id
+        AND up.resource_type = p_resource_type
+        AND up.action = p_action
+        AND ura.is_active = TRUE
+        AND (ura.valid_from IS NULL OR ura.valid_from <= NOW(6))
+        AND (ura.valid_until IS NULL OR ura.valid_until >= NOW(6));
+        
+        IF v_permission_count > 0 THEN
+            SET p_has_permission = TRUE;
+        ELSE
+            -- Check delegated permissions
+            SELECT COUNT(*) INTO v_permission_count
+            FROM user_delegation ud
+            WHERE ud.delegate_id = p_user_id
+            AND ud.status = 'ACTIVE'
+            AND ud.valid_from <= NOW(6)
+            AND ud.valid_until >= NOW(6)
+            AND JSON_CONTAINS(ud.permissions, JSON_OBJECT('resource_type', p_resource_type, 'action', p_action));
+            
+            SET p_has_permission = (v_permission_count > 0);
+        END IF;
+    END IF;
+END$$
+
+-- Create organization with owner
+CREATE PROCEDURE sp_create_organization(
+    IN p_organization_name VARCHAR(255),
+    IN p_organization_type VARCHAR(100),
+    IN p_owner_user_id CHAR(36),
+    OUT p_organization_id CHAR(36)
+)
+BEGIN
+    DECLARE v_org_id CHAR(36);
+    DECLARE v_admin_role_id CHAR(36);
+    
+    -- Create organization
+    SET v_org_id = UUID();
+    
+    INSERT INTO user_organization (
+        id,
+        organization_name,
+        organization_type,
+        created_by,
+        status
+    )
+    VALUES (
+        v_org_id,
+        p_organization_name,
+        p_organization_type,
+        p_owner_user_id,
+        'ACTIVE'
+    );
+    
+    -- Add owner as member
+    INSERT INTO user_organization_member (
+        organization_id,
+        user_id,
+        member_role,
+        is_billing_contact,
+        is_technical_contact,
+        can_invite_members,
+        invited_by
+    )
+    VALUES (
+        v_org_id,
+        p_owner_user_id,
+        'OWNER',
+        TRUE,
+        TRUE,
+        TRUE,
+        p_owner_user_id
+    );
+    
+    -- Create organization admin role
+    SET v_admin_role_id = UUID();
+    
+    INSERT INTO user_role (
+        id,
+        role_name,
+        role_type,
+        display_name,
+        organization_id,
+        can_manage_catalog,
+        can_manage_royalties,
+        can_sign_agreements
+    )
+    VALUES (
+        v_admin_role_id,
+        CONCAT('org_admin_', v_org_id),
+        'ORGANIZATION',
+        'Organization Administrator',
+        v_org_id,
+        TRUE,
+        TRUE,
+        TRUE
+    );
+    
+    -- Assign admin role to owner
+    INSERT INTO user_role_assignment (
+        user_id,
+        role_id,
+        organization_id,
+        assigned_by
+    )
+    VALUES (
+        p_owner_user_id,
+        v_admin_role_id,
+        v_org_id,
+        p_owner_user_id
+    );
+    
+    SET p_organization_id = v_org_id;
+END$$
+
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS
+-- =====================================================
+
+-- View: Active user sessions with details
+CREATE VIEW v_active_user_sessions AS
+SELECT 
+    s.id AS session_id,
+    u.id AS user_id,
+    u.email,
+    u.display_name,
+    u.account_type,
+    s.ip_address,
+    s.client_type,
+    s.created_at AS session_start,
+    s.last_activity_at,
+    s.expires_at,
+    s.security_level,
+    d.device_name,
+    d.device_type,
+    d.is_trusted AS trusted_device
+FROM user_session s
+JOIN user u ON s.user_id = u.id
+LEFT JOIN user_device d ON s.device_id = d.id
+WHERE s.is_active = TRUE
+AND s.expires_at > NOW(6);
+
+-- View: User permissions summary
+CREATE VIEW v_user_permissions AS
+SELECT DISTINCT
+    u.id AS user_id,
+    u.email,
+    u.display_name,
+    p.resource_type,
+    p.action,
+    p.display_name AS permission_name,
+    'ROLE' AS permission_source,
+    r.role_name,
+    ura.organization_id
+FROM user u
+JOIN user_role_assignment ura ON u.id = ura.user_id
+JOIN user_role r ON ura.role_id = r.id
+JOIN user_role_permission urp ON r.id = urp.role_id
+JOIN user_permission p ON urp.permission_id = p.id
+WHERE ura.is_active = TRUE
+AND (ura.valid_from IS NULL OR ura.valid_from <= NOW(6))
+AND (ura.valid_until IS NULL OR ura.valid_until >= NOW(6))
+
+UNION
+
+SELECT DISTINCT
+    u.id AS user_id,
+    u.email,
+    u.display_name,
+    p.resource_type,
+    p.action,
+    p.display_name AS permission_name,
+    'DIRECT' AS permission_source,
+    NULL AS role_name,
+    NULL AS organization_id
+FROM user u
+JOIN user_permission_grant upg ON u.id = upg.user_id
+JOIN user_permission p ON upg.permission_id = p.id
+WHERE upg.is_active = TRUE
+AND (upg.valid_from IS NULL OR upg.valid_from <= NOW(6))
+AND (upg.valid_until IS NULL OR upg.valid_until >= NOW(6));
+
+-- View: Organization member summary
+CREATE VIEW v_organization_members AS
+SELECT 
+    o.id AS organization_id,
+    o.organization_name,
+    o.organization_type,
+    u.id AS user_id,
+    u.email,
+    u.display_name,
+    om.member_role,
+    om.department,
+    om.title,
+    om.joined_at,
+    COUNT(DISTINCT ura.role_id) AS role_count,
+    GROUP_CONCAT(DISTINCT r.display_name) AS assigned_roles
+FROM user_organization o
+JOIN user_organization_member om ON o.id = om.organization_id
+JOIN user u ON om.user_id = u.id
+LEFT JOIN user_role_assignment ura ON u.id = ura.user_id AND ura.organization_id = o.id AND ura.is_active = TRUE
+LEFT JOIN user_role r ON ura.role_id = r.id
+WHERE om.status = 'ACTIVE'
+GROUP BY o.id, u.id;
+
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+
+DELIMITER $$
+
+-- Trigger: Log security events on user updates
+CREATE TRIGGER trg_user_security_changes
+AFTER UPDATE ON user
+FOR EACH ROW
+BEGIN
+    IF NEW.password_expires_at != OLD.password_expires_at THEN
+        INSERT INTO user_security_log (user_id, event_type, event_status, metadata)
+        VALUES (NEW.id, 'PASSWORD_EXPIRY_CHANGED', 'SUCCESS', 
+                JSON_OBJECT('old_expiry', OLD.password_expires_at, 'new_expiry', NEW.password_expires_at));
+    END IF;
+    
+    IF NEW.status != OLD.status THEN
+        INSERT INTO user_security_log (user_id, event_type, event_status, metadata)
+        VALUES (NEW.id, 'ACCOUNT_STATUS_CHANGED', 'SUCCESS',
+                JSON_OBJECT('old_status', OLD.status, 'new_status', NEW.status));
+    END IF;
+    
+    IF NEW.require_mfa != OLD.require_mfa THEN
+        INSERT INTO user_security_log (user_id, event_type, event_status, metadata)
+        VALUES (NEW.id, IF(NEW.require_mfa, 'MFA_REQUIRED', 'MFA_OPTIONAL'), 'SUCCESS', NULL);
+    END IF;
+END$$
+
+-- Trigger: Enforce single primary wallet per user
+CREATE TRIGGER trg_user_wallet_primary
+BEFORE INSERT ON user_wallet
+FOR EACH ROW
+BEGIN
+    IF NEW.is_primary = TRUE THEN
+        UPDATE user_wallet 
+        SET is_primary = FALSE 
+        WHERE user_id = NEW.user_id 
+        AND id != NEW.id;
+    END IF;
+END$$
+
+-- Trigger: Clean up expired sessions
+CREATE TRIGGER trg_session_expiry_check
+BEFORE UPDATE ON user_session
+FOR EACH ROW
+BEGIN
+    IF NEW.expires_at < NOW(6) AND NEW.is_active = TRUE THEN
+        SET NEW.is_active = FALSE;
+        SET NEW.terminated_at = NOW(6);
+        SET NEW.termination_reason = 'TIMEOUT';
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- =====================================================
+-- SAMPLE DATA
+-- =====================================================
+
+-- Insert system permissions
+INSERT INTO user_permission (permission_name, resource_type, action, display_name, description, category, risk_level) VALUES
+-- Catalog permissions
+('catalog.song.view', 'SONG', 'VIEW', 'View Songs', 'View song metadata and details', 'CATALOG', 'LOW'),
+('catalog.song.create', 'SONG', 'CREATE', 'Create Songs', 'Add new songs to catalog', 'CATALOG', 'MEDIUM'),
+('catalog.song.edit', 'SONG', 'UPDATE', 'Edit Songs', 'Modify song metadata', 'CATALOG', 'MEDIUM'),
+('catalog.song.delete', 'SONG', 'DELETE', 'Delete Songs', 'Remove songs from catalog', 'CATALOG', 'HIGH'),
+('catalog.song.export', 'SONG', 'EXPORT', 'Export Songs', 'Export song data', 'CATALOG', 'MEDIUM'),
+
+-- Agreement permissions
+('agreement.view', 'AGREEMENT', 'VIEW', 'View Agreements', 'View agreement details', 'CATALOG', 'LOW'),
+('agreement.create', 'AGREEMENT', 'CREATE', 'Create Agreements', 'Draft new agreements', 'CATALOG', 'MEDIUM'),
+('agreement.sign', 'AGREEMENT', 'SIGN', 'Sign Agreements', 'Digitally sign agreements', 'CATALOG', 'HIGH'),
+('agreement.approve', 'AGREEMENT', 'APPROVE', 'Approve Agreements', 'Approve agreements for execution', 'CATALOG', 'HIGH'),
+
+-- Financial permissions
+('royalty.view', 'ROYALTY', 'VIEW', 'View Royalties', 'View royalty statements', 'FINANCIAL', 'MEDIUM'),
+('royalty.calculate', 'ROYALTY', 'CALCULATE', 'Calculate Royalties', 'Run royalty calculations', 'FINANCIAL', 'HIGH'),
+('royalty.approve', 'ROYALTY', 'APPROVE', 'Approve Royalties', 'Approve royalty payments', 'FINANCIAL', 'CRITICAL'),
+('royalty.export', 'ROYALTY', 'EXPORT', 'Export Royalties', 'Export royalty data', 'FINANCIAL', 'MEDIUM'),
+
+-- User management permissions
+('user.view', 'USER', 'VIEW', 'View Users', 'View user profiles', 'ADMINISTRATIVE', 'LOW'),
+('user.create', 'USER', 'CREATE', 'Create Users', 'Create new user accounts', 'ADMINISTRATIVE', 'HIGH'),
+('user.edit', 'USER', 'UPDATE', 'Edit Users', 'Modify user profiles', 'ADMINISTRATIVE', 'HIGH'),
+('user.deactivate', 'USER', 'DEACTIVATE', 'Deactivate Users', 'Deactivate user accounts', 'ADMINISTRATIVE', 'CRITICAL'),
+
+-- API permissions
+('api.key.create', 'API_KEY', 'CREATE', 'Create API Keys', 'Generate new API keys', 'SECURITY', 'HIGH'),
+('api.key.revoke', 'API_KEY', 'REVOKE', 'Revoke API Keys', 'Revoke API access', 'SECURITY', 'HIGH');
+
+-- Insert system roles
+INSERT INTO user_role (role_name, role_type, display_name, description, industry_category, can_manage_catalog, can_manage_royalties, can_sign_agreements) VALUES
+-- System roles
+('super_admin', 'SYSTEM', 'Super Administrator', 'Full system access', 'ADMINISTRATIVE', TRUE, TRUE, TRUE),
+('platform_admin', 'SYSTEM', 'Platform Administrator', 'Platform administration', 'ADMINISTRATIVE', TRUE, TRUE, FALSE),
+('support_agent', 'SYSTEM', 'Support Agent', 'Customer support access', 'ADMINISTRATIVE', FALSE, FALSE, FALSE),
+
+-- Industry roles
+('artist', 'SYSTEM', 'Artist', 'Musical artist/performer', 'CREATIVE', TRUE, FALSE, TRUE),
+('songwriter', 'SYSTEM', 'Songwriter', 'Song writer/composer', 'CREATIVE', TRUE, FALSE, TRUE),
+('producer', 'SYSTEM', 'Producer', 'Music producer', 'CREATIVE', TRUE, FALSE, TRUE),
+('label_executive', 'SYSTEM', 'Label Executive', 'Record label executive', 'BUSINESS', TRUE, TRUE, TRUE),
+('label_ar', 'SYSTEM', 'A&R Representative', 'Artists and Repertoire', 'BUSINESS', TRUE, FALSE, TRUE),
+('publisher_admin', 'SYSTEM', 'Publishing Administrator', 'Publishing company admin', 'BUSINESS', TRUE, TRUE, TRUE),
+('manager', 'SYSTEM', 'Manager', 'Artist/business manager', 'BUSINESS', TRUE, TRUE, TRUE),
+('accountant', 'SYSTEM', 'Accountant', 'Financial professional', 'BUSINESS', FALSE, TRUE, FALSE),
+('lawyer', 'SYSTEM', 'Lawyer', 'Legal representative', 'BUSINESS', FALSE, FALSE, TRUE),
+('auditor', 'SYSTEM', 'Auditor', 'Read-only audit access', 'BUSINESS', FALSE, FALSE, FALSE);
+
+-- Map permissions to roles
+INSERT INTO user_role_permission (role_id, permission_id) 
+SELECT r.id, p.id 
+FROM user_role r
+CROSS JOIN user_permission p
+WHERE r.role_name = 'super_admin';
+
+-- Artist role permissions
+INSERT INTO user_role_permission (role_id, permission_id)
+SELECT r.id, p.id
+FROM user_role r
+JOIN user_permission p ON p.permission_name IN (
+    'catalog.song.view', 'catalog.song.create', 'catalog.song.edit',
+    'agreement.view', 'agreement.sign',
+    'royalty.view', 'royalty.export'
+)
+WHERE r.role_name = 'artist';
+
+-- Manager role permissions
+INSERT INTO user_role_permission (role_id, permission_id)
+SELECT r.id, p.id
+FROM user_role r
+JOIN user_permission p ON p.permission_name IN (
+    'catalog.song.view', 'catalog.song.create', 'catalog.song.edit', 'catalog.song.export',
+    'agreement.view', 'agreement.create', 'agreement.sign',
+    'royalty.view', 'royalty.export',
+    'user.view'
+)
+WHERE r.role_name = 'manager';
+
+-- Insert API rate limits
+INSERT INTO api_rate_limit (limit_type, limit_key, requests_per_minute, requests_per_hour, requests_per_day) VALUES
+('GLOBAL', NULL, 1000, 30000, 500000),
+('USER', NULL, 100, 3000, 50000),
+('ORGANIZATION', NULL, 500, 15000, 250000);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_user_email_status ON user(email, status);
+CREATE INDEX idx_user_type_status ON user(account_type, status);
+CREATE INDEX idx_session_user_active ON user_session(user_id, is_active, expires_at);
+CREATE INDEX idx_security_log_user_date ON user_security_log(user_id, occurred_at);
+CREATE INDEX idx_activity_log_user_date ON user_activity_log(user_id, occurred_at);
+CREATE INDEX idx_role_assignment_user_active ON user_role_assignment(user_id, is_active);
+CREATE INDEX idx_permission_grant_user_active ON user_permission_grant(user_id, is_active);
+CREATE INDEX idx_api_key_user_status ON api_key(user_id, status);
+CREATE INDEX idx_notification_user_unread ON user_notification(user_id, is_read, created_at);
+
+-- Composite indexes for common queries
+CREATE INDEX idx_user_login ON user(email, deleted_at);
+CREATE INDEX idx_session_lookup ON user_session(session_token_hash, is_active);
+CREATE INDEX idx_permission_check ON user_permission(resource_type, action);
+CREATE INDEX idx_org_member_lookup ON user_organization_member(organization_id, user_id, status);
+
+-- =====================================================
+-- SECTION 17: AUDIT & COMPLIANCE TABLES
+-- =====================================================
+
+-- =====================================================
+-- CORE AUDIT TABLES
+-- =====================================================
+
+-- Main audit trail with immutable hash chain
+CREATE TABLE audit_log (
+    audit_id BIGINT UNSIGNED AUTO_INCREMENT,
+    audit_timestamp DATETIME(6) NOT NULL,
+    audit_hash VARCHAR(64) NOT NULL, -- SHA-256 hash of this entry
+    previous_hash VARCHAR(64), -- Hash of previous entry for chain integrity
+    
+    -- Who performed the action
+    user_id INT UNSIGNED,
+    impersonated_by_user_id INT UNSIGNED, -- If action performed on behalf of another user
+    session_id VARCHAR(128),
+    ip_address VARCHAR(45), -- IPv6 compatible
+    ip_country VARCHAR(2), -- ISO country code
+    ip_region VARCHAR(100),
+    user_agent TEXT,
+    
+    -- What was done
+    action_type VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE, ACCESS, EXPORT, etc.
+    table_name VARCHAR(64) NOT NULL,
+    record_id VARCHAR(100), -- Generic to handle different ID types
+    record_type VARCHAR(50), -- SONG, RECORDING, AGREEMENT, etc.
+    
+    -- Where and why
+    module_name VARCHAR(50), -- CATALOG, ROYALTIES, AGREEMENTS, etc.
+    function_name VARCHAR(100), -- Specific function/endpoint
+    reason_code VARCHAR(50), -- MANUAL_UPDATE, SYSTEM_SYNC, COMPLIANCE_REQUEST, etc.
+    reason_description TEXT,
+    
+    -- Additional context
+    metadata JSON, -- Flexible additional data
+    risk_score DECIMAL(5,2), -- 0-100 risk assessment
+    compliance_flags JSON, -- Array of compliance issues detected
+    
+    -- System fields
+    server_timestamp DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    server_id VARCHAR(50), -- For distributed systems
+    tenant_id INT UNSIGNED,
+    
+    PRIMARY KEY (audit_id),
+    INDEX idx_audit_timestamp (audit_timestamp),
+    INDEX idx_audit_user (user_id, audit_timestamp),
+    INDEX idx_audit_table_record (table_name, record_id),
+    INDEX idx_audit_action (action_type, audit_timestamp),
+    INDEX idx_audit_hash (audit_hash),
+    INDEX idx_audit_risk (risk_score, audit_timestamp),
+    INDEX idx_audit_tenant (tenant_id, audit_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (YEAR(audit_timestamp) * 100 + MONTH(audit_timestamp)) (
+    PARTITION p202501 VALUES LESS THAN (202502),
+    PARTITION p202502 VALUES LESS THAN (202503),
+    PARTITION p202503 VALUES LESS THAN (202504),
+    PARTITION p202504 VALUES LESS THAN (202505),
+    PARTITION p202505 VALUES LESS THAN (202506),
+    PARTITION p202506 VALUES LESS THAN (202507),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- Detailed field-level changes
+CREATE TABLE audit_detail (
+    detail_id BIGINT UNSIGNED AUTO_INCREMENT,
+    audit_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Field change details
+    field_name VARCHAR(64) NOT NULL,
+    field_type VARCHAR(50) NOT NULL, -- STRING, NUMBER, DATE, JSON, etc.
+    old_value TEXT,
+    new_value TEXT,
+    old_value_encrypted BLOB, -- For sensitive data
+    new_value_encrypted BLOB,
+    value_hash VARCHAR(64), -- Hash for large values
+    
+    -- Data classification
+    data_classification VARCHAR(50), -- PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED
+    pii_flag BOOLEAN DEFAULT FALSE,
+    financial_flag BOOLEAN DEFAULT FALSE,
+    
+    -- Change metadata
+    change_type VARCHAR(50), -- ADD, MODIFY, REMOVE
+    validation_status VARCHAR(50), -- VALID, WARNING, ERROR
+    validation_message TEXT,
+    
+    PRIMARY KEY (detail_id),
+    INDEX idx_detail_audit (audit_id),
+    INDEX idx_detail_field (field_name),
+    INDEX idx_detail_classification (data_classification),
+    FOREIGN KEY (audit_id) REFERENCES audit_log(audit_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Complete record snapshots for forensic analysis
+CREATE TABLE audit_snapshot (
+    snapshot_id BIGINT UNSIGNED AUTO_INCREMENT,
+    audit_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Snapshot data
+    before_snapshot JSON, -- Complete record state before change
+    after_snapshot JSON, -- Complete record state after change
+    before_snapshot_encrypted BLOB, -- Encrypted version for sensitive data
+    after_snapshot_encrypted BLOB,
+    
+    -- Snapshot metadata
+    snapshot_hash VARCHAR(64) NOT NULL, -- Hash of snapshot data
+    snapshot_size INT UNSIGNED, -- Size in bytes
+    compression_type VARCHAR(20), -- NONE, GZIP, LZ4
+    encryption_type VARCHAR(20), -- NONE, AES256
+    
+    -- Retention
+    retention_policy VARCHAR(50),
+    expiry_date DATE,
+    
+    PRIMARY KEY (snapshot_id),
+    INDEX idx_snapshot_audit (audit_id),
+    INDEX idx_snapshot_expiry (expiry_date),
+    FOREIGN KEY (audit_id) REFERENCES audit_log(audit_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- COMPLIANCE MANAGEMENT TABLES
+-- =====================================================
+
+-- Automated compliance validations
+CREATE TABLE compliance_check (
+    check_id INT UNSIGNED AUTO_INCREMENT,
+    check_name VARCHAR(100) NOT NULL,
+    check_code VARCHAR(50) NOT NULL UNIQUE,
+    
+    -- Check configuration
+    check_type VARCHAR(50) NOT NULL, -- SCHEDULED, TRIGGERED, CONTINUOUS
+    jurisdiction VARCHAR(50), -- EU, US, GLOBAL, etc.
+    regulation VARCHAR(50), -- GDPR, CCPA, CISAC, MLC, etc.
+    category VARCHAR(50), -- PRIVACY, FINANCIAL, COPYRIGHT, etc.
+    
+    -- Check details
+    description TEXT,
+    check_query TEXT, -- SQL or rules engine query
+    check_parameters JSON,
+    severity_level VARCHAR(20), -- CRITICAL, HIGH, MEDIUM, LOW
+    
+    -- Scheduling
+    schedule_cron VARCHAR(100), -- For scheduled checks
+    last_run_timestamp DATETIME(6),
+    next_run_timestamp DATETIME(6),
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    is_automated BOOLEAN DEFAULT TRUE,
+    requires_manual_review BOOLEAN DEFAULT FALSE,
+    
+    -- Remediation
+    auto_remediate BOOLEAN DEFAULT FALSE,
+    remediation_query TEXT,
+    remediation_parameters JSON,
+    notification_template VARCHAR(100),
+    
+    -- Metadata
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by_user_id INT UNSIGNED,
+    
+    PRIMARY KEY (check_id),
+    INDEX idx_check_code (check_code),
+    INDEX idx_check_type (check_type),
+    INDEX idx_check_regulation (regulation),
+    INDEX idx_check_schedule (next_run_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Detected violations and remediation tracking
+CREATE TABLE compliance_violation (
+    violation_id BIGINT UNSIGNED AUTO_INCREMENT,
+    violation_timestamp DATETIME(6) NOT NULL,
+    
+    -- Violation details
+    check_id INT UNSIGNED NOT NULL,
+    violation_code VARCHAR(50) NOT NULL,
+    violation_type VARCHAR(50), -- DATA_BREACH, RETENTION_VIOLATION, ACCESS_VIOLATION, etc.
+    severity VARCHAR(20) NOT NULL, -- CRITICAL, HIGH, MEDIUM, LOW
+    
+    -- Context
+    table_name VARCHAR(64),
+    record_id VARCHAR(100),
+    user_id INT UNSIGNED,
+    details JSON, -- Specific violation details
+    evidence JSON, -- Supporting evidence/data
+    
+    -- Impact assessment
+    affected_records_count INT UNSIGNED,
+    affected_users_count INT UNSIGNED,
+    data_categories JSON, -- Categories of data affected
+    territories_affected JSON, -- List of affected jurisdictions
+    
+    -- Status and remediation
+    status VARCHAR(50) NOT NULL, -- DETECTED, INVESTIGATING, REMEDIATING, RESOLVED, ESCALATED
+    remediation_status VARCHAR(50), -- PENDING, IN_PROGRESS, COMPLETED, FAILED
+    remediation_timestamp DATETIME(6),
+    remediation_details JSON,
+    resolution_notes TEXT,
+    
+    -- Compliance reporting
+    reported_to_authority BOOLEAN DEFAULT FALSE,
+    authority_reference VARCHAR(100),
+    report_deadline DATETIME,
+    fine_amount DECIMAL(15,2),
+    fine_currency VARCHAR(3),
+    
+    -- Metadata
+    detected_by VARCHAR(50), -- SYSTEM, MANUAL, EXTERNAL_AUDIT
+    assigned_to_user_id INT UNSIGNED,
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (violation_id),
+    INDEX idx_violation_timestamp (violation_timestamp),
+    INDEX idx_violation_check (check_id),
+    INDEX idx_violation_status (status),
+    INDEX idx_violation_severity (severity, status),
+    INDEX idx_violation_user (user_id),
+    INDEX idx_violation_deadline (report_deadline),
+    FOREIGN KEY (check_id) REFERENCES compliance_check(check_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Compliance certificates and attestations
+CREATE TABLE compliance_certification (
+    certification_id INT UNSIGNED AUTO_INCREMENT,
+    
+    -- Certificate details
+    certification_type VARCHAR(50) NOT NULL, -- GDPR_COMPLIANT, SOX_COMPLIANT, ISO27001, etc.
+    certification_code VARCHAR(100) UNIQUE,
+    issuing_authority VARCHAR(100),
+    
+    -- Validity
+    issue_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    is_valid BOOLEAN DEFAULT TRUE,
+    
+    -- Scope
+    scope_description TEXT,
+    covered_systems JSON, -- List of systems/modules covered
+    covered_territories JSON, -- Jurisdictions covered
+    exclusions JSON, -- Any exclusions or limitations
+    
+    -- Evidence
+    audit_report_url VARCHAR(500),
+    certificate_url VARCHAR(500),
+    evidence_documents JSON, -- List of supporting documents
+    
+    -- Verification
+    verification_status VARCHAR(50), -- PENDING, VERIFIED, EXPIRED, REVOKED
+    verification_date DATETIME,
+    verified_by VARCHAR(100),
+    blockchain_hash VARCHAR(64), -- For blockchain verification
+    
+    -- Metadata
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (certification_id),
+    INDEX idx_cert_type (certification_type),
+    INDEX idx_cert_expiry (expiry_date),
+    INDEX idx_cert_valid (is_valid, expiry_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- PRIVACY & DATA MANAGEMENT TABLES
+-- =====================================================
+
+-- GDPR/CCPA privacy requests
+CREATE TABLE privacy_request (
+    request_id BIGINT UNSIGNED AUTO_INCREMENT,
+    request_number VARCHAR(50) UNIQUE NOT NULL, -- Human-readable reference
+    
+    -- Request details
+    request_type VARCHAR(50) NOT NULL, -- ACCESS, DELETION, RECTIFICATION, PORTABILITY, RESTRICTION, OBJECTION
+    regulation VARCHAR(50) NOT NULL, -- GDPR, CCPA, LGPD, etc.
+    requester_type VARCHAR(50), -- DATA_SUBJECT, AUTHORIZED_AGENT, PARENT_GUARDIAN
+    
+    -- Requester information
+    requester_user_id INT UNSIGNED,
+    requester_email VARCHAR(255),
+    requester_name VARCHAR(200),
+    requester_id_verified BOOLEAN DEFAULT FALSE,
+    verification_method VARCHAR(50), -- EMAIL, ID_DOCUMENT, TWO_FACTOR, etc.
+    
+    -- Request scope
+    scope_all_data BOOLEAN DEFAULT TRUE,
+    scope_categories JSON, -- Specific data categories if not all
+    scope_date_from DATE,
+    scope_date_to DATE,
+    additional_instructions TEXT,
+    
+    -- Processing
+    status VARCHAR(50) NOT NULL, -- RECEIVED, VERIFYING, PROCESSING, COMPLETED, REJECTED
+    priority VARCHAR(20), -- URGENT, HIGH, NORMAL, LOW
+    assigned_to_user_id INT UNSIGNED,
+    
+    -- Timelines (GDPR requires 30 days)
+    received_at DATETIME(6) NOT NULL,
+    deadline_date DATETIME(6) NOT NULL,
+    acknowledged_at DATETIME(6),
+    completed_at DATETIME(6),
+    
+    -- Response
+    response_method VARCHAR(50), -- EMAIL, PORTAL, API, POSTAL
+    response_format VARCHAR(50), -- JSON, CSV, PDF, XML
+    response_url VARCHAR(500), -- Secure download link
+    response_expiry DATETIME,
+    
+    -- Compliance tracking
+    sla_status VARCHAR(20), -- ON_TIME, AT_RISK, OVERDUE
+    extension_requested BOOLEAN DEFAULT FALSE,
+    extension_reason TEXT,
+    rejection_reason TEXT,
+    
+    -- Audit trail
+    processing_log JSON, -- Detailed log of all processing steps
+    systems_queried JSON, -- List of systems/tables queried
+    records_found INT UNSIGNED,
+    records_processed INT UNSIGNED,
+    
+    -- Metadata
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (request_id),
+    INDEX idx_privacy_number (request_number),
+    INDEX idx_privacy_type (request_type),
+    INDEX idx_privacy_status (status),
+    INDEX idx_privacy_deadline (deadline_date),
+    INDEX idx_privacy_user (requester_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User consent records with versioning
+CREATE TABLE privacy_consent (
+    consent_id BIGINT UNSIGNED AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    
+    -- Consent details
+    consent_type VARCHAR(50) NOT NULL, -- MARKETING, ANALYTICS, THIRD_PARTY, COOKIES, etc.
+    consent_version VARCHAR(20) NOT NULL, -- Version of consent text
+    consent_status VARCHAR(20) NOT NULL, -- GRANTED, WITHDRAWN, EXPIRED
+    
+    -- Consent specifics
+    purpose VARCHAR(200) NOT NULL, -- Specific purpose of data processing
+    legal_basis VARCHAR(50), -- CONSENT, CONTRACT, LEGITIMATE_INTEREST, etc.
+    data_categories JSON, -- Categories of data covered
+    third_parties JSON, -- Third parties data may be shared with
+    retention_period VARCHAR(100), -- How long data will be retained
+    
+    -- Timestamps
+    granted_at DATETIME(6),
+    withdrawn_at DATETIME(6),
+    expires_at DATETIME(6),
+    
+    -- Consent capture
+    capture_method VARCHAR(50), -- WEB_FORM, API, EMAIL, PHONE, etc.
+    capture_location VARCHAR(200), -- URL or location where consent was captured
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    
+    -- Parent/Guardian consent for minors
+    is_minor BOOLEAN DEFAULT FALSE,
+    guardian_name VARCHAR(200),
+    guardian_email VARCHAR(255),
+    guardian_relationship VARCHAR(50),
+    
+    -- Audit
+    consent_text TEXT, -- Full text of what user consented to
+    consent_hash VARCHAR(64), -- Hash of consent text for integrity
+    blockchain_hash VARCHAR(64), -- For blockchain verification
+    
+    -- Metadata
+    is_active BOOLEAN DEFAULT TRUE,
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (consent_id),
+    INDEX idx_consent_user (user_id, consent_type),
+    INDEX idx_consent_status (consent_status),
+    INDEX idx_consent_expiry (expires_at),
+    INDEX idx_consent_version (consent_version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Data export request tracking
+CREATE TABLE data_export_request (
+    export_id BIGINT UNSIGNED AUTO_INCREMENT,
+    privacy_request_id BIGINT UNSIGNED,
+    
+    -- Export details
+    export_type VARCHAR(50) NOT NULL, -- FULL_EXPORT, PARTIAL_EXPORT, PORTABILITY
+    export_format VARCHAR(20) NOT NULL, -- JSON, CSV, XML, PDF
+    
+    -- Scope
+    tables_included JSON, -- List of tables to export from
+    date_range_start DATE,
+    date_range_end DATE,
+    filters JSON, -- Additional filters applied
+    
+    -- Processing
+    status VARCHAR(50) NOT NULL, -- QUEUED, PROCESSING, COMPLETED, FAILED, EXPIRED
+    started_at DATETIME(6),
+    completed_at DATETIME(6),
+    
+    -- Output
+    file_size_bytes BIGINT UNSIGNED,
+    record_count INT UNSIGNED,
+    file_hash VARCHAR(64),
+    storage_location VARCHAR(500), -- S3 bucket/key or file path
+    download_url VARCHAR(500),
+    download_expiry DATETIME,
+    download_count INT UNSIGNED DEFAULT 0,
+    
+    -- Security
+    encryption_method VARCHAR(50), -- AES256, PGP, etc.
+    password_protected BOOLEAN DEFAULT FALSE,
+    access_code VARCHAR(100), -- One-time access code
+    
+    -- Metadata
+    requested_by_user_id INT UNSIGNED,
+    processed_by_system VARCHAR(50),
+    error_message TEXT,
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (export_id),
+    INDEX idx_export_request (privacy_request_id),
+    INDEX idx_export_status (status),
+    INDEX idx_export_expiry (download_expiry),
+    FOREIGN KEY (privacy_request_id) REFERENCES privacy_request(request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Data deletion request processing
+CREATE TABLE data_deletion_request (
+    deletion_id BIGINT UNSIGNED AUTO_INCREMENT,
+    privacy_request_id BIGINT UNSIGNED,
+    
+    -- Deletion scope
+    deletion_type VARCHAR(50) NOT NULL, -- FULL_DELETION, SELECTIVE_DELETION, ANONYMIZATION
+    user_id INT UNSIGNED,
+    
+    -- What to delete
+    tables_affected JSON, -- List of tables and record counts
+    data_categories JSON, -- Categories of data to delete
+    retention_exceptions JSON, -- Data that must be retained for legal reasons
+    
+    -- Processing
+    status VARCHAR(50) NOT NULL, -- PENDING, PROCESSING, COMPLETED, FAILED, PARTIAL
+    validation_status VARCHAR(50), -- VALIDATED, CONFLICTS_FOUND, OVERRIDE_REQUIRED
+    
+    -- Execution details
+    deletion_method VARCHAR(50), -- HARD_DELETE, SOFT_DELETE, ANONYMIZE
+    records_identified INT UNSIGNED,
+    records_deleted INT UNSIGNED,
+    records_anonymized INT UNSIGNED,
+    records_retained INT UNSIGNED,
+    
+    -- Timing
+    scheduled_for DATETIME(6),
+    started_at DATETIME(6),
+    completed_at DATETIME(6),
+    
+    -- Cascade handling
+    cascade_deletions JSON, -- Related records that were also deleted
+    orphaned_records JSON, -- Records that became orphaned
+    
+    -- Compliance
+    legal_hold BOOLEAN DEFAULT FALSE,
+    legal_hold_reason TEXT,
+    retention_override_reason TEXT,
+    approved_by_user_id INT UNSIGNED,
+    
+    -- Rollback capability
+    rollback_available BOOLEAN DEFAULT FALSE,
+    rollback_data_location VARCHAR(500),
+    rollback_expiry DATETIME,
+    
+    -- Metadata
+    error_log JSON,
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (deletion_id),
+    INDEX idx_deletion_request (privacy_request_id),
+    INDEX idx_deletion_user (user_id),
+    INDEX idx_deletion_status (status),
+    INDEX idx_deletion_scheduled (scheduled_for),
+    FOREIGN KEY (privacy_request_id) REFERENCES privacy_request(request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Data retention policy enforcement log
+CREATE TABLE data_retention_log (
+    retention_id BIGINT UNSIGNED AUTO_INCREMENT,
+    
+    -- Policy details
+    retention_policy VARCHAR(100) NOT NULL,
+    policy_version VARCHAR(20),
+    
+    -- Execution
+    execution_date DATE NOT NULL,
+    execution_type VARCHAR(50), -- SCHEDULED, MANUAL, TRIGGERED
+    
+    -- Scope
+    table_name VARCHAR(64) NOT NULL,
+    retention_period_days INT UNSIGNED,
+    cutoff_date DATE,
+    
+    -- Results
+    records_evaluated INT UNSIGNED,
+    records_deleted INT UNSIGNED,
+    records_archived INT UNSIGNED,
+    records_retained INT UNSIGNED,
+    
+    -- Retention reasons
+    retained_for_legal JSON, -- Records retained for legal reasons
+    retained_for_business JSON, -- Records retained for business reasons
+    
+    -- Performance
+    execution_time_seconds INT UNSIGNED,
+    
+    -- Status
+    status VARCHAR(50) NOT NULL, -- COMPLETED, FAILED, PARTIAL
+    error_message TEXT,
+    
+    -- Metadata
+    executed_by VARCHAR(50), -- SYSTEM, user_id
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (retention_id),
+    INDEX idx_retention_date (execution_date),
+    INDEX idx_retention_table (table_name, execution_date),
+    INDEX idx_retention_policy (retention_policy)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- REPORTING TABLES
+-- =====================================================
+
+-- Generated audit and compliance reports
+CREATE TABLE audit_report (
+    report_id INT UNSIGNED AUTO_INCREMENT,
+    report_number VARCHAR(50) UNIQUE NOT NULL,
+    
+    -- Report details
+    report_type VARCHAR(50) NOT NULL, -- AUDIT_TRAIL, COMPLIANCE_SUMMARY, PRIVACY_REPORT, etc.
+    report_period_start DATETIME NOT NULL,
+    report_period_end DATETIME NOT NULL,
+    
+    -- Configuration
+    report_template VARCHAR(100),
+    report_parameters JSON,
+    included_modules JSON, -- Which modules/tables to include
+    filters_applied JSON,
+    
+    -- Generation
+    status VARCHAR(50) NOT NULL, -- QUEUED, GENERATING, COMPLETED, FAILED
+    requested_by_user_id INT UNSIGNED,
+    requested_at DATETIME(6) NOT NULL,
+    completed_at DATETIME(6),
+    
+    -- Output
+    format VARCHAR(20), -- PDF, EXCEL, JSON, XML
+    file_size_bytes INT UNSIGNED,
+    file_hash VARCHAR(64),
+    storage_location VARCHAR(500),
+    
+    -- Distribution
+    recipients JSON, -- List of email addresses or user IDs
+    sent_at DATETIME(6),
+    access_url VARCHAR(500),
+    access_expiry DATETIME,
+    password_protected BOOLEAN DEFAULT FALSE,
+    
+    -- Compliance attestation
+    includes_pii BOOLEAN DEFAULT FALSE,
+    includes_financial BOOLEAN DEFAULT FALSE,
+    regulatory_submission BOOLEAN DEFAULT FALSE,
+    submission_reference VARCHAR(100),
+    
+    -- Metadata
+    generation_time_seconds INT UNSIGNED,
+    error_message TEXT,
+    tenant_id INT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (report_id),
+    INDEX idx_report_number (report_number),
+    INDEX idx_report_type (report_type),
+    INDEX idx_report_period (report_period_start, report_period_end),
+    INDEX idx_report_requested_by (requested_by_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+DELIMITER //
+
+-- Procedure to create immutable audit log entry with hash chain
+CREATE PROCEDURE sp_create_audit_log(
+    IN p_user_id INT UNSIGNED,
+    IN p_action_type VARCHAR(50),
+    IN p_table_name VARCHAR(64),
+    IN p_record_id VARCHAR(100),
+    IN p_reason_code VARCHAR(50),
+    IN p_metadata JSON
+)
+BEGIN
+    DECLARE v_previous_hash VARCHAR(64);
+    DECLARE v_audit_data TEXT;
+    DECLARE v_audit_hash VARCHAR(64);
+    DECLARE v_audit_id BIGINT UNSIGNED;
+    
+    -- Get the hash of the most recent audit entry
+    SELECT audit_hash INTO v_previous_hash
+    FROM audit_log
+    ORDER BY audit_id DESC
+    LIMIT 1;
+    
+    -- Create concatenated audit data for hashing
+    SET v_audit_data = CONCAT(
+        IFNULL(v_previous_hash, 'GENESIS'),
+        '|', p_user_id,
+        '|', p_action_type,
+        '|', p_table_name,
+        '|', p_record_id,
+        '|', p_reason_code,
+        '|', NOW(6)
+    );
+    
+    -- Generate SHA-256 hash
+    SET v_audit_hash = SHA2(v_audit_data, 256);
+    
+    -- Insert audit log entry
+    INSERT INTO audit_log (
+        audit_timestamp,
+        audit_hash,
+        previous_hash,
+        user_id,
+        action_type,
+        table_name,
+        record_id,
+        reason_code,
+        metadata
+    ) VALUES (
+        NOW(6),
+        v_audit_hash,
+        v_previous_hash,
+        p_user_id,
+        p_action_type,
+        p_table_name,
+        p_record_id,
+        p_reason_code,
+        p_metadata
+    );
+    
+    SET v_audit_id = LAST_INSERT_ID();
+    
+    SELECT v_audit_id AS audit_id, v_audit_hash AS audit_hash;
+END //
+
+-- Procedure to handle privacy requests with SLA tracking
+CREATE PROCEDURE sp_process_privacy_request(
+    IN p_request_type VARCHAR(50),
+    IN p_regulation VARCHAR(50),
+    IN p_requester_email VARCHAR(255),
+    IN p_requester_name VARCHAR(200)
+)
+BEGIN
+    DECLARE v_request_number VARCHAR(50);
+    DECLARE v_deadline_days INT DEFAULT 30; -- GDPR default
+    
+    -- Generate unique request number
+    SET v_request_number = CONCAT(
+        p_regulation, '-',
+        DATE_FORMAT(NOW(), '%Y%m%d'), '-',
+        LPAD(FLOOR(RAND() * 10000), 4, '0')
+    );
+    
+    -- Adjust deadline based on regulation
+    IF p_regulation = 'CCPA' THEN
+        SET v_deadline_days = 45;
+    ELSEIF p_regulation = 'LGPD' THEN
+        SET v_deadline_days = 15;
+    END IF;
+    
+    -- Create privacy request
+    INSERT INTO privacy_request (
+        request_number,
+        request_type,
+        regulation,
+        requester_email,
+        requester_name,
+        status,
+        received_at,
+        deadline_date
+    ) VALUES (
+        v_request_number,
+        p_request_type,
+        p_regulation,
+        p_requester_email,
+        p_requester_name,
+        'RECEIVED',
+        NOW(6),
+        DATE_ADD(NOW(), INTERVAL v_deadline_days DAY)
+    );
+    
+    SELECT LAST_INSERT_ID() AS request_id, v_request_number AS request_number;
+END //
+
+-- Procedure to check compliance violations
+CREATE PROCEDURE sp_check_compliance_violations(
+    IN p_check_code VARCHAR(50)
+)
+BEGIN
+    DECLARE v_check_id INT UNSIGNED;
+    DECLARE v_check_query TEXT;
+    DECLARE v_violation_count INT DEFAULT 0;
+    
+    -- Get check configuration
+    SELECT check_id, check_query 
+    INTO v_check_id, v_check_query
+    FROM compliance_check
+    WHERE check_code = p_check_code
+    AND is_active = TRUE;
+    
+    -- Execute dynamic compliance check
+    -- (In production, this would execute the actual check query)
+    
+    -- Update last run timestamp
+    UPDATE compliance_check
+    SET last_run_timestamp = NOW(6)
+    WHERE check_id = v_check_id;
+    
+    SELECT v_check_id AS check_id, v_violation_count AS violations_found;
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS FOR REPORTING
+-- =====================================================
+
+-- Privacy request SLA monitoring view
+CREATE VIEW v_privacy_request_sla AS
+SELECT 
+    request_id,
+    request_number,
+    request_type,
+    regulation,
+    status,
+    received_at,
+    deadline_date,
+    DATEDIFF(deadline_date, NOW()) AS days_remaining,
+    CASE 
+        WHEN status IN ('COMPLETED', 'REJECTED') THEN 'CLOSED'
+        WHEN DATEDIFF(deadline_date, NOW()) < 0 THEN 'OVERDUE'
+        WHEN DATEDIFF(deadline_date, NOW()) <= 5 THEN 'AT_RISK'
+        ELSE 'ON_TRACK'
+    END AS sla_status,
+    requester_email,
+    assigned_to_user_id
+FROM privacy_request;
+
+-- Active compliance violations summary
+CREATE VIEW v_compliance_violations_summary AS
+SELECT 
+    cv.severity,
+    cv.status,
+    cc.regulation,
+    cc.category,
+    COUNT(*) AS violation_count,
+    MIN(cv.violation_timestamp) AS oldest_violation,
+    MAX(cv.violation_timestamp) AS latest_violation
+FROM compliance_violation cv
+JOIN compliance_check cc ON cv.check_id = cc.check_id
+WHERE cv.status NOT IN ('RESOLVED')
+GROUP BY cv.severity, cv.status, cc.regulation, cc.category;
+
+-- User consent status view
+CREATE VIEW v_user_consent_status AS
+SELECT 
+    user_id,
+    consent_type,
+    MAX(CASE WHEN consent_status = 'GRANTED' THEN granted_at END) AS last_granted,
+    MAX(CASE WHEN consent_status = 'WITHDRAWN' THEN withdrawn_at END) AS last_withdrawn,
+    MAX(expires_at) AS consent_expires,
+    CASE 
+        WHEN MAX(CASE WHEN consent_status = 'GRANTED' THEN 1 ELSE 0 END) = 1 
+             AND (MAX(expires_at) IS NULL OR MAX(expires_at) > NOW()) THEN 'ACTIVE'
+        WHEN MAX(expires_at) <= NOW() THEN 'EXPIRED'
+        ELSE 'WITHDRAWN'
+    END AS current_status
+FROM privacy_consent
+WHERE is_active = TRUE
+GROUP BY user_id, consent_type;
+
+-- =====================================================
+-- INITIAL CONFIGURATION DATA
+-- =====================================================
+
+-- Insert standard compliance checks
+INSERT INTO compliance_check (check_name, check_code, check_type, jurisdiction, regulation, category, severity_level, schedule_cron) VALUES
+('GDPR Data Retention Check', 'GDPR_RETENTION', 'SCHEDULED', 'EU', 'GDPR', 'PRIVACY', 'HIGH', '0 2 * * *'),
+('CCPA Access Request SLA', 'CCPA_ACCESS_SLA', 'CONTINUOUS', 'US-CA', 'CCPA', 'PRIVACY', 'HIGH', NULL),
+('CISAC Work Registration Compliance', 'CISAC_WORK_REG', 'TRIGGERED', 'GLOBAL', 'CISAC', 'COPYRIGHT', 'MEDIUM', NULL),
+('MLC Royalty Reporting Accuracy', 'MLC_ROYALTY_ACCURACY', 'SCHEDULED', 'US', 'MLC', 'FINANCIAL', 'CRITICAL', '0 0 1 * *'),
+('PCI DSS Payment Data Security', 'PCI_DSS_SECURITY', 'CONTINUOUS', 'GLOBAL', 'PCI_DSS', 'FINANCIAL', 'CRITICAL', NULL),
+('Cross-Border Data Transfer', 'GDPR_TRANSFER', 'TRIGGERED', 'EU', 'GDPR', 'PRIVACY', 'HIGH', NULL),
+('Minor Data Protection', 'COPPA_MINOR', 'CONTINUOUS', 'US', 'COPPA', 'PRIVACY', 'CRITICAL', NULL),
+('SOX Financial Audit Trail', 'SOX_AUDIT', 'SCHEDULED', 'US', 'SOX', 'FINANCIAL', 'HIGH', '0 0 * * 0'),
+('LGPD Consent Management', 'LGPD_CONSENT', 'CONTINUOUS', 'BR', 'LGPD', 'PRIVACY', 'HIGH', NULL),
+('ISO 27001 Access Control', 'ISO27001_ACCESS', 'SCHEDULED', 'GLOBAL', 'ISO27001', 'SECURITY', 'MEDIUM', '0 0 * * *');
+
+-- =====================================================
+-- TRIGGERS FOR AUTOMATIC AUDIT LOGGING
+-- =====================================================
+
+-- Note: These would be created for each table in the system
+-- Example trigger for automatic audit logging would be:
+/*
+DELIMITER //
+CREATE TRIGGER tr_table_name_audit_insert
+AFTER INSERT ON table_name
+FOR EACH ROW
+BEGIN
+    CALL sp_create_audit_log(
+        NEW.created_by_user_id,
+        'CREATE',
+        'table_name',
+        NEW.id,
+        'MANUAL_CREATE',
+        JSON_OBJECT('trigger', 'insert')
+    );
+END //
+DELIMITER ;
+*/
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_audit_log_composite ON audit_log(table_name, action_type, audit_timestamp);
+CREATE INDEX idx_privacy_request_composite ON privacy_request(regulation, request_type, status);
+CREATE INDEX idx_consent_lookup ON privacy_consent(user_id, consent_type, consent_status, is_active);
+CREATE INDEX idx_violation_lookup ON compliance_violation(severity, status, violation_timestamp);
+
+-- =====================================================
+-- Section 18: ANALYTICS & ML TABLES
+-- =====================================================
+
+-- =====================================================
+-- CORE ANALYTICS TABLES
+-- =====================================================
+
+-- Raw event tracking table (partitioned by date for performance)
+CREATE TABLE analytics_event (
+    event_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    event_uuid CHAR(36) NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- 'stream', 'purchase', 'share', 'save', 'skip'
+    event_timestamp DATETIME(6) NOT NULL,
+    
+    -- Entity references
+    user_id INT UNSIGNED,
+    asset_id INT UNSIGNED,
+    release_id INT UNSIGNED,
+    playlist_id INT UNSIGNED,
+    
+    -- Platform information
+    platform_code VARCHAR(20), -- 'spotify', 'apple_music', 'youtube'
+    platform_version VARCHAR(20),
+    
+    -- Session information
+    session_id CHAR(36),
+    session_sequence INT UNSIGNED,
+    
+    -- Event details (flexible JSON for extensibility)
+    event_properties JSON,
+    
+    -- User context
+    user_properties JSON, -- Anonymous demographics, preferences
+    
+    -- Technical context
+    device_type VARCHAR(50),
+    device_id VARCHAR(100),
+    app_version VARCHAR(20),
+    os_name VARCHAR(50),
+    os_version VARCHAR(20),
+    browser_name VARCHAR(50),
+    browser_version VARCHAR(20),
+    
+    -- Geographic information (privacy-compliant)
+    country_code CHAR(2),
+    region_code VARCHAR(10),
+    city_name VARCHAR(100),
+    timezone VARCHAR(50),
+    
+    -- Performance metrics
+    event_duration_ms INT UNSIGNED,
+    
+    -- Quality flags
+    is_valid BOOLEAN DEFAULT TRUE,
+    is_duplicate BOOLEAN DEFAULT FALSE,
+    is_test BOOLEAN DEFAULT FALSE,
+    
+    -- Processing metadata
+    processed_at DATETIME(6),
+    processing_version VARCHAR(20),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (event_id, event_timestamp),
+    UNIQUE KEY idx_event_uuid (event_uuid),
+    KEY idx_event_type_timestamp (event_type, event_timestamp),
+    KEY idx_user_timestamp (user_id, event_timestamp),
+    KEY idx_asset_timestamp (asset_id, event_timestamp),
+    KEY idx_platform_timestamp (platform_code, event_timestamp),
+    KEY idx_country_timestamp (country_code, event_timestamp),
+    KEY idx_session (session_id, session_sequence)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (TO_DAYS(event_timestamp)) (
+    PARTITION p_2024_01 VALUES LESS THAN (TO_DAYS('2024-02-01')),
+    PARTITION p_2024_02 VALUES LESS THAN (TO_DAYS('2024-03-01')),
+    PARTITION p_2024_03 VALUES LESS THAN (TO_DAYS('2024-04-01')),
+    PARTITION p_2024_04 VALUES LESS THAN (TO_DAYS('2024-05-01')),
+    PARTITION p_2024_05 VALUES LESS THAN (TO_DAYS('2024-06-01')),
+    PARTITION p_2024_06 VALUES LESS THAN (TO_DAYS('2024-07-01')),
+    PARTITION p_2024_07 VALUES LESS THAN (TO_DAYS('2024-08-01')),
+    PARTITION p_2024_08 VALUES LESS THAN (TO_DAYS('2024-09-01')),
+    PARTITION p_2024_09 VALUES LESS THAN (TO_DAYS('2024-10-01')),
+    PARTITION p_2024_10 VALUES LESS THAN (TO_DAYS('2024-11-01')),
+    PARTITION p_2024_11 VALUES LESS THAN (TO_DAYS('2024-12-01')),
+    PARTITION p_2024_12 VALUES LESS THAN (TO_DAYS('2025-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- Metric definitions
+CREATE TABLE analytics_metric (
+    metric_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    metric_code VARCHAR(50) NOT NULL,
+    metric_name VARCHAR(100) NOT NULL,
+    metric_category VARCHAR(50) NOT NULL, -- 'engagement', 'revenue', 'performance'
+    metric_type VARCHAR(50) NOT NULL, -- 'count', 'sum', 'average', 'percentile'
+    
+    -- Calculation details
+    calculation_sql TEXT,
+    aggregation_method VARCHAR(50),
+    
+    -- Display properties
+    display_unit VARCHAR(20),
+    decimal_places TINYINT UNSIGNED DEFAULT 2,
+    format_type VARCHAR(20), -- 'number', 'currency', 'percentage'
+    
+    -- Business rules
+    is_key_metric BOOLEAN DEFAULT FALSE,
+    refresh_frequency VARCHAR(20), -- 'realtime', 'hourly', 'daily'
+    retention_days INT UNSIGNED,
+    
+    -- Metadata
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (metric_id),
+    UNIQUE KEY idx_metric_code (metric_code),
+    KEY idx_metric_category (metric_category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dimension definitions
+CREATE TABLE analytics_dimension (
+    dimension_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    dimension_code VARCHAR(50) NOT NULL,
+    dimension_name VARCHAR(100) NOT NULL,
+    dimension_type VARCHAR(50) NOT NULL, -- 'time', 'geography', 'platform', 'content'
+    
+    -- Hierarchy information
+    parent_dimension_id INT UNSIGNED,
+    hierarchy_level TINYINT UNSIGNED,
+    
+    -- Cardinality and performance
+    estimated_cardinality INT UNSIGNED,
+    index_priority TINYINT UNSIGNED,
+    
+    -- Metadata
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (dimension_id),
+    UNIQUE KEY idx_dimension_code (dimension_code),
+    KEY idx_dimension_type (dimension_type),
+    FOREIGN KEY (parent_dimension_id) REFERENCES analytics_dimension(dimension_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Pre-computed aggregates for performance
+CREATE TABLE analytics_aggregation (
+    aggregation_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    aggregation_date DATE NOT NULL,
+    time_grain VARCHAR(20) NOT NULL, -- 'hour', 'day', 'week', 'month'
+    
+    -- Dimensions
+    asset_id INT UNSIGNED,
+    release_id INT UNSIGNED,
+    artist_id INT UNSIGNED,
+    platform_code VARCHAR(20),
+    country_code CHAR(2),
+    
+    -- Metrics
+    stream_count BIGINT UNSIGNED DEFAULT 0,
+    unique_listeners INT UNSIGNED DEFAULT 0,
+    total_duration_seconds BIGINT UNSIGNED DEFAULT 0,
+    skip_count INT UNSIGNED DEFAULT 0,
+    save_count INT UNSIGNED DEFAULT 0,
+    share_count INT UNSIGNED DEFAULT 0,
+    playlist_add_count INT UNSIGNED DEFAULT 0,
+    
+    -- Calculated metrics
+    completion_rate DECIMAL(5,4),
+    skip_rate DECIMAL(5,4),
+    engagement_score DECIMAL(10,4),
+    
+    -- Revenue metrics
+    revenue_amount DECIMAL(15,6),
+    revenue_currency CHAR(3),
+    
+    -- Processing metadata
+    last_updated DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (aggregation_id),
+    UNIQUE KEY idx_unique_aggregation (aggregation_date, time_grain, asset_id, platform_code, country_code),
+    KEY idx_date_grain (aggregation_date, time_grain),
+    KEY idx_asset_date (asset_id, aggregation_date),
+    KEY idx_platform_date (platform_code, aggregation_date),
+    KEY idx_country_date (country_code, aggregation_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+PARTITION BY RANGE (TO_DAYS(aggregation_date)) (
+    PARTITION p_2024_q1 VALUES LESS THAN (TO_DAYS('2024-04-01')),
+    PARTITION p_2024_q2 VALUES LESS THAN (TO_DAYS('2024-07-01')),
+    PARTITION p_2024_q3 VALUES LESS THAN (TO_DAYS('2024-10-01')),
+    PARTITION p_2024_q4 VALUES LESS THAN (TO_DAYS('2025-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- =====================================================
+-- PERFORMANCE METRICS TABLES
+-- =====================================================
+
+-- Platform-specific streaming metrics
+CREATE TABLE streaming_metric (
+    streaming_metric_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    metric_date DATE NOT NULL,
+    asset_id INT UNSIGNED NOT NULL,
+    platform_code VARCHAR(20) NOT NULL,
+    
+    -- Core streaming metrics
+    total_streams BIGINT UNSIGNED DEFAULT 0,
+    unique_listeners INT UNSIGNED DEFAULT 0,
+    new_listeners INT UNSIGNED DEFAULT 0,
+    returning_listeners INT UNSIGNED DEFAULT 0,
+    
+    -- Engagement metrics
+    saves_count INT UNSIGNED DEFAULT 0,
+    playlist_adds INT UNSIGNED DEFAULT 0,
+    shares_count INT UNSIGNED DEFAULT 0,
+    likes_count INT UNSIGNED DEFAULT 0,
+    
+    -- Skip metrics by position
+    skip_rate_intro DECIMAL(5,4), -- First 10 seconds
+    skip_rate_verse DECIMAL(5,4), -- 10-60 seconds
+    skip_rate_chorus DECIMAL(5,4), -- 60-120 seconds
+    skip_rate_outro DECIMAL(5,4), -- Last 30 seconds
+    
+    -- Completion metrics
+    completion_rate DECIMAL(5,4),
+    average_listen_duration DECIMAL(10,2),
+    repeat_rate DECIMAL(5,4),
+    
+    -- Discovery metrics
+    playlist_discovery_count INT UNSIGNED DEFAULT 0,
+    radio_discovery_count INT UNSIGNED DEFAULT 0,
+    search_discovery_count INT UNSIGNED DEFAULT 0,
+    algorithmic_discovery_count INT UNSIGNED DEFAULT 0,
+    
+    -- Device breakdown
+    mobile_streams INT UNSIGNED DEFAULT 0,
+    desktop_streams INT UNSIGNED DEFAULT 0,
+    smart_speaker_streams INT UNSIGNED DEFAULT 0,
+    tv_streams INT UNSIGNED DEFAULT 0,
+    
+    -- Time-based patterns
+    peak_hour TINYINT UNSIGNED,
+    peak_day_of_week TINYINT UNSIGNED,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (streaming_metric_id),
+    UNIQUE KEY idx_unique_streaming (metric_date, asset_id, platform_code),
+    KEY idx_asset_date (asset_id, metric_date),
+    KEY idx_platform_date (platform_code, metric_date),
+    KEY idx_streams (total_streams)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sales metrics across all channels
+CREATE TABLE sales_metric (
+    sales_metric_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    metric_date DATE NOT NULL,
+    asset_id INT UNSIGNED,
+    release_id INT UNSIGNED,
+    
+    -- Digital sales
+    digital_track_sales INT UNSIGNED DEFAULT 0,
+    digital_album_sales INT UNSIGNED DEFAULT 0,
+    
+    -- Physical sales
+    cd_sales INT UNSIGNED DEFAULT 0,
+    vinyl_sales INT UNSIGNED DEFAULT 0,
+    cassette_sales INT UNSIGNED DEFAULT 0,
+    
+    -- Special formats
+    limited_edition_sales INT UNSIGNED DEFAULT 0,
+    bundle_sales INT UNSIGNED DEFAULT 0,
+    
+    -- NFT/Blockchain sales
+    nft_sales INT UNSIGNED DEFAULT 0,
+    nft_revenue DECIMAL(15,6),
+    
+    -- Merchandise
+    merch_units_sold INT UNSIGNED DEFAULT 0,
+    merch_revenue DECIMAL(15,6),
+    
+    -- Revenue by channel
+    digital_revenue DECIMAL(15,6),
+    physical_revenue DECIMAL(15,6),
+    total_revenue DECIMAL(15,6),
+    revenue_currency CHAR(3) DEFAULT 'USD',
+    
+    -- Conversion metrics
+    stream_to_sale_conversion DECIMAL(5,4),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (sales_metric_id),
+    KEY idx_date (metric_date),
+    KEY idx_asset_date (asset_id, metric_date),
+    KEY idx_release_date (release_id, metric_date),
+    KEY idx_revenue (total_revenue)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Playlist placement tracking
+CREATE TABLE playlist_placement (
+    placement_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    asset_id INT UNSIGNED NOT NULL,
+    playlist_id VARCHAR(100) NOT NULL,
+    platform_code VARCHAR(20) NOT NULL,
+    
+    -- Playlist details
+    playlist_name VARCHAR(200),
+    playlist_type VARCHAR(50), -- 'editorial', 'algorithmic', 'user', 'branded'
+    playlist_owner VARCHAR(100),
+    playlist_followers INT UNSIGNED,
+    
+    -- Placement details
+    position_in_playlist INT UNSIGNED,
+    added_date DATE NOT NULL,
+    removed_date DATE,
+    days_on_playlist INT UNSIGNED,
+    
+    -- Performance metrics
+    streams_from_playlist BIGINT UNSIGNED DEFAULT 0,
+    listeners_from_playlist INT UNSIGNED DEFAULT 0,
+    saves_from_playlist INT UNSIGNED DEFAULT 0,
+    skip_rate_on_playlist DECIMAL(5,4),
+    
+    -- Impact metrics
+    stream_lift_percentage DECIMAL(10,2),
+    follower_conversion_rate DECIMAL(5,4),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (placement_id),
+    KEY idx_asset_playlist (asset_id, playlist_id),
+    KEY idx_platform_date (platform_code, added_date),
+    KEY idx_playlist_type (playlist_type),
+    KEY idx_active_placements (removed_date, added_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chart position history
+CREATE TABLE chart_position (
+    chart_position_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    asset_id INT UNSIGNED,
+    release_id INT UNSIGNED,
+    chart_date DATE NOT NULL,
+    
+    -- Chart identification
+    chart_name VARCHAR(100) NOT NULL,
+    chart_type VARCHAR(50) NOT NULL, -- 'official', 'streaming', 'radio', 'genre'
+    chart_territory VARCHAR(50) NOT NULL,
+    
+    -- Position data
+    current_position INT UNSIGNED NOT NULL,
+    previous_position INT UNSIGNED,
+    peak_position INT UNSIGNED,
+    weeks_on_chart INT UNSIGNED DEFAULT 1,
+    
+    -- Movement indicators
+    position_change INT,
+    is_new_entry BOOLEAN DEFAULT FALSE,
+    is_re_entry BOOLEAN DEFAULT FALSE,
+    
+    -- Performance metrics
+    chart_points INT UNSIGNED,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (chart_position_id),
+    UNIQUE KEY idx_unique_chart (asset_id, release_id, chart_name, chart_territory, chart_date),
+    KEY idx_chart_date (chart_date),
+    KEY idx_position (current_position),
+    KEY idx_asset_chart (asset_id, chart_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Comprehensive release performance
+CREATE TABLE release_performance (
+    performance_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    release_id INT UNSIGNED NOT NULL,
+    performance_date DATE NOT NULL,
+    
+    -- Aggregate streaming metrics
+    total_streams_to_date BIGINT UNSIGNED DEFAULT 0,
+    daily_streams BIGINT UNSIGNED DEFAULT 0,
+    weekly_streams BIGINT UNSIGNED DEFAULT 0,
+    monthly_streams BIGINT UNSIGNED DEFAULT 0,
+    
+    -- Sales metrics
+    total_sales_to_date INT UNSIGNED DEFAULT 0,
+    daily_sales INT UNSIGNED DEFAULT 0,
+    weekly_sales INT UNSIGNED DEFAULT 0,
+    
+    -- Revenue metrics
+    total_revenue_to_date DECIMAL(15,6),
+    daily_revenue DECIMAL(15,6),
+    streaming_revenue DECIMAL(15,6),
+    sales_revenue DECIMAL(15,6),
+    sync_revenue DECIMAL(15,6),
+    
+    -- Engagement metrics
+    total_playlist_adds INT UNSIGNED DEFAULT 0,
+    active_playlist_count INT UNSIGNED DEFAULT 0,
+    social_mentions INT UNSIGNED DEFAULT 0,
+    
+    -- Milestones
+    achieved_gold BOOLEAN DEFAULT FALSE,
+    achieved_platinum BOOLEAN DEFAULT FALSE,
+    achieved_diamond BOOLEAN DEFAULT FALSE,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (performance_id),
+    UNIQUE KEY idx_release_date (release_id, performance_date),
+    KEY idx_performance_date (performance_date),
+    KEY idx_total_streams (total_streams_to_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- INTELLIGENCE & INSIGHTS TABLES
+-- =====================================================
+
+-- Identified trends
+CREATE TABLE trend_analysis (
+    trend_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    trend_type VARCHAR(50) NOT NULL, -- 'genre', 'mood', 'tempo', 'viral'
+    trend_name VARCHAR(100) NOT NULL,
+    
+    -- Trend metrics
+    trend_score DECIMAL(10,4),
+    growth_rate DECIMAL(10,4),
+    momentum_score DECIMAL(10,4),
+    
+    -- Time bounds
+    detected_date DATE NOT NULL,
+    peak_date DATE,
+    decline_date DATE,
+    
+    -- Associated entities
+    related_genres JSON,
+    related_moods JSON,
+    example_tracks JSON,
+    
+    -- Geographic spread
+    origin_country CHAR(2),
+    affected_territories JSON,
+    
+    -- Platform distribution
+    platform_breakdown JSON,
+    
+    -- Metadata
+    confidence_score DECIMAL(5,4),
+    analysis_version VARCHAR(20),
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (trend_id),
+    KEY idx_trend_type (trend_type),
+    KEY idx_detected_date (detected_date),
+    KEY idx_trend_score (trend_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Market intelligence
+CREATE TABLE market_analysis (
+    market_analysis_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    analysis_date DATE NOT NULL,
+    market_segment VARCHAR(50) NOT NULL,
+    territory VARCHAR(50) NOT NULL,
+    
+    -- Market size metrics
+    total_market_value DECIMAL(15,2),
+    market_growth_rate DECIMAL(10,4),
+    
+    -- Competitive landscape
+    market_concentration DECIMAL(5,4), -- Herfindahl index
+    top_player_share DECIMAL(5,4),
+    
+    -- Consumer behavior
+    average_consumption_hours DECIMAL(10,2),
+    paid_subscription_rate DECIMAL(5,4),
+    
+    -- Platform distribution
+    streaming_share DECIMAL(5,4),
+    physical_share DECIMAL(5,4),
+    digital_download_share DECIMAL(5,4),
+    
+    -- Demographic insights
+    demographic_breakdown JSON,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (market_analysis_id),
+    UNIQUE KEY idx_market_date (analysis_date, market_segment, territory),
+    KEY idx_territory (territory),
+    KEY idx_market_value (total_market_value)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Competitive intelligence
+CREATE TABLE competitor_analysis (
+    competitor_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    competitor_name VARCHAR(100) NOT NULL,
+    competitor_type VARCHAR(50) NOT NULL, -- 'artist', 'label', 'distributor'
+    
+    -- Market position
+    market_share DECIMAL(5,4),
+    growth_trajectory VARCHAR(20),
+    
+    -- Performance benchmarks
+    average_streams_per_release BIGINT UNSIGNED,
+    average_playlist_reach INT UNSIGNED,
+    release_frequency_days INT UNSIGNED,
+    
+    -- Strategic insights
+    primary_genres JSON,
+    target_demographics JSON,
+    key_territories JSON,
+    platform_focus JSON,
+    
+    -- Comparative metrics
+    our_performance_index DECIMAL(10,4),
+    
+    last_updated DATE,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (competitor_id),
+    KEY idx_competitor_type (competitor_type),
+    KEY idx_market_share (market_share)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Geographic performance heat maps
+CREATE TABLE geographic_performance (
+    geo_performance_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    asset_id INT UNSIGNED,
+    release_id INT UNSIGNED,
+    performance_date DATE NOT NULL,
+    
+    -- Location hierarchy
+    country_code CHAR(2) NOT NULL,
+    region_name VARCHAR(100),
+    city_name VARCHAR(100),
+    
+    -- Performance metrics
+    total_streams BIGINT UNSIGNED DEFAULT 0,
+    unique_listeners INT UNSIGNED DEFAULT 0,
+    market_penetration DECIMAL(5,4),
+    
+    -- Comparative metrics
+    national_rank INT UNSIGNED,
+    regional_rank INT UNSIGNED,
+    
+    -- Growth metrics
+    daily_growth_rate DECIMAL(10,4),
+    weekly_growth_rate DECIMAL(10,4),
+    
+    -- Cultural factors
+    local_playlist_features INT UNSIGNED DEFAULT 0,
+    local_radio_plays INT UNSIGNED DEFAULT 0,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (geo_performance_id),
+    KEY idx_asset_geo (asset_id, country_code, performance_date),
+    KEY idx_release_geo (release_id, country_code, performance_date),
+    KEY idx_country_date (country_code, performance_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- FAN ANALYTICS TABLES
+-- =====================================================
+
+-- Audience demographics (privacy-compliant, aggregated)
+CREATE TABLE fan_demographic (
+    demographic_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    artist_id INT UNSIGNED,
+    asset_id INT UNSIGNED,
+    demographic_date DATE NOT NULL,
+    
+    -- Age distribution (percentages)
+    age_13_17_pct DECIMAL(5,2),
+    age_18_24_pct DECIMAL(5,2),
+    age_25_34_pct DECIMAL(5,2),
+    age_35_44_pct DECIMAL(5,2),
+    age_45_54_pct DECIMAL(5,2),
+    age_55_plus_pct DECIMAL(5,2),
+    
+    -- Gender distribution
+    gender_male_pct DECIMAL(5,2),
+    gender_female_pct DECIMAL(5,2),
+    gender_other_pct DECIMAL(5,2),
+    
+    -- Top territories
+    top_countries JSON,
+    top_cities JSON,
+    
+    -- Listening behavior
+    average_listening_hours DECIMAL(10,2),
+    peak_listening_hour TINYINT UNSIGNED,
+    preferred_device_type VARCHAR(50),
+    
+    -- Engagement level distribution
+    super_fans_pct DECIMAL(5,2), -- Top 1% by engagement
+    active_fans_pct DECIMAL(5,2), -- Top 10%
+    casual_listeners_pct DECIMAL(5,2),
+    
+    -- Discovery sources
+    playlist_discovery_pct DECIMAL(5,2),
+    radio_discovery_pct DECIMAL(5,2),
+    social_discovery_pct DECIMAL(5,2),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (demographic_id),
+    KEY idx_artist_date (artist_id, demographic_date),
+    KEY idx_asset_date (asset_id, demographic_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fan engagement metrics
+CREATE TABLE fan_engagement (
+    engagement_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    fan_segment_id VARCHAR(50) NOT NULL, -- Anonymous segment identifier
+    engagement_date DATE NOT NULL,
+    
+    -- Engagement scores
+    overall_engagement_score DECIMAL(10,4),
+    streaming_engagement_score DECIMAL(10,4),
+    social_engagement_score DECIMAL(10,4),
+    
+    -- Behavioral metrics
+    sessions_per_week DECIMAL(10,2),
+    tracks_per_session DECIMAL(10,2),
+    repeat_listening_rate DECIMAL(5,4),
+    
+    -- Cross-platform behavior
+    platforms_used INT UNSIGNED,
+    primary_platform VARCHAR(20),
+    
+    -- Content preferences
+    preferred_genres JSON,
+    preferred_moods JSON,
+    preferred_eras JSON,
+    
+    -- Lifecycle stage
+    fan_lifecycle_stage VARCHAR(50), -- 'new', 'growing', 'loyal', 'at_risk', 'churned'
+    days_since_first_listen INT UNSIGNED,
+    days_since_last_listen INT UNSIGNED,
+    
+    -- Predictive scores
+    churn_risk_score DECIMAL(5,4),
+    upsell_probability DECIMAL(5,4),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (engagement_id),
+    KEY idx_segment_date (fan_segment_id, engagement_date),
+    KEY idx_lifecycle (fan_lifecycle_stage),
+    KEY idx_engagement_score (overall_engagement_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- MACHINE LEARNING TABLES
+-- =====================================================
+
+-- ML model registry
+CREATE TABLE prediction_model (
+    model_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    model_name VARCHAR(100) NOT NULL,
+    model_type VARCHAR(50) NOT NULL, -- 'hit_prediction', 'revenue_forecast', 'churn'
+    model_version VARCHAR(20) NOT NULL,
+    
+    -- Model details
+    algorithm VARCHAR(50),
+    framework VARCHAR(50), -- 'tensorflow', 'pytorch', 'scikit-learn'
+    
+    -- Performance metrics
+    accuracy_score DECIMAL(5,4),
+    precision_score DECIMAL(5,4),
+    recall_score DECIMAL(5,4),
+    f1_score DECIMAL(5,4),
+    auc_score DECIMAL(5,4),
+    
+    -- Training details
+    training_date DATE,
+    training_samples INT UNSIGNED,
+    feature_count INT UNSIGNED,
+    
+    -- Model artifacts
+    model_path VARCHAR(500),
+    model_hash VARCHAR(64),
+    
+    -- Deployment status
+    deployment_status VARCHAR(50), -- 'development', 'staging', 'production', 'retired'
+    deployed_at DATETIME(6),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (model_id),
+    UNIQUE KEY idx_model_version (model_name, model_version),
+    KEY idx_model_type (model_type),
+    KEY idx_deployment_status (deployment_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Model predictions
+CREATE TABLE prediction_result (
+    prediction_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    model_id INT UNSIGNED NOT NULL,
+    prediction_date DATETIME(6) NOT NULL,
+    
+    -- Target entity
+    entity_type VARCHAR(50) NOT NULL, -- 'asset', 'release', 'artist'
+    entity_id INT UNSIGNED NOT NULL,
+    
+    -- Prediction details
+    prediction_type VARCHAR(50) NOT NULL,
+    prediction_value DECIMAL(15,6),
+    confidence_score DECIMAL(5,4),
+    
+    -- Additional predictions (JSON for flexibility)
+    prediction_details JSON,
+    
+    -- Feature importance
+    top_features JSON,
+    
+    -- Actual vs predicted (for model evaluation)
+    actual_value DECIMAL(15,6),
+    prediction_error DECIMAL(15,6),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (prediction_id),
+    KEY idx_model_date (model_id, prediction_date),
+    KEY idx_entity (entity_type, entity_id),
+    KEY idx_prediction_type (prediction_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Feature definitions
+CREATE TABLE ml_feature (
+    feature_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    feature_name VARCHAR(100) NOT NULL,
+    feature_category VARCHAR(50) NOT NULL,
+    
+    -- Feature engineering
+    calculation_sql TEXT,
+    data_type VARCHAR(50),
+    
+    -- Feature importance
+    global_importance_score DECIMAL(5,4),
+    
+    -- Feature statistics
+    mean_value DECIMAL(15,6),
+    std_deviation DECIMAL(15,6),
+    min_value DECIMAL(15,6),
+    max_value DECIMAL(15,6),
+    
+    -- Usage tracking
+    models_using_count INT UNSIGNED DEFAULT 0,
+    last_calculated DATETIME(6),
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (feature_id),
+    UNIQUE KEY idx_feature_name (feature_name),
+    KEY idx_feature_category (feature_category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Training datasets
+CREATE TABLE ml_training_data (
+    training_data_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    model_id INT UNSIGNED NOT NULL,
+    
+    -- Dataset details
+    dataset_name VARCHAR(100) NOT NULL,
+    dataset_version VARCHAR(20) NOT NULL,
+    
+    -- Data characteristics
+    total_samples INT UNSIGNED NOT NULL,
+    positive_samples INT UNSIGNED,
+    negative_samples INT UNSIGNED,
+    
+    -- Time bounds
+    data_start_date DATE,
+    data_end_date DATE,
+    
+    -- Storage
+    storage_path VARCHAR(500),
+    file_size_mb DECIMAL(10,2),
+    
+    -- Validation
+    validation_status VARCHAR(50),
+    validation_errors JSON,
+    
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (training_data_id),
+    KEY idx_model (model_id),
+    KEY idx_dataset_version (dataset_name, dataset_version),
+    FOREIGN KEY (model_id) REFERENCES prediction_model(model_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Model version control
+CREATE TABLE ml_model_version (
+    version_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    model_id INT UNSIGNED NOT NULL,
+    version_number VARCHAR(20) NOT NULL,
+    
+    -- Version details
+    major_version INT UNSIGNED,
+    minor_version INT UNSIGNED,
+    patch_version INT UNSIGNED,
+    
+    -- Changes
+    change_description TEXT,
+    features_added JSON,
+    features_removed JSON,
+    
+    -- Performance comparison
+    performance_delta JSON,
+    
+    -- Deployment history
+    deployed_environments JSON,
+    rollback_count INT UNSIGNED DEFAULT 0,
+    
+    created_by VARCHAR(100),
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (version_id),
+    UNIQUE KEY idx_model_version (model_id, version_number),
+    FOREIGN KEY (model_id) REFERENCES prediction_model(model_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- EXPERIMENTATION TABLES
+-- =====================================================
+
+-- A/B test configurations
+CREATE TABLE ab_test (
+    test_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    test_name VARCHAR(100) NOT NULL,
+    test_type VARCHAR(50) NOT NULL, -- 'release_strategy', 'pricing', 'metadata'
+    
+    -- Test setup
+    hypothesis TEXT,
+    success_metrics JSON,
+    
+    -- Test groups
+    control_group JSON,
+    variant_groups JSON,
+    
+    -- Test parameters
+    sample_size INT UNSIGNED,
+    confidence_level DECIMAL(5,4) DEFAULT 0.95,
+    minimum_effect DECIMAL(10,4),
+    
+    -- Time bounds
+    start_date DATETIME(6),
+    end_date DATETIME(6),
+    
+    -- Results
+    test_status VARCHAR(50), -- 'planning', 'running', 'completed', 'aborted'
+    winner_variant VARCHAR(50),
+    statistical_significance DECIMAL(5,4),
+    
+    -- Impact
+    estimated_impact JSON,
+    
+    created_by VARCHAR(100),
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    PRIMARY KEY (test_id),
+    KEY idx_test_type (test_type),
+    KEY idx_test_status (test_status),
+    KEY idx_dates (start_date, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Recommendation engine results
+CREATE TABLE recommendation_engine (
+    recommendation_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    recommendation_type VARCHAR(50) NOT NULL, -- 'next_track', 'similar_artist', 'playlist'
+    
+    -- Context
+    user_segment VARCHAR(50),
+    context_data JSON,
+    
+    -- Recommendations
+    recommended_items JSON,
+    recommendation_scores JSON,
+    
+    -- Performance
+    click_through_rate DECIMAL(5,4),
+    conversion_rate DECIMAL(5,4),
+    
+    -- Feedback
+    user_feedback_score DECIMAL(3,2),
+    
+    generated_at DATETIME(6) NOT NULL,
+    
+    PRIMARY KEY (recommendation_id),
+    KEY idx_type_generated (recommendation_type, generated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- VIEWS FOR COMMON ANALYTICS QUERIES
+-- =====================================================
+
+-- Daily streaming performance view
+CREATE VIEW v_daily_streaming_performance AS
+SELECT 
+    sm.metric_date,
+    sm.asset_id,
+    a.asset_title,
+    sm.platform_code,
+    sm.total_streams,
+    sm.unique_listeners,
+    sm.completion_rate,
+    sm.playlist_adds,
+    LAG(sm.total_streams, 1) OVER (PARTITION BY sm.asset_id, sm.platform_code ORDER BY sm.metric_date) as previous_day_streams,
+    (sm.total_streams - LAG(sm.total_streams, 1) OVER (PARTITION BY sm.asset_id, sm.platform_code ORDER BY sm.metric_date)) / 
+        NULLIF(LAG(sm.total_streams, 1) OVER (PARTITION BY sm.asset_id, sm.platform_code ORDER BY sm.metric_date), 0) * 100 as daily_growth_pct
+FROM streaming_metric sm
+JOIN asset a ON sm.asset_id = a.asset_id
+WHERE sm.metric_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY);
+
+-- Artist performance dashboard view
+CREATE VIEW v_artist_performance_dashboard AS
+SELECT 
+    ar.artist_id,
+    ar.artist_name,
+    COUNT(DISTINCT a.asset_id) as total_tracks,
+    SUM(sm.total_streams) as total_streams,
+    SUM(sm.unique_listeners) as total_listeners,
+    AVG(sm.completion_rate) as avg_completion_rate,
+    COUNT(DISTINCT pp.playlist_id) as total_playlists,
+    MAX(cp.peak_position) as highest_chart_position
+FROM artist ar
+JOIN asset_contributor ac ON ar.artist_id = ac.contributor_id
+JOIN asset a ON ac.asset_id = a.asset_id
+LEFT JOIN streaming_metric sm ON a.asset_id = sm.asset_id
+LEFT JOIN playlist_placement pp ON a.asset_id = pp.asset_id AND pp.removed_date IS NULL
+LEFT JOIN chart_position cp ON a.asset_id = cp.asset_id
+WHERE ac.contributor_role = 'primary_artist'
+GROUP BY ar.artist_id, ar.artist_name;
+
+-- Geographic heat map view
+CREATE VIEW v_geographic_heatmap AS
+SELECT 
+    gp.country_code,
+    gp.region_name,
+    gp.performance_date,
+    SUM(gp.total_streams) as total_streams,
+    SUM(gp.unique_listeners) as unique_listeners,
+    AVG(gp.market_penetration) as avg_market_penetration,
+    SUM(gp.local_playlist_features) as playlist_features
+FROM geographic_performance gp
+WHERE gp.performance_date >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)
+GROUP BY gp.country_code, gp.region_name, gp.performance_date;
+
+-- =====================================================
+-- STORED PROCEDURES FOR ETL AND ANALYTICS
+-- =====================================================
+
+DELIMITER //
+
+-- Procedure to aggregate daily streaming metrics
+CREATE PROCEDURE sp_aggregate_daily_streaming_metrics(IN p_date DATE)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    -- Aggregate streaming events into daily metrics
+    INSERT INTO streaming_metric (
+        metric_date,
+        asset_id,
+        platform_code,
+        total_streams,
+        unique_listeners,
+        saves_count,
+        playlist_adds,
+        shares_count,
+        skip_rate_intro,
+        completion_rate,
+        average_listen_duration,
+        mobile_streams,
+        desktop_streams
+    )
+    SELECT 
+        DATE(ae.event_timestamp) as metric_date,
+        ae.asset_id,
+        ae.platform_code,
+        COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END) as total_streams,
+        COUNT(DISTINCT CASE WHEN ae.event_type = 'stream' THEN ae.user_id END) as unique_listeners,
+        COUNT(CASE WHEN ae.event_type = 'save' THEN 1 END) as saves_count,
+        COUNT(CASE WHEN ae.event_type = 'playlist_add' THEN 1 END) as playlist_adds,
+        COUNT(CASE WHEN ae.event_type = 'share' THEN 1 END) as shares_count,
+        AVG(CASE WHEN ae.event_type = 'skip' AND ae.event_duration_ms < 10000 THEN 1 ELSE 0 END) as skip_rate_intro,
+        AVG(CASE WHEN ae.event_type = 'stream' AND ae.event_duration_ms > 30000 THEN 1 ELSE 0 END) as completion_rate,
+        AVG(CASE WHEN ae.event_type = 'stream' THEN ae.event_duration_ms / 1000 END) as average_listen_duration,
+        COUNT(CASE WHEN ae.event_type = 'stream' AND ae.device_type = 'mobile' THEN 1 END) as mobile_streams,
+        COUNT(CASE WHEN ae.event_type = 'stream' AND ae.device_type = 'desktop' THEN 1 END) as desktop_streams
+    FROM analytics_event ae
+    WHERE DATE(ae.event_timestamp) = p_date
+        AND ae.is_valid = TRUE
+        AND ae.is_duplicate = FALSE
+    GROUP BY DATE(ae.event_timestamp), ae.asset_id, ae.platform_code
+    ON DUPLICATE KEY UPDATE
+        total_streams = VALUES(total_streams),
+        unique_listeners = VALUES(unique_listeners),
+        saves_count = VALUES(saves_count),
+        playlist_adds = VALUES(playlist_adds),
+        shares_count = VALUES(shares_count),
+        skip_rate_intro = VALUES(skip_rate_intro),
+        completion_rate = VALUES(completion_rate),
+        average_listen_duration = VALUES(average_listen_duration),
+        mobile_streams = VALUES(mobile_streams),
+        desktop_streams = VALUES(desktop_streams),
+        updated_at = CURRENT_TIMESTAMP(6);
+    
+    COMMIT;
+END //
+
+-- Procedure to calculate fan engagement scores
+CREATE PROCEDURE sp_calculate_fan_engagement_scores(IN p_date DATE)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    -- Calculate engagement scores based on multi-dimensional behavior
+    INSERT INTO fan_engagement (
+        fan_segment_id,
+        engagement_date,
+        overall_engagement_score,
+        streaming_engagement_score,
+        sessions_per_week,
+        tracks_per_session,
+        repeat_listening_rate,
+        platforms_used,
+        fan_lifecycle_stage,
+        churn_risk_score
+    )
+    SELECT 
+        MD5(CONCAT(ae.user_id, DATE_FORMAT(p_date, '%Y%m'))) as fan_segment_id,
+        p_date as engagement_date,
+        -- Overall engagement score (weighted combination)
+        (
+            0.4 * (COUNT(DISTINCT DATE(ae.event_timestamp)) / 7) +  -- Frequency
+            0.3 * (COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END) / 100) +  -- Volume
+            0.2 * AVG(CASE WHEN ae.event_type = 'stream' THEN ae.event_duration_ms / 180000 ELSE 0 END) +  -- Depth
+            0.1 * (COUNT(DISTINCT ae.platform_code) / 5)  -- Platform diversity
+        ) as overall_engagement_score,
+        -- Streaming-specific engagement
+        COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END) / 100 as streaming_engagement_score,
+        COUNT(DISTINCT ae.session_id) as sessions_per_week,
+        COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END) / NULLIF(COUNT(DISTINCT ae.session_id), 0) as tracks_per_session,
+        COUNT(DISTINCT CASE WHEN ae.event_type = 'stream' THEN ae.asset_id END) / 
+            NULLIF(COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END), 0) as repeat_listening_rate,
+        COUNT(DISTINCT ae.platform_code) as platforms_used,
+        -- Lifecycle stage determination
+        CASE 
+            WHEN DATEDIFF(p_date, MIN(DATE(ae.event_timestamp))) < 7 THEN 'new'
+            WHEN COUNT(CASE WHEN ae.event_type = 'stream' THEN 1 END) > 50 
+                AND COUNT(DISTINCT DATE(ae.event_timestamp)) > 5 THEN 'loyal'
+            WHEN MAX(DATE(ae.event_timestamp)) < DATE_SUB(p_date, INTERVAL 14 DAY) THEN 'at_risk'
+            WHEN MAX(DATE(ae.event_timestamp)) < DATE_SUB(p_date, INTERVAL 30 DAY) THEN 'churned'
+            ELSE 'growing'
+        END as fan_lifecycle_stage,
+        -- Churn risk (simplified)
+        CASE 
+            WHEN MAX(DATE(ae.event_timestamp)) < DATE_SUB(p_date, INTERVAL 7 DAY) THEN 0.8
+            WHEN MAX(DATE(ae.event_timestamp)) < DATE_SUB(p_date, INTERVAL 3 DAY) THEN 0.5
+            ELSE 0.2
+        END as churn_risk_score
+    FROM analytics_event ae
+    WHERE ae.event_timestamp >= DATE_SUB(p_date, INTERVAL 7 DAY)
+        AND ae.event_timestamp < DATE_ADD(p_date, INTERVAL 1 DAY)
+        AND ae.is_valid = TRUE
+        AND ae.user_id IS NOT NULL
+    GROUP BY ae.user_id
+    ON DUPLICATE KEY UPDATE
+        overall_engagement_score = VALUES(overall_engagement_score),
+        streaming_engagement_score = VALUES(streaming_engagement_score),
+        sessions_per_week = VALUES(sessions_per_week),
+        tracks_per_session = VALUES(tracks_per_session),
+        repeat_listening_rate = VALUES(repeat_listening_rate),
+        platforms_used = VALUES(platforms_used),
+        fan_lifecycle_stage = VALUES(fan_lifecycle_stage),
+        churn_risk_score = VALUES(churn_risk_score);
+    
+    COMMIT;
+END //
+
+-- Procedure to detect trending content
+CREATE PROCEDURE sp_detect_trending_content(IN p_date DATE)
+BEGIN
+    DECLARE v_growth_threshold DECIMAL(10,4) DEFAULT 0.5; -- 50% growth
+    DECLARE v_momentum_threshold DECIMAL(10,4) DEFAULT 0.7;
+    
+    START TRANSACTION;
+    
+    -- Identify trending tracks based on growth patterns
+    INSERT INTO trend_analysis (
+        trend_type,
+        trend_name,
+        trend_score,
+        growth_rate,
+        momentum_score,
+        detected_date,
+        example_tracks,
+        affected_territories
+    )
+    SELECT 
+        'track' as trend_type,
+        CONCAT('Viral Track: ', a.asset_title) as trend_name,
+        -- Trend score based on multiple factors
+        (
+            0.4 * (sm_current.total_streams / NULLIF(sm_previous.total_streams, 0) - 1) +
+            0.3 * (sm_current.playlist_adds / NULLIF(AVG(sm_all.playlist_adds), 0)) +
+            0.3 * (sm_current.unique_listeners / NULLIF(sm_previous.unique_listeners, 0) - 1)
+        ) as trend_score,
+        (sm_current.total_streams / NULLIF(sm_previous.total_streams, 0) - 1) as growth_rate,
+        -- Momentum based on acceleration
+        (
+            (sm_current.total_streams - sm_previous.total_streams) / 
+            NULLIF(sm_previous.total_streams - sm_week_ago.total_streams, 0)
+        ) as momentum_score,
+        p_date as detected_date,
+        JSON_OBJECT('asset_id', a.asset_id, 'asset_title', a.asset_title) as example_tracks,
+        (
+            SELECT JSON_ARRAYAGG(DISTINCT gp.country_code)
+            FROM geographic_performance gp
+            WHERE gp.asset_id = a.asset_id
+                AND gp.performance_date = p_date
+        ) as affected_territories
+    FROM asset a
+    JOIN streaming_metric sm_current ON a.asset_id = sm_current.asset_id 
+        AND sm_current.metric_date = p_date
+    JOIN streaming_metric sm_previous ON a.asset_id = sm_previous.asset_id 
+        AND sm_previous.metric_date = DATE_SUB(p_date, INTERVAL 1 DAY)
+    LEFT JOIN streaming_metric sm_week_ago ON a.asset_id = sm_week_ago.asset_id 
+        AND sm_week_ago.metric_date = DATE_SUB(p_date, INTERVAL 7 DAY)
+    CROSS JOIN (
+        SELECT AVG(playlist_adds) as playlist_adds
+        FROM streaming_metric
+        WHERE metric_date = p_date
+    ) sm_all
+    WHERE (sm_current.total_streams / NULLIF(sm_previous.total_streams, 0) - 1) > v_growth_threshold
+    GROUP BY a.asset_id, a.asset_title, sm_current.total_streams, sm_previous.total_streams, 
+             sm_current.playlist_adds, sm_current.unique_listeners, sm_previous.unique_listeners,
+             sm_week_ago.total_streams
+    HAVING momentum_score > v_momentum_threshold;
+    
+    COMMIT;
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- SAMPLE DATA FOR TESTING
+-- =====================================================
+
+-- Insert sample metrics
+INSERT INTO analytics_metric (metric_code, metric_name, metric_category, metric_type, display_unit, is_key_metric) VALUES
+('total_streams', 'Total Streams', 'engagement', 'sum', 'number', TRUE),
+('unique_listeners', 'Unique Listeners', 'engagement', 'count', 'number', TRUE),
+('completion_rate', 'Completion Rate', 'engagement', 'average', 'percentage', TRUE),
+('revenue_per_stream', 'Revenue Per Stream', 'revenue', 'average', 'currency', TRUE),
+('playlist_reach', 'Playlist Reach', 'performance', 'sum', 'number', FALSE),
+('skip_rate', 'Skip Rate', 'engagement', 'average', 'percentage', FALSE),
+('save_rate', 'Save Rate', 'engagement', 'average', 'percentage', FALSE),
+('viral_coefficient', 'Viral Coefficient', 'growth', 'average', 'number', FALSE);
+
+-- Insert sample dimensions
+INSERT INTO analytics_dimension (dimension_code, dimension_name, dimension_type, estimated_cardinality) VALUES
+('platform', 'Streaming Platform', 'platform', 50),
+('country', 'Country', 'geography', 200),
+('age_group', 'Age Group', 'demographic', 10),
+('device_type', 'Device Type', 'technology', 10),
+('genre', 'Music Genre', 'content', 100),
+('release_type', 'Release Type', 'content', 5),
+('day_of_week', 'Day of Week', 'time', 7),
+('hour_of_day', 'Hour of Day', 'time', 24);
+
+-- Insert sample ML models
+INSERT INTO prediction_model (model_name, model_type, model_version, algorithm, framework, accuracy_score, deployment_status) VALUES
+('Hit Predictor', 'hit_prediction', '2.1.0', 'gradient_boosting', 'scikit-learn', 0.8745, 'production'),
+('Revenue Forecaster', 'revenue_forecast', '1.5.2', 'lstm', 'tensorflow', 0.9123, 'production'),
+('Churn Predictor', 'churn', '1.2.0', 'random_forest', 'scikit-learn', 0.8234, 'staging'),
+('Genre Classifier', 'genre_classification', '3.0.1', 'deep_neural_network', 'pytorch', 0.9456, 'production');
+
+-- =====================================================
+-- INDEXES FOR QUERY OPTIMIZATION
+-- =====================================================
+
+-- Additional composite indexes for common query patterns
+CREATE INDEX idx_event_user_asset_date ON analytics_event(user_id, asset_id, event_timestamp);
+CREATE INDEX idx_streaming_asset_platform_date ON streaming_metric(asset_id, platform_code, metric_date);
+CREATE INDEX idx_geo_performance_composite ON geographic_performance(country_code, performance_date, total_streams);
+CREATE INDEX idx_trend_detection ON trend_analysis(trend_type, detected_date, trend_score);
+
+-- =====================================================
+-- GRANTS (adjust according to your user setup)
+-- =====================================================
+
+-- GRANT SELECT ON astro_music.* TO 'analytics_read'@'%';
+-- GRANT SELECT, INSERT, UPDATE ON astro_music.analytics_* TO 'analytics_write'@'%';
+-- GRANT EXECUTE ON PROCEDURE astro_music.sp_* TO 'analytics_etl'@'%';
+
+-- =====================================================
+-- SECTION 19: CONTENT MANAGEMENT TABLES
+-- =====================================================
+
+-- Table: file
+CREATE TABLE file (
+    file_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    catalog_item_id INT UNSIGNED,
+    file_type VARCHAR(50) NOT NULL, -- 'audio_master', 'audio_stem', 'video', 'image', 'document', 'spatial_audio'
+    file_name VARCHAR(500) NOT NULL,
+    file_extension VARCHAR(10) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_size_bytes BIGINT UNSIGNED NOT NULL,
+    file_hash_sha256 CHAR(64) NOT NULL, -- SHA-256 hash for integrity
+    file_hash_md5 CHAR(32) NOT NULL, -- MD5 for compatibility
+    blockchain_hash VARCHAR(100), -- Ethereum/IPFS hash
+    blockchain_network VARCHAR(50), -- 'ethereum', 'solana', 'ipfs'
+    blockchain_tx_hash VARCHAR(100), -- Transaction hash for verification
+    perceptual_hash VARCHAR(100), -- For duplicate detection
+    storage_provider VARCHAR(50) NOT NULL, -- 'aws_s3', 'ipfs', 'arweave', 'google_cloud'
+    storage_path TEXT NOT NULL,
+    storage_region VARCHAR(50),
+    cdn_url TEXT,
+    backup_locations JSON, -- Array of backup storage locations
+    encryption_status VARCHAR(20) NOT NULL DEFAULT 'none', -- 'none', 'aes256', 'rsa2048'
+    compression_type VARCHAR(20), -- 'gzip', 'brotli', 'zstd'
+    original_file_id INT UNSIGNED, -- Reference to original if this is processed
+    upload_started_at DATETIME(6) NOT NULL,
+    upload_completed_at DATETIME(6),
+    upload_progress_percent DECIMAL(5,2),
+    uploaded_by_user_id INT UNSIGNED NOT NULL,
+    file_status VARCHAR(20) NOT NULL DEFAULT 'uploading', -- 'uploading', 'processing', 'active', 'archived', 'deleted'
+    access_level VARCHAR(20) NOT NULL DEFAULT 'private', -- 'public', 'private', 'restricted', 'confidential'
+    retention_policy VARCHAR(50), -- 'permanent', '7_years', 'until_deleted'
+    expiration_date DATETIME,
+    last_accessed_at DATETIME(6),
+    access_count INT UNSIGNED DEFAULT 0,
+    bandwidth_used_mb DECIMAL(15,2) DEFAULT 0,
+    tags JSON, -- Flexible tagging system
+    custom_metadata JSON, -- Industry-specific metadata
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    deletion_reason VARCHAR(500),
+    INDEX idx_file_catalog (catalog_item_id),
+    INDEX idx_file_type (file_type),
+    INDEX idx_file_status (file_status),
+    INDEX idx_file_hash (file_hash_sha256),
+    INDEX idx_blockchain_hash (blockchain_hash),
+    INDEX idx_perceptual_hash (perceptual_hash),
+    INDEX idx_upload_date (upload_completed_at),
+    INDEX idx_access_level (access_level),
+    FULLTEXT idx_file_name (file_name),
+    CONSTRAINT fk_file_original FOREIGN KEY (original_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_file_uploaded_by FOREIGN KEY (uploaded_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: file_encryption
+-- Encrypted file storage with military-grade security
+CREATE TABLE file_encryption (
+    encryption_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    encryption_algorithm VARCHAR(50) NOT NULL, -- 'AES-256-GCM', 'ChaCha20-Poly1305'
+    key_derivation_function VARCHAR(50) NOT NULL, -- 'PBKDF2', 'Argon2id'
+    encrypted_key TEXT NOT NULL, -- RSA-encrypted AES key
+    key_encryption_algorithm VARCHAR(50) NOT NULL DEFAULT 'RSA-4096',
+    initialization_vector VARCHAR(100) NOT NULL,
+    authentication_tag VARCHAR(100), -- For GCM mode
+    salt VARCHAR(100) NOT NULL,
+    iterations INT UNSIGNED NOT NULL DEFAULT 100000,
+    encrypted_at DATETIME(6) NOT NULL,
+    encrypted_by_user_id INT UNSIGNED NOT NULL,
+    key_rotation_schedule VARCHAR(50), -- 'monthly', 'quarterly', 'annual'
+    last_key_rotation DATETIME(6),
+    access_log JSON, -- Track who accessed encrypted content
+    emergency_access_users JSON, -- Users who can decrypt in emergencies
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_file_encryption (file_id),
+    INDEX idx_encryption_algorithm (encryption_algorithm),
+    INDEX idx_encrypted_at (encrypted_at),
+    CONSTRAINT fk_file_encryption_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_file_encryption_user FOREIGN KEY (encrypted_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: file_version
+-- Git-like version control for all assets
+CREATE TABLE file_version (
+    version_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    version_number VARCHAR(20) NOT NULL, -- 'v1.0.0', 'v2.1.3'
+    version_label VARCHAR(200), -- 'Radio Edit', 'Extended Mix', 'Director\'s Cut'
+    parent_version_id INT UNSIGNED, -- For branching
+    branch_name VARCHAR(100) DEFAULT 'main',
+    commit_hash CHAR(40) NOT NULL, -- Git-style commit hash
+    commit_message TEXT,
+    change_type VARCHAR(50) NOT NULL, -- 'major', 'minor', 'patch', 'hotfix'
+    changes_summary JSON, -- Structured change log
+    diff_from_parent JSON, -- Technical differences
+    file_size_bytes BIGINT UNSIGNED NOT NULL,
+    file_hash_sha256 CHAR(64) NOT NULL,
+    quality_metrics JSON, -- LUFS, bitrate, resolution, etc.
+    approval_status VARCHAR(20) NOT NULL DEFAULT 'draft', -- 'draft', 'review', 'approved', 'released'
+    approved_by_user_id INT UNSIGNED,
+    approved_at DATETIME(6),
+    release_date DATETIME,
+    is_public BOOLEAN DEFAULT FALSE,
+    download_count INT UNSIGNED DEFAULT 0,
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    archived_at DATETIME(6),
+    INDEX idx_version_file (file_id),
+    INDEX idx_version_number (version_number),
+    INDEX idx_version_branch (branch_name),
+    INDEX idx_version_status (approval_status),
+    INDEX idx_version_created (created_at),
+    UNIQUE KEY uk_file_version (file_id, version_number),
+    CONSTRAINT fk_file_version_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_file_version_parent FOREIGN KEY (parent_version_id) REFERENCES file_version(version_id),
+    CONSTRAINT fk_file_version_approved_by FOREIGN KEY (approved_by_user_id) REFERENCES user(user_id),
+    CONSTRAINT fk_file_version_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: asset_bundle
+-- Grouping of related assets (album packages, NFT collections)
+CREATE TABLE asset_bundle (
+    bundle_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    bundle_uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    bundle_type VARCHAR(50) NOT NULL, -- 'album_package', 'single_release', 'nft_collection', 'sync_package'
+    bundle_name VARCHAR(300) NOT NULL,
+    bundle_description TEXT,
+    catalog_item_id INT UNSIGNED,
+    total_size_bytes BIGINT UNSIGNED DEFAULT 0,
+    file_count INT UNSIGNED DEFAULT 0,
+    bundle_metadata JSON, -- Flexible metadata for different bundle types
+    nft_contract_address VARCHAR(100), -- For NFT bundles
+    nft_token_standard VARCHAR(20), -- 'ERC-721', 'ERC-1155'
+    smart_contract_rules JSON, -- Automated distribution rules
+    pricing_tiers JSON, -- Different access levels and pricing
+    release_strategy VARCHAR(50), -- 'immediate', 'scheduled', 'waterfall'
+    release_date DATETIME,
+    embargo_regions JSON, -- Geographic restrictions
+    bundle_status VARCHAR(20) NOT NULL DEFAULT 'draft', -- 'draft', 'ready', 'released', 'archived'
+    visibility VARCHAR(20) NOT NULL DEFAULT 'private', -- 'public', 'private', 'unlisted'
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_bundle_type (bundle_type),
+    INDEX idx_bundle_catalog (catalog_item_id),
+    INDEX idx_bundle_status (bundle_status),
+    INDEX idx_bundle_release (release_date),
+    FULLTEXT idx_bundle_name_desc (bundle_name, bundle_description),
+    CONSTRAINT fk_bundle_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_bundle_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: asset_relationship
+-- Complex relationships between assets with semantic meaning
+CREATE TABLE asset_relationship (
+    relationship_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    parent_file_id INT UNSIGNED NOT NULL,
+    child_file_id INT UNSIGNED NOT NULL,
+    relationship_type VARCHAR(50) NOT NULL, -- 'master_to_stem', 'original_to_remix', 'audio_to_video'
+    relationship_subtype VARCHAR(50), -- 'vocal_stem', 'instrumental', 'official_video'
+    bundle_id INT UNSIGNED,
+    sequence_order INT UNSIGNED, -- For ordered relationships
+    relationship_metadata JSON, -- Type-specific metadata
+    sync_offset_ms INT, -- Synchronization offset for related media
+    is_primary BOOLEAN DEFAULT FALSE, -- Primary relationship in a set
+    quality_tier VARCHAR(20), -- 'master', 'high', 'standard', 'preview'
+    access_requirements JSON, -- Conditions for accessing related asset
+    usage_restrictions JSON, -- Limitations on how assets can be used together
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_relationship_parent (parent_file_id),
+    INDEX idx_relationship_child (child_file_id),
+    INDEX idx_relationship_type (relationship_type),
+    INDEX idx_relationship_bundle (bundle_id),
+    UNIQUE KEY uk_asset_relationship (parent_file_id, child_file_id, relationship_type),
+    CONSTRAINT fk_relationship_parent FOREIGN KEY (parent_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_relationship_child FOREIGN KEY (child_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_relationship_bundle FOREIGN KEY (bundle_id) REFERENCES asset_bundle(bundle_id),
+    CONSTRAINT fk_relationship_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: audio_master
+-- Master recordings with comprehensive technical metadata
+CREATE TABLE audio_master (
+    audio_master_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    catalog_item_id INT UNSIGNED NOT NULL,
+    isrc VARCHAR(20),
+    duration_ms INT UNSIGNED NOT NULL,
+    duration_formatted VARCHAR(20) NOT NULL, -- 'MM:SS.mmm'
+    sample_rate INT UNSIGNED NOT NULL, -- 44100, 48000, 96000, 192000
+    bit_depth INT UNSIGNED NOT NULL, -- 16, 24, 32
+    channels INT UNSIGNED NOT NULL, -- 1=mono, 2=stereo, 6=5.1, etc.
+    channel_layout VARCHAR(50), -- 'stereo', '5.1', '7.1.4'
+    codec VARCHAR(50) NOT NULL, -- 'PCM', 'FLAC', 'ALAC', 'AAC'
+    bitrate_kbps INT UNSIGNED,
+    is_lossless BOOLEAN NOT NULL DEFAULT TRUE,
+    loudness_lufs DECIMAL(5,2), -- Integrated loudness
+    loudness_range DECIMAL(5,2), -- Dynamic range
+    true_peak_dbfs DECIMAL(5,2), -- Maximum true peak
+    peak_to_average_ratio DECIMAL(5,2), -- Crest factor
+    spectral_analysis JSON, -- Frequency distribution data
+    phase_correlation DECIMAL(3,2), -- Stereo field analysis
+    has_clipping BOOLEAN DEFAULT FALSE,
+    clipping_count INT UNSIGNED DEFAULT 0,
+    silence_start_ms INT UNSIGNED, -- Leading silence
+    silence_end_ms INT UNSIGNED, -- Trailing silence
+    bpm DECIMAL(6,2), -- Detected tempo
+    musical_key VARCHAR(10), -- 'C major', 'A minor'
+    time_signature VARCHAR(10), -- '4/4', '3/4', '6/8'
+    mood_tags JSON, -- AI-detected moods
+    instrument_analysis JSON, -- Detected instruments with confidence
+    vocal_presence BOOLEAN DEFAULT FALSE,
+    vocal_gender VARCHAR(20), -- 'male', 'female', 'mixed', 'none'
+    language_detected VARCHAR(10), -- ISO 639-1 code
+    explicit_content BOOLEAN DEFAULT FALSE,
+    explicit_content_tags JSON, -- Specific flagged content
+    mastering_engineer VARCHAR(200),
+    mastering_studio VARCHAR(200),
+    mastering_date DATE,
+    mastering_notes TEXT,
+    master_source VARCHAR(50), -- 'analog_tape', 'digital_console', 'daw'
+    remaster_of_id INT UNSIGNED, -- Link to original master
+    fingerprint_acoustid VARCHAR(100), -- AcoustID fingerprint
+    fingerprint_chromaprint TEXT, -- Chromaprint data
+    musicbrainz_recording_id CHAR(36),
+    processing_status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending', 'analyzing', 'complete', 'failed'
+    processing_log JSON, -- Detailed processing information
+    quality_score DECIMAL(3,2), -- 0-10 automated quality rating
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_audio_master_file (file_id),
+    INDEX idx_audio_catalog (catalog_item_id),
+    INDEX idx_audio_isrc (isrc),
+    INDEX idx_audio_duration (duration_ms),
+    INDEX idx_audio_quality (sample_rate, bit_depth),
+    INDEX idx_audio_loudness (loudness_lufs),
+    INDEX idx_audio_bpm (bpm),
+    INDEX idx_audio_key (musical_key),
+    INDEX idx_audio_explicit (explicit_content),
+    INDEX idx_audio_processing (processing_status),
+    INDEX idx_audio_fingerprint (fingerprint_acoustid),
+    CONSTRAINT fk_audio_master_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_audio_master_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_audio_master_remaster FOREIGN KEY (remaster_of_id) REFERENCES audio_master(audio_master_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: audio_master_encrypted
+-- Encrypted masters with granular access control
+CREATE TABLE audio_master_encrypted (
+    encrypted_master_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    audio_master_id INT UNSIGNED NOT NULL,
+    file_id INT UNSIGNED NOT NULL,
+    encryption_id INT UNSIGNED NOT NULL,
+    access_tier VARCHAR(50) NOT NULL, -- 'label_only', 'internal', 'premium_partners'
+    watermark_enabled BOOLEAN DEFAULT TRUE,
+    watermark_type VARCHAR(50), -- 'audio', 'psychoacoustic', 'spread_spectrum'
+    watermark_payload JSON, -- Embedded identification data
+    drm_protection VARCHAR(50), -- 'widevine', 'fairplay', 'playready'
+    allowed_plays INT UNSIGNED, -- NULL for unlimited
+    expiration_date DATETIME,
+    geo_restrictions JSON, -- Allowed/blocked regions
+    device_restrictions JSON, -- Allowed device types
+    quality_cap VARCHAR(20), -- Maximum allowed quality
+    forensic_marking BOOLEAN DEFAULT FALSE, -- Unique ID per download
+    access_log_retention_days INT UNSIGNED DEFAULT 365,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_encrypted_master (audio_master_id),
+    INDEX idx_encrypted_file (file_id),
+    INDEX idx_encrypted_tier (access_tier),
+    INDEX idx_encrypted_expiration (expiration_date),
+    CONSTRAINT fk_encrypted_master FOREIGN KEY (audio_master_id) REFERENCES audio_master(audio_master_id),
+    CONSTRAINT fk_encrypted_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_encrypted_encryption FOREIGN KEY (encryption_id) REFERENCES file_encryption(encryption_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: audio_stem
+-- Individual instrument/vocal stems for remixing and licensing
+CREATE TABLE audio_stem (
+    stem_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    audio_master_id INT UNSIGNED NOT NULL,
+    file_id INT UNSIGNED NOT NULL,
+    stem_type VARCHAR(50) NOT NULL, -- 'vocal', 'drums', 'bass', 'guitar', 'keys', 'strings'
+    stem_subtype VARCHAR(50), -- 'lead_vocal', 'backing_vocal', 'kick_drum'
+    stem_name VARCHAR(200) NOT NULL,
+    track_number INT UNSIGNED,
+    duration_ms INT UNSIGNED NOT NULL,
+    sample_rate INT UNSIGNED NOT NULL,
+    bit_depth INT UNSIGNED NOT NULL,
+    channels INT UNSIGNED NOT NULL,
+    loudness_lufs DECIMAL(5,2),
+    frequency_range_low_hz INT UNSIGNED, -- Dominant frequency range
+    frequency_range_high_hz INT UNSIGNED,
+    has_effects BOOLEAN DEFAULT FALSE, -- Wet or dry stem
+    effects_chain JSON, -- List of applied effects
+    isolation_quality DECIMAL(3,2), -- 0-10 quality of separation
+    bleed_amount DECIMAL(3,2), -- Amount of other instruments
+    phase_aligned BOOLEAN DEFAULT TRUE,
+    tempo_synced BOOLEAN DEFAULT TRUE,
+    is_ai_separated BOOLEAN DEFAULT FALSE,
+    separation_algorithm VARCHAR(50), -- 'spleeter', 'demucs', 'manual'
+    midi_available BOOLEAN DEFAULT FALSE,
+    midi_file_id INT UNSIGNED,
+    licensing_tier VARCHAR(50), -- 'basic', 'pro', 'exclusive'
+    usage_restrictions JSON,
+    stem_notes TEXT,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_stem_master (audio_master_id),
+    INDEX idx_stem_file (file_id),
+    INDEX idx_stem_type (stem_type, stem_subtype),
+    INDEX idx_stem_track (track_number),
+    INDEX idx_stem_licensing (licensing_tier),
+    CONSTRAINT fk_stem_master FOREIGN KEY (audio_master_id) REFERENCES audio_master(audio_master_id),
+    CONSTRAINT fk_stem_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_stem_midi FOREIGN KEY (midi_file_id) REFERENCES file(file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: spatial_audio
+-- Next-gen immersive audio formats (Dolby Atmos, 360 Reality Audio)
+CREATE TABLE spatial_audio (
+    spatial_audio_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    audio_master_id INT UNSIGNED NOT NULL,
+    file_id INT UNSIGNED NOT NULL,
+    spatial_format VARCHAR(50) NOT NULL, -- 'dolby_atmos', 'sony_360', 'auro3d', 'dts_x'
+    format_version VARCHAR(20),
+    object_count INT UNSIGNED, -- Number of audio objects
+    bed_channel_count INT UNSIGNED, -- Traditional channel count
+    height_channels INT UNSIGNED, -- Height layer channels
+    binaural_render_mode VARCHAR(50), -- 'static', 'tracked', 'personalized'
+    hrtf_profile VARCHAR(50), -- Head-related transfer function
+    room_model VARCHAR(50), -- 'studio', 'concert_hall', 'arena'
+    loudness_lufs DECIMAL(5,2),
+    immersive_mix_engineer VARCHAR(200),
+    immersive_mix_studio VARCHAR(200),
+    immersive_mix_date DATE,
+    renderer_metadata JSON, -- Format-specific rendering data
+    platform_optimization JSON, -- Platform-specific versions
+    headphone_optimized BOOLEAN DEFAULT TRUE,
+    speaker_configuration JSON, -- Supported speaker layouts
+    certification_status VARCHAR(50), -- 'pending', 'certified', 'rejected'
+    certification_date DATETIME,
+    certification_notes TEXT,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_spatial_format (audio_master_id, spatial_format),
+    INDEX idx_spatial_file (file_id),
+    INDEX idx_spatial_format (spatial_format),
+    INDEX idx_spatial_certification (certification_status),
+    CONSTRAINT fk_spatial_master FOREIGN KEY (audio_master_id) REFERENCES audio_master(audio_master_id),
+    CONSTRAINT fk_spatial_file FOREIGN KEY (file_id) REFERENCES file(file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: video_asset
+-- Music videos, visualizers, and video content
+CREATE TABLE video_asset (
+    video_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    catalog_item_id INT UNSIGNED,
+    video_type VARCHAR(50) NOT NULL, -- 'music_video', 'lyric_video', 'visualizer', 'documentary'
+    title VARCHAR(300) NOT NULL,
+    director VARCHAR(200),
+    production_company VARCHAR(200),
+    release_date DATE,
+    duration_ms INT UNSIGNED NOT NULL,
+    duration_formatted VARCHAR(20) NOT NULL, -- 'HH:MM:SS.mmm'
+    resolution_width INT UNSIGNED NOT NULL,
+    resolution_height INT UNSIGNED NOT NULL,
+    resolution_label VARCHAR(20), -- '4K', '1080p', '720p'
+    aspect_ratio VARCHAR(20), -- '16:9', '21:9', '9:16' (vertical)
+    frame_rate DECIMAL(6,3) NOT NULL, -- 23.976, 24, 25, 29.97, 30, 60
+    video_codec VARCHAR(50) NOT NULL, -- 'h264', 'h265', 'vp9', 'av1', 'prores'
+    video_bitrate_kbps INT UNSIGNED,
+    color_space VARCHAR(50), -- 'sRGB', 'rec709', 'rec2020', 'P3'
+    hdr_format VARCHAR(50), -- 'HDR10', 'HDR10+', 'Dolby Vision', 'HLG'
+    audio_codec VARCHAR(50), -- 'aac', 'opus', 'pcm'
+    audio_bitrate_kbps INT UNSIGNED,
+    audio_channels INT UNSIGNED,
+    has_subtitles BOOLEAN DEFAULT FALSE,
+    subtitle_languages JSON, -- Array of language codes
+    has_chapters BOOLEAN DEFAULT FALSE,
+    chapter_markers JSON, -- Timecodes and titles
+    content_rating VARCHAR(20), -- 'G', 'PG', 'PG-13', 'R', 'NC-17'
+    content_warnings JSON, -- Specific content flags
+    isrc_video VARCHAR(20), -- Video ISRC if different
+    isan VARCHAR(30), -- International Standard Audiovisual Number
+    youtube_content_id VARCHAR(50),
+    vevo_id VARCHAR(50),
+    thumbnail_file_id INT UNSIGNED,
+    preview_file_id INT UNSIGNED, -- Lower quality preview
+    trailer_file_id INT UNSIGNED,
+    processing_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    scene_detection JSON, -- AI-detected scene changes
+    object_detection JSON, -- AI-detected objects/people
+    transcript_available BOOLEAN DEFAULT FALSE,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_video_file (file_id),
+    INDEX idx_video_catalog (catalog_item_id),
+    INDEX idx_video_type (video_type),
+    INDEX idx_video_resolution (resolution_label),
+    INDEX idx_video_release (release_date),
+    INDEX idx_video_rating (content_rating),
+    INDEX idx_video_isrc (isrc_video),
+    FULLTEXT idx_video_title_director (title, director),
+    CONSTRAINT fk_video_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_video_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_video_thumbnail FOREIGN KEY (thumbnail_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_video_preview FOREIGN KEY (preview_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_video_trailer FOREIGN KEY (trailer_file_id) REFERENCES file(file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: motion_artwork
+-- Animated covers, NFT visuals, and motion graphics
+CREATE TABLE motion_artwork (
+    motion_artwork_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    catalog_item_id INT UNSIGNED,
+    artwork_type VARCHAR(50) NOT NULL, -- 'animated_cover', 'nft_visual', 'canvas_loop'
+    title VARCHAR(300),
+    artist_name VARCHAR(200),
+    duration_ms INT UNSIGNED,
+    is_looping BOOLEAN DEFAULT TRUE,
+    loop_point_ms INT UNSIGNED, -- Seamless loop point
+    resolution_width INT UNSIGNED NOT NULL,
+    resolution_height INT UNSIGNED NOT NULL,
+    frame_rate DECIMAL(6,3),
+    has_alpha_channel BOOLEAN DEFAULT FALSE,
+    animation_style VARCHAR(50), -- '2d', '3d', 'generative', 'particle'
+    render_engine VARCHAR(50), -- 'after_effects', 'blender', 'touchdesigner'
+    interactive_elements JSON, -- For interactive NFTs
+    color_palette JSON, -- Dominant colors
+    visual_themes JSON, -- AI-detected themes
+    spotify_canvas_approved BOOLEAN DEFAULT FALSE,
+    apple_motion_approved BOOLEAN DEFAULT FALSE,
+    nft_metadata JSON, -- OpenSea/Rarible metadata
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_motion_file (file_id),
+    INDEX idx_motion_catalog (catalog_item_id),
+    INDEX idx_motion_type (artwork_type),
+    INDEX idx_motion_spotify (spotify_canvas_approved),
+    CONSTRAINT fk_motion_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_motion_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: multimedia_asset
+-- General multimedia files (images, documents, etc.)
+CREATE TABLE multimedia_asset (
+    multimedia_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    file_id INT UNSIGNED NOT NULL,
+    catalog_item_id INT UNSIGNED,
+    asset_type VARCHAR(50) NOT NULL, -- 'cover_art', 'press_photo', 'liner_notes', 'contract'
+    asset_subtype VARCHAR(50), -- 'front_cover', 'back_cover', 'booklet_page'
+    title VARCHAR(300),
+    description TEXT,
+    width_px INT UNSIGNED, -- For images
+    height_px INT UNSIGNED,
+    dpi INT UNSIGNED, -- Print resolution
+    color_mode VARCHAR(20), -- 'RGB', 'CMYK', 'grayscale'
+    has_transparency BOOLEAN DEFAULT FALSE,
+    page_count INT UNSIGNED, -- For documents
+    word_count INT UNSIGNED,
+    language VARCHAR(10), -- ISO 639-1
+    is_print_ready BOOLEAN DEFAULT FALSE,
+    print_specifications JSON, -- Bleed, crop marks, etc.
+    usage_rights VARCHAR(50), -- 'exclusive', 'non_exclusive', 'editorial'
+    photographer_credit VARCHAR(200),
+    designer_credit VARCHAR(200),
+    copyright_notice TEXT,
+    model_releases JSON, -- For photos with people
+    property_releases JSON, -- For locations/objects
+    keywords JSON, -- Searchable tags
+    exif_data JSON, -- Camera metadata
+    ai_analysis JSON, -- Object/face detection
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_multimedia_file (file_id),
+    INDEX idx_multimedia_catalog (catalog_item_id),
+    INDEX idx_multimedia_type (asset_type, asset_subtype),
+    INDEX idx_multimedia_usage (usage_rights),
+    FULLTEXT idx_multimedia_search (title, description),
+    CONSTRAINT fk_multimedia_file FOREIGN KEY (file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_multimedia_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: multimedia_format
+-- Technical format specifications and requirements
+CREATE TABLE multimedia_format (
+    format_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    format_code VARCHAR(50) NOT NULL UNIQUE, -- 'spotify_cover', 'apple_master', 'youtube_4k'
+    platform VARCHAR(50) NOT NULL, -- 'spotify', 'apple_music', 'youtube'
+    media_type VARCHAR(20) NOT NULL, -- 'audio', 'video', 'image'
+    format_name VARCHAR(100) NOT NULL,
+    format_description TEXT,
+    file_extension VARCHAR(10),
+    mime_type VARCHAR(100),
+    min_width_px INT UNSIGNED,
+    max_width_px INT UNSIGNED,
+    min_height_px INT UNSIGNED,
+    max_height_px INT UNSIGNED,
+    aspect_ratio_required VARCHAR(20),
+    min_file_size_bytes BIGINT UNSIGNED,
+    max_file_size_bytes BIGINT UNSIGNED,
+    min_bitrate_kbps INT UNSIGNED,
+    max_bitrate_kbps INT UNSIGNED,
+    required_sample_rate INT UNSIGNED,
+    required_bit_depth INT UNSIGNED,
+    required_channels INT UNSIGNED,
+    loudness_target_lufs DECIMAL(5,2),
+    loudness_tolerance DECIMAL(3,2),
+    codec_whitelist JSON, -- Allowed codecs
+    color_space_required VARCHAR(50),
+    metadata_requirements JSON, -- Required metadata fields
+    validation_rules JSON, -- Custom validation logic
+    effective_date DATE NOT NULL,
+    expiration_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_format_platform (platform),
+    INDEX idx_format_type (media_type),
+    INDEX idx_format_active (is_active),
+    INDEX idx_format_dates (effective_date, expiration_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: multimedia_processing
+-- Queue and tracking for media processing tasks
+CREATE TABLE multimedia_processing (
+    processing_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    processing_uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    source_file_id INT UNSIGNED NOT NULL,
+    target_format_id INT UNSIGNED,
+    processing_type VARCHAR(50) NOT NULL, -- 'transcode', 'normalize', 'watermark', 'extract_stems'
+    processing_profile JSON NOT NULL, -- Detailed processing parameters
+    priority VARCHAR(20) NOT NULL DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
+    status VARCHAR(20) NOT NULL DEFAULT 'queued', -- 'queued', 'processing', 'completed', 'failed'
+    progress_percent DECIMAL(5,2) DEFAULT 0,
+    worker_id VARCHAR(100), -- Processing server/worker
+    started_at DATETIME(6),
+    completed_at DATETIME(6),
+    processing_time_ms INT UNSIGNED,
+    output_file_id INT UNSIGNED,
+    output_files JSON, -- Multiple outputs possible
+    quality_metrics JSON, -- Post-processing quality checks
+    cost_credits DECIMAL(10,2), -- Processing cost in credits
+    error_code VARCHAR(50),
+    error_message TEXT,
+    retry_count INT UNSIGNED DEFAULT 0,
+    max_retries INT UNSIGNED DEFAULT 3,
+    callback_url TEXT, -- Webhook for completion
+    requested_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_processing_source (source_file_id),
+    INDEX idx_processing_status (status),
+    INDEX idx_processing_priority (priority, status),
+    INDEX idx_processing_started (started_at),
+    INDEX idx_processing_worker (worker_id),
+    CONSTRAINT fk_processing_source FOREIGN KEY (source_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_processing_format FOREIGN KEY (target_format_id) REFERENCES multimedia_format(format_id),
+    CONSTRAINT fk_processing_output FOREIGN KEY (output_file_id) REFERENCES file(file_id),
+    CONSTRAINT fk_processing_user FOREIGN KEY (requested_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: lyrics
+-- Song lyrics with language support and metadata
+CREATE TABLE lyrics (
+    lyrics_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    catalog_item_id INT UNSIGNED NOT NULL,
+    lyrics_text TEXT NOT NULL,
+    lyrics_language VARCHAR(10) NOT NULL, -- ISO 639-1
+    lyrics_type VARCHAR(50) NOT NULL DEFAULT 'original', -- 'original', 'romanized', 'phonetic'
+    line_count INT UNSIGNED,
+    word_count INT UNSIGNED,
+    unique_word_count INT UNSIGNED,
+    reading_level VARCHAR(20), -- 'elementary', 'intermediate', 'advanced'
+    sentiment_score DECIMAL(3,2), -- -1 to 1 sentiment analysis
+    explicit_content BOOLEAN DEFAULT FALSE,
+    explicit_words JSON, -- Flagged words/phrases
+    themes JSON, -- AI-detected themes
+    lyricist_names JSON, -- Array of credited writers
+    copyright_line TEXT,
+    publisher_names JSON,
+    is_instrumental BOOLEAN DEFAULT FALSE,
+    has_spoken_word BOOLEAN DEFAULT FALSE,
+    structure_analysis JSON, -- Verse/chorus detection
+    rhyme_scheme JSON, -- Detected rhyme patterns
+    verified_by_artist BOOLEAN DEFAULT FALSE,
+    verification_date DATETIME,
+    source VARCHAR(50), -- 'artist_provided', 'publisher', 'user_generated'
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_lyrics_catalog (catalog_item_id),
+    INDEX idx_lyrics_language (lyrics_language),
+    INDEX idx_lyrics_type (lyrics_type),
+    INDEX idx_lyrics_explicit (explicit_content),
+    INDEX idx_lyrics_verified (verified_by_artist),
+    FULLTEXT idx_lyrics_text (lyrics_text),
+    CONSTRAINT fk_lyrics_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_lyrics_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: lyrics_translation
+-- Multi-language translations of lyrics
+CREATE TABLE lyrics_translation (
+    translation_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    lyrics_id INT UNSIGNED NOT NULL,
+    target_language VARCHAR(10) NOT NULL, -- ISO 639-1
+    translation_type VARCHAR(50) NOT NULL, -- 'literal', 'singable', 'poetic'
+    translated_text TEXT NOT NULL,
+    translated_title VARCHAR(300),
+    line_count INT UNSIGNED,
+    word_count INT UNSIGNED,
+    translator_name VARCHAR(200),
+    translator_type VARCHAR(50), -- 'human', 'ai', 'hybrid'
+    ai_model_used VARCHAR(100), -- 'gpt4', 'deepl', 'google_translate'
+    confidence_score DECIMAL(3,2), -- 0-1 for AI translations
+    cultural_notes JSON, -- Explanations of cultural references
+    is_official BOOLEAN DEFAULT FALSE,
+    approved_by_artist BOOLEAN DEFAULT FALSE,
+    approval_date DATETIME,
+    quality_rating DECIMAL(3,2), -- User ratings
+    rating_count INT UNSIGNED DEFAULT 0,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_lyrics_translation (lyrics_id, target_language, translation_type),
+    INDEX idx_translation_language (target_language),
+    INDEX idx_translation_type (translation_type),
+    INDEX idx_translation_official (is_official),
+    INDEX idx_translation_rating (quality_rating),
+    FULLTEXT idx_translation_text (translated_text),
+    CONSTRAINT fk_translation_lyrics FOREIGN KEY (lyrics_id) REFERENCES lyrics(lyrics_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: lyrics_sync
+-- Time-synced lyrics for karaoke and display
+CREATE TABLE lyrics_sync (
+    sync_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    lyrics_id INT UNSIGNED NOT NULL,
+    audio_master_id INT UNSIGNED NOT NULL,
+    sync_format VARCHAR(20) NOT NULL, -- 'lrc', 'srt', 'ttml', 'json'
+    sync_data TEXT NOT NULL, -- Time-coded lyrics data
+    sync_type VARCHAR(50) NOT NULL, -- 'line_sync', 'word_sync', 'syllable_sync'
+    offset_ms INT DEFAULT 0, -- Global timing offset
+    accuracy_verified BOOLEAN DEFAULT FALSE,
+    verified_by_user_id INT UNSIGNED,
+    verification_method VARCHAR(50), -- 'manual', 'ai_assisted', 'waveform_analysis'
+    karaoke_effects JSON, -- Visual effects timing
+    has_backing_vocals BOOLEAN DEFAULT FALSE,
+    backing_vocal_cues JSON, -- Separate timing for backing vocals
+    instrumental_breaks JSON, -- Marked instrumental sections
+    sync_points_count INT UNSIGNED,
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_lyrics_sync (lyrics_id, audio_master_id, sync_format),
+    INDEX idx_sync_audio (audio_master_id),
+    INDEX idx_sync_format (sync_format),
+    INDEX idx_sync_type (sync_type),
+    INDEX idx_sync_verified (accuracy_verified),
+    CONSTRAINT fk_sync_lyrics FOREIGN KEY (lyrics_id) REFERENCES lyrics(lyrics_id),
+    CONSTRAINT fk_sync_audio FOREIGN KEY (audio_master_id) REFERENCES audio_master(audio_master_id),
+    CONSTRAINT fk_sync_verified_by FOREIGN KEY (verified_by_user_id) REFERENCES user(user_id),
+    CONSTRAINT fk_sync_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: liner_notes
+-- Digital booklets, album notes, and extended credits
+CREATE TABLE liner_notes (
+    liner_notes_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    catalog_item_id INT UNSIGNED NOT NULL,
+    file_id INT UNSIGNED,
+    notes_type VARCHAR(50) NOT NULL, -- 'album_notes', 'track_notes', 'thank_you', 'essay'
+    title VARCHAR(300),
+    content_html TEXT NOT NULL, -- Rich formatted content
+    content_plain TEXT, -- Plain text version
+    author_name VARCHAR(200),
+    author_role VARCHAR(100), -- 'artist', 'producer', 'journalist'
+    language VARCHAR(10) NOT NULL DEFAULT 'en',
+    word_count INT UNSIGNED,
+    reading_time_minutes INT UNSIGNED,
+    includes_images BOOLEAN DEFAULT FALSE,
+    image_count INT UNSIGNED DEFAULT 0,
+    includes_credits BOOLEAN DEFAULT FALSE,
+    special_thanks TEXT,
+    dedication TEXT,
+    historical_context TEXT,
+    recording_notes TEXT,
+    technical_notes TEXT,
+    is_exclusive BOOLEAN DEFAULT FALSE, -- Platform exclusive content
+    exclusive_until DATETIME,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_liner_catalog (catalog_item_id),
+    INDEX idx_liner_type (notes_type),
+    INDEX idx_liner_language (language),
+    INDEX idx_liner_exclusive (is_exclusive),
+    FULLTEXT idx_liner_content (content_plain, title),
+    CONSTRAINT fk_liner_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_liner_file FOREIGN KEY (file_id) REFERENCES file(file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: credit
+-- Detailed production credits with standardized roles
+CREATE TABLE credit (
+    credit_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    catalog_item_id INT UNSIGNED NOT NULL,
+    credited_entity_type VARCHAR(20) NOT NULL, -- 'person', 'organization'
+    credited_entity_id INT UNSIGNED NOT NULL, -- contributor_id or organization_id
+    credit_role VARCHAR(100) NOT NULL, -- 'producer', 'mixing_engineer', 'guitarist'
+    credit_role_category VARCHAR(50), -- 'production', 'performance', 'composition'
+    instrument VARCHAR(100), -- Specific instrument if applicable
+    contribution_description TEXT,
+    is_primary BOOLEAN DEFAULT FALSE, -- Main producer, lead guitarist, etc.
+    display_order INT UNSIGNED,
+    credited_as VARCHAR(200), -- Name as it should appear
+    session_date DATE,
+    session_location VARCHAR(200), -- Studio or venue
+    union_member BOOLEAN DEFAULT FALSE,
+    union_name VARCHAR(100), -- 'AFM', 'SAG-AFTRA'
+    fee_paid DECIMAL(12,2), -- For royalty calculations
+    royalty_share DECIMAL(7,4), -- Percentage if applicable
+    notes TEXT,
+    verified BOOLEAN DEFAULT FALSE,
+    verified_by_user_id INT UNSIGNED,
+    verification_date DATETIME,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_credit_catalog (catalog_item_id),
+    INDEX idx_credit_entity (credited_entity_type, credited_entity_id),
+    INDEX idx_credit_role (credit_role),
+    INDEX idx_credit_category (credit_role_category),
+    INDEX idx_credit_verified (verified),
+    CONSTRAINT fk_credit_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_credit_verified_by FOREIGN KEY (verified_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sample_usage
+-- Track samples used in recordings with detailed metadata
+CREATE TABLE sample_usage (
+    sample_usage_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    catalog_item_id INT UNSIGNED NOT NULL, -- Song using the sample
+    sampled_catalog_item_id INT UNSIGNED, -- Original song sampled
+    sample_type VARCHAR(50) NOT NULL, -- 'melody', 'rhythm', 'vocal', 'instrumental'
+    sample_description TEXT,
+    duration_ms INT UNSIGNED,
+    start_time_ms INT UNSIGNED, -- Where sample appears in new song
+    end_time_ms INT UNSIGNED,
+    original_start_time_ms INT UNSIGNED, -- Location in original song
+    original_end_time_ms INT UNSIGNED,
+    pitch_shift_semitones DECIMAL(4,2), -- Pitch modification
+    tempo_change_percent DECIMAL(6,2), -- Speed modification
+    processing_applied JSON, -- Effects and modifications
+    detection_method VARCHAR(50), -- 'manual', 'ai_detected', 'fingerprint'
+    detection_confidence DECIMAL(3,2), -- 0-1 for AI detection
+    acoustid_match VARCHAR(100), -- AcoustID fingerprint match
+    musicbrainz_recording_id CHAR(36),
+    clearance_required BOOLEAN DEFAULT TRUE,
+    interpolation BOOLEAN DEFAULT FALSE, -- Re-recorded vs direct sample
+    created_by_user_id INT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX idx_sample_catalog (catalog_item_id),
+    INDEX idx_sample_sampled (sampled_catalog_item_id),
+    INDEX idx_sample_type (sample_type),
+    INDEX idx_sample_detection (detection_method),
+    INDEX idx_sample_clearance (clearance_required),
+    CONSTRAINT fk_sample_catalog FOREIGN KEY (catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_sample_sampled FOREIGN KEY (sampled_catalog_item_id) REFERENCES catalog_item(catalog_item_id),
+    CONSTRAINT fk_sample_created_by FOREIGN KEY (created_by_user_id) REFERENCES user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sample_clearance
+-- Legal clearance status for samples
+CREATE TABLE sample_clearance (
+    clearance_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sample_usage_id INT UNSIGNED NOT NULL,
+    clearance_type VARCHAR(50) NOT NULL, -- 'master', 'composition', 'both'
+    clearance_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'negotiating', 'approved', 'rejected'
+    requested_date DATE NOT NULL,
+    response_date DATE,
+    approved_by_entity_type VARCHAR(20), -- 'person', 'organization'
+    approved_by_entity_id INT UNSIGNED,
+    approval_document_file_id INT UNSIGNED,
+    terms_type VARCHAR(50), -- 'flat_fee', 'royalty_share', 'hybrid'
+    flat_fee_amount DECIMAL(12,2),
+    flat_fee_currency VARCHAR(3),
+    royalty_percentage DECIMAL(7,4),
+    advance_amount DECIMAL(12,2),
+    territory_restrictions JSON,
+    usage_restrictions JSON,
+    term_length_months INT UNSIGNED, -- NULL for perpetual
+    expiration_date DATE,
+    mfn_clause BOOLEAN DEFAULT FALSE, -- Most favored nation
+    credit_requirements TEXT,
+    approval_notes TEXT,
+    rejection_reason TEXT,
+    negotiation_history JSON,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uk_sample_clearance (sample_usage_id, clearance_type),
+    INDEX idx_clearance_status (clearance_status),
+    INDEX idx_clearance_requested (requested_date),
+    INDEX idx_clearance_expiration (expiration_date),
+    CONSTRAINT fk_clearance_sample FOREIGN KEY (sample_usage_id) REFERENCES sample_usage(sample_usage_id),
+    CONSTRAINT fk_clearance_document FOREIGN KEY (approval_document_file_id) REFERENCES file(file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+-- Procedure: Process audio file and extract metadata
+DELIMITER //
+CREATE PROCEDURE sp_process_audio_file(
+    IN p_file_id INT UNSIGNED,
+    IN p_catalog_item_id INT UNSIGNED
+)
+BEGIN
+    DECLARE v_processing_id INT UNSIGNED;
+    
+    -- Create processing job
+    INSERT INTO multimedia_processing (
+        source_file_id,
+        processing_type,
+        processing_profile,
+        priority,
+        requested_by_user_id
+    )
+    SELECT 
+        p_file_id,
+        'audio_analysis',
+        JSON_OBJECT(
+            'extract_metadata', TRUE,
+            'generate_waveform', TRUE,
+            'detect_bpm', TRUE,
+            'analyze_loudness', TRUE,
+            'detect_key', TRUE,
+            'extract_fingerprint', TRUE
+        ),
+        'high',
+        uploaded_by_user_id
+    FROM file
+    WHERE file_id = p_file_id;
+    
+    SET v_processing_id = LAST_INSERT_ID();
+    
+    -- Return processing job ID
+    SELECT v_processing_id AS processing_id;
+END//
+DELIMITER ;
+
+-- Procedure: Bundle assets for release
+DELIMITER //
+CREATE PROCEDURE sp_create_release_bundle(
+    IN p_catalog_item_id INT UNSIGNED,
+    IN p_bundle_name VARCHAR(300),
+    IN p_bundle_type VARCHAR(50),
+    IN p_user_id INT UNSIGNED
+)
+BEGIN
+    DECLARE v_bundle_id INT UNSIGNED;
+    
+    START TRANSACTION;
+    
+    -- Create bundle
+    INSERT INTO asset_bundle (
+        bundle_type,
+        bundle_name,
+        catalog_item_id,
+        created_by_user_id
+    ) VALUES (
+        p_bundle_type,
+        p_bundle_name,
+        p_catalog_item_id,
+        p_user_id
+    );
+    
+    SET v_bundle_id = LAST_INSERT_ID();
+    
+    -- Add all related files to bundle
+    INSERT INTO asset_relationship (
+        parent_file_id,
+        child_file_id,
+        relationship_type,
+        bundle_id,
+        created_by_user_id
+    )
+    SELECT 
+        f1.file_id,
+        f2.file_id,
+        'bundle_member',
+        v_bundle_id,
+        p_user_id
+    FROM file f1
+    CROSS JOIN file f2
+    WHERE f1.catalog_item_id = p_catalog_item_id
+    AND f2.catalog_item_id = p_catalog_item_id
+    AND f1.file_id < f2.file_id
+    AND f1.file_status = 'active'
+    AND f2.file_status = 'active';
+    
+    -- Update bundle stats
+    UPDATE asset_bundle ab
+    SET 
+        total_size_bytes = (
+            SELECT SUM(f.file_size_bytes)
+            FROM file f
+            WHERE f.catalog_item_id = p_catalog_item_id
+            AND f.file_status = 'active'
+        ),
+        file_count = (
+            SELECT COUNT(*)
+            FROM file f
+            WHERE f.catalog_item_id = p_catalog_item_id
+            AND f.file_status = 'active'
+        )
+    WHERE ab.bundle_id = v_bundle_id;
+    
+    COMMIT;
+    
+    SELECT v_bundle_id AS bundle_id;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- VIEWS
+-- =====================================================
+
+-- View: Complete file information with type-specific metadata
+CREATE VIEW v_file_complete AS
+SELECT 
+    f.*,
+    am.duration_ms AS audio_duration_ms,
+    am.sample_rate,
+    am.bit_depth,
+    am.loudness_lufs,
+    am.bpm,
+    am.musical_key,
+    va.duration_ms AS video_duration_ms,
+    va.resolution_label,
+    va.frame_rate,
+    va.video_codec,
+    fe.encryption_algorithm,
+    CASE 
+        WHEN am.audio_master_id IS NOT NULL THEN 'audio'
+        WHEN va.video_id IS NOT NULL THEN 'video'
+        WHEN ma.multimedia_id IS NOT NULL THEN ma.asset_type
+        ELSE 'other'
+    END AS content_type
+FROM file f
+LEFT JOIN audio_master am ON f.file_id = am.file_id
+LEFT JOIN video_asset va ON f.file_id = va.file_id
+LEFT JOIN multimedia_asset ma ON f.file_id = ma.file_id
+LEFT JOIN file_encryption fe ON f.file_id = fe.file_id;
+
+-- View: Audio stems with master information
+CREATE VIEW v_audio_stems AS
+SELECT 
+    s.*,
+    am.isrc AS master_isrc,
+    am.duration_ms AS master_duration_ms,
+    f.file_name AS stem_file_name,
+    f.file_size_bytes AS stem_file_size,
+    f.cdn_url AS stem_url,
+    mf.file_name AS master_file_name
+FROM audio_stem s
+JOIN audio_master am ON s.audio_master_id = am.audio_master_id
+JOIN file f ON s.file_id = f.file_id
+JOIN file mf ON am.file_id = mf.file_id;
+
+-- =====================================================
+-- INITIAL DATA
+-- =====================================================
+
+-- Insert standard multimedia formats
+INSERT INTO multimedia_format (
+    format_code, platform, media_type, format_name, format_description,
+    file_extension, mime_type, min_bitrate_kbps, max_bitrate_kbps,
+    required_sample_rate, required_bit_depth, loudness_target_lufs,
+    effective_date
+) VALUES
+-- Audio formats
+('spotify_master', 'spotify', 'audio', 'Spotify Master', 'Spotify delivery specification',
+ 'flac', 'audio/flac', NULL, NULL, 44100, 16, -14.0, '2024-01-01'),
+('apple_master', 'apple_music', 'audio', 'Apple Digital Master', 'Apple Music mastering spec',
+ 'wav', 'audio/wav', NULL, NULL, 96000, 24, -16.0, '2024-01-01'),
+('tidal_master', 'tidal', 'audio', 'Tidal Master', 'Tidal MQA specification',
+ 'flac', 'audio/flac', NULL, NULL, 96000, 24, -14.0, '2024-01-01'),
+
+-- Video formats
+('youtube_4k', 'youtube', 'video', 'YouTube 4K', 'YouTube 4K video specification',
+ 'mp4', 'video/mp4', 15000, 68000, NULL, NULL, NULL, '2024-01-01'),
+('vevo_hd', 'vevo', 'video', 'Vevo HD', 'Vevo HD music video spec',
+ 'mp4', 'video/mp4', 8000, 20000, NULL, NULL, NULL, '2024-01-01'),
+
+-- Image formats
+('spotify_cover', 'spotify', 'image', 'Spotify Cover Art', 'Spotify artwork requirements',
+ 'jpg', 'image/jpeg', NULL, NULL, NULL, NULL, NULL, '2024-01-01'),
+('apple_artwork', 'apple_music', 'image', 'Apple Music Artwork', 'Apple Music cover art spec',
+ 'jpg', 'image/jpeg', NULL, NULL, NULL, NULL, NULL, '2024-01-01');
+
+-- Insert credit role categories
+INSERT INTO catalog_metadata_type (type_code, type_name, type_category, display_order)
+VALUES
+('credit_producer', 'Producer', 'credit_role', 10),
+('credit_engineer', 'Recording Engineer', 'credit_role', 20),
+('credit_mixer', 'Mixing Engineer', 'credit_role', 30),
+('credit_mastering', 'Mastering Engineer', 'credit_role', 40),
+('credit_guitarist', 'Guitarist', 'credit_role', 50),
+('credit_bassist', 'Bassist', 'credit_role', 60),
+('credit_drummer', 'Drummer', 'credit_role', 70),
+('credit_keys', 'Keyboardist', 'credit_role', 80),
+('credit_vocalist', 'Vocalist', 'credit_role', 90),
+('credit_strings', 'String Arrangement', 'credit_role', 100);
+
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+
+-- Trigger: Update file stats on version creation
+DELIMITER //
+CREATE TRIGGER trg_file_version_stats
+AFTER INSERT ON file_version
+FOR EACH ROW
+BEGIN
+    -- Update file access count
+    UPDATE file 
+    SET access_count = access_count + 1,
+        last_accessed_at = NOW(6)
+    WHERE file_id = NEW.file_id;
+END//
+DELIMITER ;
+
+-- Trigger: Validate audio master technical specs
+DELIMITER //
+CREATE TRIGGER trg_audio_master_validation
+BEFORE INSERT ON audio_master
+FOR EACH ROW
+BEGIN
+    -- Validate sample rate
+    IF NEW.sample_rate NOT IN (44100, 48000, 88200, 96000, 176400, 192000) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Invalid sample rate. Must be standard audio sample rate.';
+    END IF;
+    
+    -- Validate bit depth
+    IF NEW.bit_depth NOT IN (16, 24, 32) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid bit depth. Must be 16, 24, or 32 bit.';
+    END IF;
+    
+    -- Validate loudness
+    IF NEW.loudness_lufs IS NOT NULL AND (NEW.loudness_lufs < -30 OR NEW.loudness_lufs > 0) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid loudness. Must be between -30 and 0 LUFS.';
+    END IF;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_file_blockchain ON file(blockchain_network, blockchain_hash);
+CREATE INDEX idx_file_storage ON file(storage_provider, file_status);
+CREATE INDEX idx_audio_fingerprint ON audio_master(fingerprint_acoustid, musicbrainz_recording_id);
+CREATE INDEX idx_video_content ON video_asset(content_rating, video_type);
+CREATE INDEX idx_processing_queue ON multimedia_processing(status, priority, created_at);
+CREATE INDEX idx_lyrics_themes ON lyrics((CAST(themes AS CHAR(255))));
+CREATE INDEX idx_sample_confidence ON sample_usage(detection_confidence, clearance_required);
+
+-- =====================================================
+-- Section 20: SYNC & LICENSING TABLES
+-- =====================================================
+
+-- =====================================================
+-- OPPORTUNITY MANAGEMENT TABLES
+-- =====================================================
+
+-- Table: sync_opportunity
+-- Purpose: Sync opportunities from music supervisors, brands, and content creators
+CREATE TABLE IF NOT EXISTS sync_opportunity (
+    opportunity_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Basic Information
+    opportunity_code VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    opportunity_type VARCHAR(50) NOT NULL, -- 'film', 'tv_series', 'commercial', 'game', 'social_media', 'vr_ar', 'metaverse', 'podcast', 'corporate', 'trailer'
+    media_format VARCHAR(50), -- 'theatrical', 'streaming', 'broadcast', 'online', 'mobile', 'console', 'vr_headset'
+    
+    -- Project Details
+    project_name VARCHAR(500),
+    production_company VARCHAR(500),
+    distributor VARCHAR(500),
+    director VARCHAR(255),
+    music_supervisor VARCHAR(255),
+    
+    -- Creative Brief
+    scene_description TEXT,
+    mood_keywords JSON, -- ['uplifting', 'emotional', 'dark', 'energetic']
+    tempo_range JSON, -- {"min": 60, "max": 120}
+    genre_preferences JSON, -- ['rock', 'electronic', 'orchestral']
+    reference_tracks JSON, -- [{"artist": "...", "track": "...", "notes": "..."}]
+    
+    -- Technical Requirements
+    duration_needed_seconds INT,
+    instrumental_required BOOLEAN DEFAULT FALSE,
+    explicit_allowed BOOLEAN DEFAULT TRUE,
+    stems_required BOOLEAN DEFAULT FALSE,
+    custom_edit_allowed BOOLEAN DEFAULT TRUE,
+    
+    -- Timeline
+    submission_deadline DATETIME(6),
+    decision_deadline DATETIME(6),
+    project_release_date DATE,
+    option_period_days INT DEFAULT 30,
+    
+    -- Territory & Distribution
+    territories JSON, -- ['US', 'CA', 'GB', 'worldwide']
+    distribution_channels JSON, -- ['theatrical', 'streaming', 'broadcast', 'digital']
+    excluded_territories JSON, -- ['CN', 'RU']
+    
+    -- Budget & Terms
+    budget_range_min DECIMAL(15,2),
+    budget_range_max DECIMAL(15,2),
+    budget_currency VARCHAR(3) DEFAULT 'USD',
+    fee_type VARCHAR(50), -- 'flat_fee', 'step_deal', 'revenue_share', 'hybrid'
+    backend_royalties BOOLEAN DEFAULT FALSE,
+    mfn_clause BOOLEAN DEFAULT FALSE,
+    
+    -- Rights Required
+    master_rights_needed BOOLEAN DEFAULT TRUE,
+    sync_rights_needed BOOLEAN DEFAULT TRUE,
+    performance_rights_included BOOLEAN DEFAULT FALSE,
+    mechanical_rights_needed BOOLEAN DEFAULT FALSE,
+    adaptation_rights_needed BOOLEAN DEFAULT FALSE,
+    
+    -- AI Matching Metadata
+    ai_brief_analysis JSON, -- AI-extracted requirements
+    target_audience JSON, -- Demographics and psychographics
+    brand_values JSON, -- For commercial opportunities
+    competitor_placements JSON, -- Similar sync uses
+    
+    -- Source & Verification
+    source_platform VARCHAR(100), -- 'direct', 'sync_exchange', 'agency', 'platform_api'
+    verified_opportunity BOOLEAN DEFAULT FALSE,
+    verification_date DATETIME(6),
+    priority_level INT DEFAULT 5, -- 1-10 scale
+    
+    -- Status Tracking
+    status VARCHAR(50) DEFAULT 'active', -- 'draft', 'active', 'reviewing', 'closed', 'filled', 'cancelled'
+    visibility VARCHAR(50) DEFAULT 'public', -- 'public', 'private', 'invite_only', 'tier_based'
+    
+    -- Metrics
+    view_count INT DEFAULT 0,
+    submission_count INT DEFAULT 0,
+    shortlist_count INT DEFAULT 0,
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    deletion_reason VARCHAR(500),
+    version INT DEFAULT 1,
+    
+    -- Indexes
+    INDEX idx_opportunity_type (opportunity_type),
+    INDEX idx_status (status),
+    INDEX idx_deadline (submission_deadline),
+    INDEX idx_supervisor (music_supervisor),
+    INDEX idx_budget (budget_range_min, budget_range_max),
+    INDEX idx_created_at (created_at),
+    FULLTEXT idx_search (title, description, project_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_pitch
+-- Purpose: Track pitches with AI matching scores
+CREATE TABLE IF NOT EXISTS sync_pitch (
+    pitch_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    asset_id BIGINT UNSIGNED NOT NULL,
+    submitted_by BIGINT UNSIGNED NOT NULL,
+    
+    -- Pitch Details
+    pitch_code VARCHAR(50) UNIQUE NOT NULL,
+    pitch_title VARCHAR(500),
+    pitch_notes TEXT,
+    custom_edit_description TEXT,
+    
+    -- AI Matching Analysis
+    ai_match_score DECIMAL(5,4), -- 0.0000 to 1.0000
+    ai_match_factors JSON, -- Detailed scoring breakdown
+    mood_match_score DECIMAL(5,4),
+    tempo_match_score DECIMAL(5,4),
+    genre_match_score DECIMAL(5,4),
+    audience_match_score DECIMAL(5,4),
+    
+    -- Creative Alignment
+    scene_fit_analysis JSON,
+    emotional_arc_match JSON,
+    brand_alignment_score DECIMAL(5,4),
+    uniqueness_score DECIMAL(5,4),
+    
+    -- Submission Configuration
+    proposed_fee DECIMAL(15,2),
+    fee_currency VARCHAR(3) DEFAULT 'USD',
+    fee_notes TEXT,
+    territory_restrictions JSON,
+    usage_restrictions JSON,
+    
+    -- Alternative Versions
+    alternate_versions JSON, -- [{"version": "instrumental", "file_id": "..."}]
+    stem_availability JSON,
+    custom_edit_available BOOLEAN DEFAULT FALSE,
+    
+    -- Rights Confirmation
+    master_rights_cleared BOOLEAN DEFAULT FALSE,
+    sync_rights_cleared BOOLEAN DEFAULT FALSE,
+    all_samples_cleared BOOLEAN DEFAULT FALSE,
+    all_writers_approved BOOLEAN DEFAULT FALSE,
+    
+    -- Pitch Status
+    status VARCHAR(50) DEFAULT 'submitted', -- 'draft', 'submitted', 'under_review', 'shortlisted', 'selected', 'rejected', 'withdrawn'
+    internal_rating INT, -- 1-5 stars from supervisor
+    feedback_notes TEXT,
+    
+    -- Engagement Metrics
+    viewed_at DATETIME(6),
+    listened_duration_seconds INT,
+    downloaded_at DATETIME(6),
+    shared_count INT DEFAULT 0,
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Constraints
+    FOREIGN KEY (opportunity_id) REFERENCES sync_opportunity(opportunity_id),
+    UNIQUE KEY unique_opportunity_asset (opportunity_id, asset_id),
+    
+    -- Indexes
+    INDEX idx_asset (asset_id),
+    INDEX idx_submitted_by (submitted_by),
+    INDEX idx_status (status),
+    INDEX idx_match_score (ai_match_score DESC),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_submission
+-- Purpose: Detailed submission tracking and management
+CREATE TABLE IF NOT EXISTS sync_submission (
+    submission_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    pitch_id BIGINT UNSIGNED NOT NULL,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Submission Package
+    submission_code VARCHAR(50) UNIQUE NOT NULL,
+    cover_letter TEXT,
+    supporting_materials JSON, -- Links to EPKs, videos, etc.
+    
+    -- Submitted Versions
+    primary_version_file_id VARCHAR(255),
+    alternate_versions JSON, -- [{"type": "instrumental", "file_id": "...", "notes": "..."}]
+    stems_package_id VARCHAR(255),
+    
+    -- Rights Documentation
+    rights_declaration JSON,
+    clearance_documents JSON, -- [{"type": "master_ownership", "file_id": "..."}]
+    writer_approvals JSON, -- [{"writer_id": "...", "approved": true, "date": "..."}]
+    publisher_approvals JSON,
+    
+    -- Submission Tracking
+    submission_method VARCHAR(50), -- 'platform', 'email', 'api', 'agency'
+    submission_ip VARCHAR(45),
+    submission_user_agent TEXT,
+    
+    -- Review Process
+    review_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_review', 'approved', 'rejected', 'on_hold'
+    reviewer_id BIGINT UNSIGNED,
+    review_notes TEXT,
+    review_date DATETIME(6),
+    
+    -- Communication Thread
+    message_thread_id VARCHAR(255),
+    last_communication DATETIME(6),
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (pitch_id) REFERENCES sync_pitch(pitch_id),
+    FOREIGN KEY (opportunity_id) REFERENCES sync_opportunity(opportunity_id),
+    
+    -- Indexes
+    INDEX idx_opportunity (opportunity_id),
+    INDEX idx_review_status (review_status),
+    INDEX idx_reviewer (reviewer_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_placement
+-- Purpose: Confirmed sync placements and their details
+CREATE TABLE IF NOT EXISTS sync_placement (
+    placement_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    pitch_id BIGINT UNSIGNED NOT NULL,
+    opportunity_id BIGINT UNSIGNED NOT NULL,
+    asset_id BIGINT UNSIGNED NOT NULL,
+    license_agreement_id BIGINT UNSIGNED,
+    
+    -- Placement Details
+    placement_code VARCHAR(50) UNIQUE NOT NULL,
+    confirmation_date DATETIME(6),
+    placement_title VARCHAR(500),
+    
+    -- Usage Details
+    scene_description TEXT,
+    time_in_seconds INT,
+    prominence VARCHAR(50), -- 'featured', 'background', 'theme', 'montage', 'credits'
+    episode_number VARCHAR(50),
+    season_number VARCHAR(50),
+    
+    -- Final Terms
+    final_fee DECIMAL(15,2),
+    fee_currency VARCHAR(3) DEFAULT 'USD',
+    payment_terms VARCHAR(255),
+    backend_percentage DECIMAL(5,2),
+    
+    -- Air/Release Dates
+    first_use_date DATE,
+    release_date DATE,
+    territory_release_dates JSON, -- {"US": "2024-01-01", "UK": "2024-02-01"}
+    
+    -- Cue Sheet Information
+    cue_sheet_id BIGINT UNSIGNED,
+    cue_number VARCHAR(50),
+    society_work_number VARCHAR(50),
+    
+    -- Performance Tracking
+    broadcast_count INT DEFAULT 0,
+    stream_count BIGINT DEFAULT 0,
+    territory_performance JSON, -- Performance data by territory
+    
+    -- Marketing Rights
+    trailer_usage_allowed BOOLEAN DEFAULT FALSE,
+    promotional_usage_allowed BOOLEAN DEFAULT FALSE,
+    social_media_usage_allowed BOOLEAN DEFAULT FALSE,
+    
+    -- Blockchain Record
+    blockchain_tx_hash VARCHAR(255),
+    smart_contract_address VARCHAR(255),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'confirmed', -- 'pending', 'confirmed', 'active', 'expired', 'terminated'
+    activation_date DATETIME(6),
+    expiration_date DATETIME(6),
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Constraints
+    FOREIGN KEY (pitch_id) REFERENCES sync_pitch(pitch_id),
+    FOREIGN KEY (opportunity_id) REFERENCES sync_opportunity(opportunity_id),
+    
+    -- Indexes
+    INDEX idx_asset (asset_id),
+    INDEX idx_license (license_agreement_id),
+    INDEX idx_status (status),
+    INDEX idx_release_date (release_date),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- FINANCIAL & TERMS TABLES
+-- =====================================================
+
+-- Table: sync_fee
+-- Purpose: Fee negotiations with complete history
+CREATE TABLE IF NOT EXISTS sync_fee (
+    fee_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    opportunity_id BIGINT UNSIGNED,
+    pitch_id BIGINT UNSIGNED,
+    placement_id BIGINT UNSIGNED,
+    
+    -- Fee Structure
+    fee_type VARCHAR(50) NOT NULL, -- 'flat_fee', 'step_deal', 'revenue_share', 'hybrid', 'gratis'
+    base_fee DECIMAL(15,2),
+    currency VARCHAR(3) DEFAULT 'USD',
+    
+    -- Step Deal Configuration
+    step_triggers JSON, -- [{"trigger": "1M views", "fee": 5000}, {"trigger": "5M views", "fee": 15000}]
+    current_step INT DEFAULT 1,
+    
+    -- Revenue Share Terms
+    revenue_share_percentage DECIMAL(5,2),
+    revenue_share_cap DECIMAL(15,2),
+    revenue_share_floor DECIMAL(15,2),
+    recoupable_expenses DECIMAL(15,2),
+    
+    -- Territory Pricing
+    territory_fees JSON, -- {"US": 10000, "UK": 5000, "worldwide": 25000}
+    territory_adjustments JSON, -- {"CA": 0.8, "MX": 0.6}
+    
+    -- Usage-Based Pricing
+    usage_fees JSON, -- {"30_seconds": 5000, "60_seconds": 8000, "full_song": 15000}
+    media_type_multipliers JSON, -- {"theatrical": 2.0, "streaming": 1.0, "social": 0.5}
+    
+    -- Options & Renewals
+    option_fee DECIMAL(15,2),
+    option_period_days INT DEFAULT 30,
+    renewal_fee DECIMAL(15,2),
+    renewal_terms JSON,
+    
+    -- MFN (Most Favored Nation) Tracking
+    mfn_applicable BOOLEAN DEFAULT FALSE,
+    mfn_reference_deals JSON, -- Other deals to match
+    mfn_adjusted_fee DECIMAL(15,2),
+    
+    -- Negotiation History
+    initial_quote DECIMAL(15,2),
+    final_agreed_fee DECIMAL(15,2),
+    negotiation_rounds INT DEFAULT 0,
+    negotiation_history JSON, -- [{"date": "...", "offer": 5000, "counter": 8000, "notes": "..."}]
+    
+    -- Payment Terms
+    payment_schedule VARCHAR(50), -- 'on_signature', 'on_delivery', 'on_release', 'milestone_based'
+    payment_milestones JSON, -- [{"milestone": "contract_signed", "percentage": 50}]
+    net_terms_days INT DEFAULT 30,
+    
+    -- Fee Calculation Metadata
+    calculation_factors JSON, -- All factors used in fee calculation
+    ai_suggested_fee DECIMAL(15,2),
+    market_benchmark DECIMAL(15,2),
+    
+    -- Approval Status
+    status VARCHAR(50) DEFAULT 'proposed', -- 'proposed', 'negotiating', 'approved', 'rejected', 'paid'
+    approved_by BIGINT UNSIGNED,
+    approved_at DATETIME(6),
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (opportunity_id) REFERENCES sync_opportunity(opportunity_id),
+    FOREIGN KEY (pitch_id) REFERENCES sync_pitch(pitch_id),
+    FOREIGN KEY (placement_id) REFERENCES sync_placement(placement_id),
+    
+    -- Indexes
+    INDEX idx_fee_type (fee_type),
+    INDEX idx_status (status),
+    INDEX idx_base_fee (base_fee),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_term
+-- Purpose: License terms and conditions
+CREATE TABLE IF NOT EXISTS sync_term (
+    term_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    placement_id BIGINT UNSIGNED,
+    license_agreement_id BIGINT UNSIGNED,
+    
+    -- Term Identification
+    term_code VARCHAR(50) UNIQUE NOT NULL,
+    term_name VARCHAR(255) NOT NULL,
+    
+    -- License Scope
+    rights_granted JSON, -- ['synchronization', 'master_use', 'public_performance']
+    media_types JSON, -- ['theatrical', 'streaming', 'broadcast']
+    distribution_channels JSON, -- ['netflix', 'hulu', 'amazon', 'theatrical']
+    
+    -- Territory Configuration
+    included_territories JSON, -- ['US', 'CA', 'MX'] or ['worldwide']
+    excluded_territories JSON, -- ['CN', 'RU']
+    territory_notes TEXT,
+    
+    -- Time Limitations
+    term_start_date DATE,
+    term_end_date DATE,
+    term_duration_months INT,
+    perpetual_license BOOLEAN DEFAULT FALSE,
+    
+    -- Usage Restrictions
+    usage_limitations JSON, -- {"max_seconds": 30, "max_uses": 5}
+    edit_rights VARCHAR(50), -- 'no_edits', 'minor_edits', 'full_edit_rights'
+    dubbing_rights BOOLEAN DEFAULT FALSE,
+    subtitle_rights BOOLEAN DEFAULT TRUE,
+    
+    -- Promotional Rights
+    trailer_rights BOOLEAN DEFAULT FALSE,
+    advertising_rights BOOLEAN DEFAULT FALSE,
+    social_media_rights BOOLEAN DEFAULT FALSE,
+    behind_scenes_rights BOOLEAN DEFAULT FALSE,
+    
+    -- Exclusivity
+    exclusive_license BOOLEAN DEFAULT FALSE,
+    exclusivity_period_days INT,
+    exclusivity_territories JSON,
+    holdback_periods JSON, -- {"streaming": 90, "broadcast": 180}
+    
+    -- Credit Requirements
+    credit_requirement VARCHAR(50), -- 'required', 'optional', 'none'
+    credit_format TEXT,
+    credit_placement VARCHAR(100), -- 'main_titles', 'end_credits', 'both'
+    
+    -- Derivative Works
+    remake_rights BOOLEAN DEFAULT FALSE,
+    sequel_rights BOOLEAN DEFAULT FALSE,
+    franchise_rights BOOLEAN DEFAULT FALSE,
+    merchandising_rights BOOLEAN DEFAULT FALSE,
+    
+    -- Compliance & Reporting
+    reporting_required BOOLEAN DEFAULT TRUE,
+    reporting_frequency VARCHAR(50), -- 'monthly', 'quarterly', 'annually'
+    audit_rights BOOLEAN DEFAULT TRUE,
+    
+    -- Termination Conditions
+    termination_triggers JSON, -- ["breach", "non_payment", "change_of_control"]
+    cure_period_days INT DEFAULT 30,
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (placement_id) REFERENCES sync_placement(placement_id),
+    
+    -- Indexes
+    INDEX idx_license (license_agreement_id),
+    INDEX idx_term_dates (term_start_date, term_end_date),
+    INDEX idx_exclusive (exclusive_license),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_usage_report
+-- Purpose: Track actual usage and performance
+CREATE TABLE IF NOT EXISTS sync_usage_report (
+    usage_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    placement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Report Details
+    report_code VARCHAR(50) UNIQUE NOT NULL,
+    report_period_start DATE,
+    report_period_end DATE,
+    report_source VARCHAR(100), -- 'broadcaster', 'streamer', 'distributor', 'content_id'
+    
+    -- Usage Metrics
+    broadcast_count INT DEFAULT 0,
+    broadcast_territories JSON, -- {"US": 150, "CA": 50}
+    stream_count BIGINT DEFAULT 0,
+    stream_territories JSON,
+    download_count BIGINT DEFAULT 0,
+    
+    -- Viewership Data
+    total_impressions BIGINT,
+    unique_viewers BIGINT,
+    average_view_duration_seconds INT,
+    completion_rate DECIMAL(5,2),
+    
+    -- Platform Breakdown
+    platform_metrics JSON, /* {
+        "netflix": {"plays": 1000000, "hours": 25000},
+        "hulu": {"plays": 500000, "hours": 12500}
+    } */
+    
+    -- Geographic Performance
+    territory_performance JSON, /* {
+        "US": {"plays": 800000, "revenue": 25000},
+        "UK": {"plays": 200000, "revenue": 8000}
+    } */
+    
+    -- Time-Based Analytics
+    peak_usage_times JSON,
+    daily_usage_pattern JSON,
+    trending_periods JSON,
+    
+    -- Audience Demographics
+    audience_demographics JSON, /* {
+        "age_groups": {"18-24": 0.35, "25-34": 0.40},
+        "gender": {"male": 0.55, "female": 0.45}
+    } */
+    
+    -- Financial Impact
+    attributed_revenue DECIMAL(15,2),
+    revenue_currency VARCHAR(3) DEFAULT 'USD',
+    performance_bonus_triggered BOOLEAN DEFAULT FALSE,
+    
+    -- Compliance Tracking
+    usage_compliant BOOLEAN DEFAULT TRUE,
+    compliance_issues JSON,
+    overage_uses INT DEFAULT 0,
+    
+    -- Data Verification
+    verified_data BOOLEAN DEFAULT FALSE,
+    verification_method VARCHAR(100),
+    verification_date DATETIME(6),
+    
+    -- System Fields
+    imported_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    processed_at DATETIME(6),
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (placement_id) REFERENCES sync_placement(placement_id),
+    
+    -- Indexes
+    INDEX idx_report_period (report_period_start, report_period_end),
+    INDEX idx_report_source (report_source),
+    INDEX idx_created_at (created_at),
+    INDEX idx_stream_count (stream_count DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_cue_sheet
+-- Purpose: Industry-standard cue sheet management
+CREATE TABLE IF NOT EXISTS sync_cue_sheet (
+    cue_sheet_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Production Information
+    production_title VARCHAR(500) NOT NULL,
+    production_type VARCHAR(50), -- 'feature_film', 'tv_series', 'documentary', 'commercial'
+    episode_title VARCHAR(500),
+    episode_number VARCHAR(50),
+    season_number VARCHAR(50),
+    production_number VARCHAR(100),
+    
+    -- Dates
+    air_date DATE,
+    production_year YEAR,
+    first_air_date DATE,
+    
+    -- Production Company
+    production_company VARCHAR(500),
+    producer_name VARCHAR(255),
+    director_name VARCHAR(255),
+    
+    -- Network/Distributor
+    network_name VARCHAR(255),
+    distributor_name VARCHAR(255),
+    
+    -- Music Cues
+    total_music_duration_seconds INT,
+    total_cues INT DEFAULT 0,
+    
+    -- Cue Sheet Details (normalized in separate table)
+    cue_sheet_version VARCHAR(50),
+    cue_sheet_type VARCHAR(50), -- 'av', 'radio', 'promo'
+    
+    -- Society Information
+    society_submitted VARCHAR(50), -- 'ASCAP', 'BMI', 'SESAC'
+    society_work_number VARCHAR(50),
+    submission_date DATE,
+    
+    -- File References
+    original_file_id VARCHAR(255),
+    formatted_file_id VARCHAR(255),
+    
+    -- Verification
+    verified_by_production BOOLEAN DEFAULT FALSE,
+    verified_by_society BOOLEAN DEFAULT FALSE,
+    verification_notes TEXT,
+    
+    -- Blockchain Record
+    blockchain_hash VARCHAR(255),
+    ipfs_hash VARCHAR(255),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'submitted', 'accepted', 'rejected', 'revised'
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Indexes
+    INDEX idx_production_title (production_title),
+    INDEX idx_air_date (air_date),
+    INDEX idx_society (society_submitted),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_cue_sheet_detail
+-- Purpose: Individual cue entries within a cue sheet
+CREATE TABLE IF NOT EXISTS sync_cue_sheet_detail (
+    cue_detail_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    cue_sheet_id BIGINT UNSIGNED NOT NULL,
+    placement_id BIGINT UNSIGNED,
+    asset_id BIGINT UNSIGNED,
+    
+    -- Cue Information
+    cue_number VARCHAR(50) NOT NULL,
+    cue_title VARCHAR(500) NOT NULL,
+    
+    -- Usage Details
+    use_type VARCHAR(50), -- 'background_instrumental', 'background_vocal', 'feature', 'theme'
+    timing_start VARCHAR(20), -- 'MM:SS:FF'
+    timing_end VARCHAR(20),
+    duration_seconds INT,
+    
+    -- Music Details
+    performers JSON, -- ["Artist Name", "Band Name"]
+    composers JSON, -- ["Composer 1", "Composer 2"]
+    publishers JSON, -- ["Publisher 1", "Publisher 2"]
+    
+    -- Rights Splits
+    composer_splits JSON, /* [
+        {"name": "John Doe", "share": 50, "pro": "ASCAP", "ipi": "00123456789"}
+    ] */
+    publisher_splits JSON, /* [
+        {"name": "Music Pub Co", "share": 50, "pro": "BMI", "ipi": "00987654321"}
+    ] */
+    
+    -- Society Codes
+    society_work_codes JSON, -- {"ASCAP": "123456", "BMI": "789012"}
+    iswc_code VARCHAR(50),
+    isrc_code VARCHAR(50),
+    
+    -- Additional Info
+    notes TEXT,
+    scene_description TEXT,
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (cue_sheet_id) REFERENCES sync_cue_sheet(cue_sheet_id),
+    
+    -- Indexes
+    INDEX idx_placement (placement_id),
+    INDEX idx_asset (asset_id),
+    INDEX idx_cue_number (cue_number),
+    INDEX idx_duration (duration_seconds)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- LICENSING WORKFLOW TABLES
+-- =====================================================
+
+-- Table: license_request
+-- Purpose: Incoming license requests from any source
+CREATE TABLE IF NOT EXISTS license_request (
+    request_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Request Details
+    request_code VARCHAR(50) UNIQUE NOT NULL,
+    request_type VARCHAR(50) NOT NULL, -- 'sync', 'master', 'print', 'mechanical', 'sample', 'remix'
+    urgency_level VARCHAR(50) DEFAULT 'normal', -- 'urgent', 'high', 'normal', 'low'
+    
+    -- Requester Information
+    requester_name VARCHAR(255),
+    requester_email VARCHAR(255),
+    requester_phone VARCHAR(50),
+    company_name VARCHAR(500),
+    company_type VARCHAR(100), -- 'production_company', 'brand', 'agency', 'individual'
+    
+    -- Project Information
+    project_name VARCHAR(500),
+    project_description TEXT,
+    project_type VARCHAR(100), -- 'film', 'tv', 'commercial', 'game', 'app', 'podcast'
+    
+    -- Assets Requested
+    requested_assets JSON, -- [{"asset_id": "...", "notes": "..."}]
+    asset_discovery_source VARCHAR(100), -- 'search', 'playlist', 'recommendation', 'direct'
+    
+    -- Usage Requirements
+    intended_use TEXT,
+    media_types JSON,
+    territories_needed JSON,
+    term_length_requested VARCHAR(100),
+    exclusivity_needed BOOLEAN DEFAULT FALSE,
+    
+    -- Budget Information
+    budget_range VARCHAR(100),
+    budget_currency VARCHAR(3) DEFAULT 'USD',
+    payment_method_preference VARCHAR(50),
+    
+    -- Timeline
+    decision_needed_by DATE,
+    project_deadline DATE,
+    usage_start_date DATE,
+    
+    -- Pre-screening
+    prescreening_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'qualified', 'unqualified', 'spam'
+    prescreening_score DECIMAL(5,2),
+    prescreening_factors JSON,
+    
+    -- Communication Preferences
+    preferred_contact_method VARCHAR(50), -- 'email', 'phone', 'platform', 'text'
+    preferred_contact_times JSON,
+    language_preference VARCHAR(10) DEFAULT 'en',
+    
+    -- Source Tracking
+    source_channel VARCHAR(100), -- 'website', 'api', 'email', 'partner'
+    source_partner_id VARCHAR(255),
+    referral_code VARCHAR(50),
+    utm_parameters JSON,
+    
+    -- Assignment
+    assigned_to BIGINT UNSIGNED,
+    assigned_at DATETIME(6),
+    assignment_notes TEXT,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'new', -- 'new', 'reviewing', 'quoted', 'negotiating', 'approved', 'declined'
+    decline_reason VARCHAR(500),
+    
+    -- Response Tracking
+    first_response_at DATETIME(6),
+    response_time_minutes INT,
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Indexes
+    INDEX idx_request_type (request_type),
+    INDEX idx_urgency (urgency_level),
+    INDEX idx_status (status),
+    INDEX idx_assigned_to (assigned_to),
+    INDEX idx_created_at (created_at),
+    INDEX idx_decision_date (decision_needed_by),
+    FULLTEXT idx_search (project_name, project_description, intended_use)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: license_quote
+-- Purpose: Generated quotes with terms
+CREATE TABLE IF NOT EXISTS license_quote (
+    quote_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    request_id BIGINT UNSIGNED,
+    
+    -- Quote Details
+    quote_code VARCHAR(50) UNIQUE NOT NULL,
+    quote_version INT DEFAULT 1,
+    quote_name VARCHAR(500),
+    
+    -- Financial Terms
+    total_fee DECIMAL(15,2) NOT NULL,
+    fee_currency VARCHAR(3) DEFAULT 'USD',
+    fee_breakdown JSON, /* {
+        "sync_fee": 10000,
+        "master_fee": 5000,
+        "admin_fee": 500
+    } */
+    
+    -- Payment Terms
+    payment_terms VARCHAR(255),
+    payment_schedule JSON,
+    accepted_payment_methods JSON,
+    
+    -- Rights Included
+    rights_included JSON,
+    rights_excluded JSON,
+    
+    -- Territory & Term
+    territories_included JSON,
+    territories_excluded JSON,
+    term_length_months INT,
+    term_start_date DATE,
+    
+    -- Usage Specifications
+    permitted_uses JSON,
+    prohibited_uses JSON,
+    media_specifications JSON,
+    
+    -- Options & Add-ons
+    available_options JSON, /* [
+        {"option": "worldwide_rights", "additional_fee": 15000},
+        {"option": "perpetual_license", "additional_fee": 25000}
+    ] */
+    
+    -- Terms & Conditions
+    standard_terms_version VARCHAR(50),
+    custom_terms TEXT,
+    special_conditions JSON,
+    
+    -- Validity
+    valid_until_date DATE,
+    auto_expire BOOLEAN DEFAULT TRUE,
+    
+    -- Approval Requirements
+    internal_approvals_needed JSON,
+    external_approvals_needed JSON,
+    
+    -- Quote Generation
+    generated_by VARCHAR(50), -- 'manual', 'ai_assisted', 'template', 'api'
+    template_used VARCHAR(100),
+    ai_confidence_score DECIMAL(5,2),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'sent', 'viewed', 'negotiating', 'accepted', 'rejected', 'expired'
+    sent_at DATETIME(6),
+    viewed_at DATETIME(6),
+    
+    -- Negotiation Tracking
+    negotiation_count INT DEFAULT 0,
+    last_counter_offer DECIMAL(15,2),
+    negotiation_notes TEXT,
+    
+    -- Conversion Tracking
+    converted_to_license BOOLEAN DEFAULT FALSE,
+    license_agreement_id BIGINT UNSIGNED,
+    conversion_time_hours INT,
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Constraints
+    FOREIGN KEY (request_id) REFERENCES license_request(request_id),
+    
+    -- Indexes
+    INDEX idx_status (status),
+    INDEX idx_valid_until (valid_until_date),
+    INDEX idx_total_fee (total_fee),
+    INDEX idx_created_at (created_at),
+    INDEX idx_quote_version (quote_code, quote_version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: license_agreement
+-- Purpose: Final executed licenses
+CREATE TABLE IF NOT EXISTS license_agreement (
+    agreement_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    quote_id BIGINT UNSIGNED,
+    request_id BIGINT UNSIGNED,
+    
+    -- Agreement Details
+    agreement_code VARCHAR(50) UNIQUE NOT NULL,
+    agreement_name VARCHAR(500) NOT NULL,
+    agreement_type VARCHAR(50), -- 'sync', 'master', 'mechanical', 'print', 'grand_rights'
+    
+    -- Parties
+    licensor_details JSON, -- {"name": "...", "address": "...", "tax_id": "..."}
+    licensee_details JSON,
+    
+    -- Financial Terms
+    total_consideration DECIMAL(15,2),
+    consideration_currency VARCHAR(3) DEFAULT 'USD',
+    payment_structure JSON,
+    
+    -- Effective Dates
+    effective_date DATE NOT NULL,
+    expiration_date DATE,
+    perpetual BOOLEAN DEFAULT FALSE,
+    
+    -- Territory
+    worldwide_rights BOOLEAN DEFAULT FALSE,
+    included_territories JSON,
+    excluded_territories JSON,
+    
+    -- Rights Granted
+    rights_granted JSON,
+    usage_restrictions JSON,
+    reserved_rights JSON,
+    
+    -- Execution Details
+    execution_date DATETIME(6),
+    execution_method VARCHAR(50), -- 'docusign', 'manual', 'blockchain', 'wet_signature'
+    
+    -- Signatures
+    licensor_signature_date DATETIME(6),
+    licensee_signature_date DATETIME(6),
+    witness_signatures JSON,
+    
+    -- Document Management
+    agreement_document_id VARCHAR(255),
+    executed_document_id VARCHAR(255),
+    supporting_documents JSON,
+    
+    -- Blockchain Recording
+    blockchain_recorded BOOLEAN DEFAULT FALSE,
+    blockchain_tx_hash VARCHAR(255),
+    smart_contract_address VARCHAR(255),
+    nft_token_id VARCHAR(255),
+    
+    -- Compliance
+    compliance_verified BOOLEAN DEFAULT FALSE,
+    compliance_issues JSON,
+    audit_trail JSON,
+    
+    -- Amendments
+    amendment_count INT DEFAULT 0,
+    latest_amendment_date DATETIME(6),
+    amendment_history JSON,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'pending_signature', 'executed', 'active', 'expired', 'terminated'
+    termination_date DATETIME(6),
+    termination_reason VARCHAR(500),
+    
+    -- Performance Metrics
+    revenue_generated DECIMAL(15,2) DEFAULT 0,
+    usage_count INT DEFAULT 0,
+    compliance_score DECIMAL(5,2),
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Constraints
+    FOREIGN KEY (quote_id) REFERENCES license_quote(quote_id),
+    FOREIGN KEY (request_id) REFERENCES license_request(request_id),
+    
+    -- Indexes
+    INDEX idx_agreement_type (agreement_type),
+    INDEX idx_status (status),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_expiration_date (expiration_date),
+    INDEX idx_execution_date (execution_date),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: license_restriction
+-- Purpose: Detailed usage restrictions and compliance rules
+CREATE TABLE IF NOT EXISTS license_restriction (
+    restriction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Restriction Details
+    restriction_type VARCHAR(100) NOT NULL, -- 'territorial', 'temporal', 'media', 'content', 'competitive'
+    restriction_name VARCHAR(255),
+    description TEXT,
+    
+    -- Territorial Restrictions
+    restricted_territories JSON,
+    territory_holdback_periods JSON, -- {"JP": 180, "KR": 90}
+    
+    -- Temporal Restrictions
+    blackout_periods JSON, -- [{"start": "2024-12-20", "end": "2024-12-31", "reason": "holiday"}]
+    time_windows JSON, -- {"streaming": {"start": "2024-01-01", "end": "2024-12-31"}}
+    
+    -- Media Restrictions
+    prohibited_media_types JSON,
+    platform_restrictions JSON, -- ["tiktok", "instagram_reels"]
+    format_restrictions JSON, -- ["4k", "hdr", "3d"]
+    
+    -- Content Restrictions
+    prohibited_contexts JSON, -- ["political", "religious", "adult"]
+    competitor_restrictions JSON, -- ["Coca-Cola", "Pepsi"]
+    industry_restrictions JSON, -- ["tobacco", "gambling"]
+    
+    -- Usage Limitations
+    maximum_uses INT,
+    maximum_duration_seconds INT,
+    edit_restrictions TEXT,
+    
+    -- Compliance Monitoring
+    monitoring_required BOOLEAN DEFAULT TRUE,
+    monitoring_frequency VARCHAR(50), -- 'real_time', 'daily', 'weekly', 'monthly'
+    monitoring_method VARCHAR(100), -- 'content_id', 'manual', 'automated', 'third_party'
+    
+    -- Violation Handling
+    violation_penalty_type VARCHAR(50), -- 'monetary', 'termination', 'legal_action'
+    violation_penalty_amount DECIMAL(15,2),
+    cure_period_hours INT DEFAULT 48,
+    
+    -- Enforcement
+    enforcement_level VARCHAR(50) DEFAULT 'standard', -- 'strict', 'standard', 'flexible'
+    automated_enforcement BOOLEAN DEFAULT FALSE,
+    
+    -- Status
+    active BOOLEAN DEFAULT TRUE,
+    activation_date DATETIME(6),
+    deactivation_date DATETIME(6),
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (agreement_id) REFERENCES license_agreement(agreement_id),
+    
+    -- Indexes
+    INDEX idx_restriction_type (restriction_type),
+    INDEX idx_active (active),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TERRITORY & RIGHTS TABLES
+-- =====================================================
+
+-- Table: license_territory
+-- Purpose: Territory-specific license terms
+CREATE TABLE IF NOT EXISTS license_territory (
+    territory_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Relationships
+    agreement_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Territory Details
+    territory_code VARCHAR(10) NOT NULL, -- ISO country codes
+    territory_name VARCHAR(255),
+    region VARCHAR(100), -- 'north_america', 'europe', 'asia_pacific', etc.
+    
+    -- Territory-Specific Terms
+    territory_fee DECIMAL(15,2),
+    fee_currency VARCHAR(3),
+    local_tax_rate DECIMAL(5,2),
+    withholding_tax_rate DECIMAL(5,2),
+    
+    -- Rights Variations
+    rights_modifications JSON, -- Territory-specific right changes
+    additional_restrictions JSON,
+    
+    -- Local Requirements
+    local_credit_requirements TEXT,
+    translation_requirements JSON,
+    censorship_requirements JSON,
+    
+    -- Collection Societies
+    local_pro VARCHAR(100), -- Local PRO name
+    local_mro VARCHAR(100), -- Local MRO name
+    direct_license BOOLEAN DEFAULT FALSE,
+    
+    -- Distribution Partners
+    local_distributor VARCHAR(255),
+    sub_publisher VARCHAR(255),
+    collection_agent VARCHAR(255),
+    
+    -- Performance Metrics
+    territory_revenue DECIMAL(15,2) DEFAULT 0,
+    territory_plays BIGINT DEFAULT 0,
+    market_share DECIMAL(5,2),
+    
+    -- Compliance
+    local_compliance_status VARCHAR(50) DEFAULT 'pending',
+    compliance_documents JSON,
+    last_audit_date DATE,
+    
+    -- Status
+    territory_active BOOLEAN DEFAULT TRUE,
+    activation_date DATE,
+    termination_date DATE,
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Constraints
+    FOREIGN KEY (agreement_id) REFERENCES license_agreement(agreement_id),
+    UNIQUE KEY unique_agreement_territory (agreement_id, territory_code),
+    
+    -- Indexes
+    INDEX idx_territory_code (territory_code),
+    INDEX idx_region (region),
+    INDEX idx_territory_active (territory_active),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: brand_partnership
+-- Purpose: Brand collaboration and sponsorship deals
+CREATE TABLE IF NOT EXISTS brand_partnership (
+    partnership_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Brand Information
+    brand_name VARCHAR(255) NOT NULL,
+    parent_company VARCHAR(255),
+    brand_category VARCHAR(100), -- 'fashion', 'technology', 'beverage', 'automotive'
+    brand_tier VARCHAR(50), -- 'luxury', 'premium', 'mass_market'
+    
+    -- Partnership Details
+    partnership_code VARCHAR(50) UNIQUE NOT NULL,
+    partnership_type VARCHAR(100), -- 'endorsement', 'collaboration', 'sponsorship', 'product_placement'
+    campaign_name VARCHAR(500),
+    campaign_description TEXT,
+    
+    -- Creative Direction
+    brand_values JSON,
+    target_demographics JSON,
+    creative_guidelines TEXT,
+    prohibited_associations JSON,
+    
+    -- Assets Involved
+    included_assets JSON, -- [{"asset_id": "...", "usage_type": "..."}]
+    exclusive_assets JSON,
+    
+    -- Financial Terms
+    partnership_value DECIMAL(15,2),
+    value_currency VARCHAR(3) DEFAULT 'USD',
+    payment_structure VARCHAR(100), -- 'upfront', 'milestone', 'performance_based'
+    performance_metrics JSON,
+    
+    -- Rights & Usage
+    usage_rights JSON,
+    creative_approval_required BOOLEAN DEFAULT TRUE,
+    moral_rights_waived BOOLEAN DEFAULT FALSE,
+    
+    -- Territory & Duration
+    partnership_territories JSON,
+    start_date DATE,
+    end_date DATE,
+    renewal_options JSON,
+    
+    -- Deliverables
+    deliverables JSON, /* [
+        {"type": "social_post", "quantity": 5, "deadline": "2024-01-15"},
+        {"type": "appearance", "quantity": 2, "deadline": "2024-02-01"}
+    ] */
+    
+    -- Performance Tracking
+    campaign_reach BIGINT,
+    engagement_metrics JSON,
+    sales_impact DECIMAL(15,2),
+    brand_lift_percentage DECIMAL(5,2),
+    
+    -- Content Creation
+    content_calendar JSON,
+    approved_content JSON,
+    content_performance JSON,
+    
+    -- Compliance & Restrictions
+    ftc_disclosure_required BOOLEAN DEFAULT TRUE,
+    disclosure_language TEXT,
+    competitor_exclusions JSON,
+    
+    -- Partnership Management
+    brand_contact_name VARCHAR(255),
+    brand_contact_email VARCHAR(255),
+    agency_name VARCHAR(255),
+    account_manager VARCHAR(255),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'negotiating', -- 'negotiating', 'active', 'paused', 'completed', 'terminated'
+    performance_rating INT, -- 1-5 scale
+    renewal_likelihood VARCHAR(50), -- 'high', 'medium', 'low'
+    
+    -- System Fields
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6),
+    
+    -- Indexes
+    INDEX idx_brand_name (brand_name),
+    INDEX idx_partnership_type (partnership_type),
+    INDEX idx_status (status),
+    INDEX idx_dates (start_date, end_date),
+    INDEX idx_created_at (created_at),
+    FULLTEXT idx_search (brand_name, campaign_name, campaign_description)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_approval_chain
+-- Purpose: Multi-party approval workflows for complex deals
+CREATE TABLE IF NOT EXISTS sync_approval_chain (
+    approval_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Related Entity
+    entity_type VARCHAR(50) NOT NULL, -- 'sync_placement', 'license_agreement', 'brand_partnership'
+    entity_id BIGINT UNSIGNED NOT NULL,
+    
+    -- Approval Requirements
+    approval_type VARCHAR(50), -- 'rights_holder', 'creative', 'business', 'legal'
+    approval_level VARCHAR(50), -- 'required', 'recommended', 'optional'
+    
+    -- Approver Details
+    approver_type VARCHAR(50), -- 'writer', 'publisher', 'label', 'artist', 'manager'
+    approver_id BIGINT UNSIGNED,
+    approver_name VARCHAR(255),
+    approver_email VARCHAR(255),
+    
+    -- Rights Information
+    ownership_share DECIMAL(5,2),
+    approval_rights JSON, -- Specific rights this approver controls
+    
+    -- Approval Process
+    approval_requested_at DATETIME(6),
+    approval_deadline DATETIME(6),
+    reminder_sent_at DATETIME(6),
+    escalation_triggered BOOLEAN DEFAULT FALSE,
+    
+    -- Decision
+    approval_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'approved', 'rejected', 'conditional', 'expired'
+    decision_date DATETIME(6),
+    decision_notes TEXT,
+    conditions_for_approval TEXT,
+    
+    -- Alternative Approvers
+    delegate_approver_id BIGINT UNSIGNED,
+    auto_approve_after_days INT,
+    
+    -- Voting Rules
+    voting_weight DECIMAL(5,2) DEFAULT 100.00,
+    minimum_approval_percentage DECIMAL(5,2),
+    unanimous_required BOOLEAN DEFAULT FALSE,
+    
+    -- Communication
+    communication_log JSON,
+    preferred_language VARCHAR(10) DEFAULT 'en',
+    
+    -- Bypasses
+    bypass_allowed BOOLEAN DEFAULT FALSE,
+    bypass_conditions JSON,
+    bypassed BOOLEAN DEFAULT FALSE,
+    bypass_reason TEXT,
+    
+    -- System Fields
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    
+    -- Indexes
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_approver (approver_id),
+    INDEX idx_status (approval_status),
+    INDEX idx_deadline (approval_deadline),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- VIEWS FOR REPORTING AND ANALYTICS
+-- =====================================================
+
+-- View: active_sync_opportunities
+CREATE VIEW active_sync_opportunities AS
+SELECT 
+    o.opportunity_id,
+    o.opportunity_code,
+    o.title,
+    o.opportunity_type,
+    o.project_name,
+    o.music_supervisor,
+    o.submission_deadline,
+    o.budget_range_min,
+    o.budget_range_max,
+    o.territories,
+    o.status,
+    o.submission_count,
+    o.created_at,
+    DATEDIFF(o.submission_deadline, NOW()) as days_until_deadline
+FROM sync_opportunity o
+WHERE o.status = 'active'
+    AND o.deleted_at IS NULL
+    AND o.submission_deadline >= NOW()
+ORDER BY o.submission_deadline ASC;
+
+-- View: sync_placement_revenue_summary
+CREATE VIEW sync_placement_revenue_summary AS
+SELECT 
+    p.placement_id,
+    p.placement_code,
+    p.placement_title,
+    p.asset_id,
+    o.project_name,
+    o.opportunity_type,
+    p.final_fee,
+    p.fee_currency,
+    p.backend_percentage,
+    p.first_use_date,
+    t.territories_included,
+    ur.attributed_revenue,
+    (p.final_fee + COALESCE(ur.attributed_revenue, 0)) as total_revenue
+FROM sync_placement p
+JOIN sync_opportunity o ON p.opportunity_id = o.opportunity_id
+LEFT JOIN sync_term t ON p.placement_id = t.placement_id
+LEFT JOIN (
+    SELECT placement_id, SUM(attributed_revenue) as attributed_revenue
+    FROM sync_usage_report
+    GROUP BY placement_id
+) ur ON p.placement_id = ur.placement_id
+WHERE p.deleted_at IS NULL
+    AND p.status = 'active';
+
+-- View: pending_approvals_dashboard
+CREATE VIEW pending_approvals_dashboard AS
+SELECT 
+    ac.approval_id,
+    ac.entity_type,
+    ac.entity_id,
+    ac.approver_name,
+    ac.approver_email,
+    ac.approval_deadline,
+    ac.approval_status,
+    CASE 
+        WHEN ac.entity_type = 'sync_placement' THEN sp.placement_title
+        WHEN ac.entity_type = 'license_agreement' THEN la.agreement_name
+        WHEN ac.entity_type = 'brand_partnership' THEN bp.campaign_name
+    END as entity_name,
+    DATEDIFF(ac.approval_deadline, NOW()) as days_until_deadline
+FROM sync_approval_chain ac
+LEFT JOIN sync_placement sp ON ac.entity_type = 'sync_placement' AND ac.entity_id = sp.placement_id
+LEFT JOIN license_agreement la ON ac.entity_type = 'license_agreement' AND ac.entity_id = la.agreement_id
+LEFT JOIN brand_partnership bp ON ac.entity_type = 'brand_partnership' AND ac.entity_id = bp.partnership_id
+WHERE ac.approval_status = 'pending'
+    AND ac.approval_deadline >= NOW()
+ORDER BY ac.approval_deadline ASC;
+
+-- View: sync_performance_analytics
+CREATE VIEW sync_performance_analytics AS
+SELECT 
+    p.asset_id,
+    COUNT(DISTINCT p.placement_id) as total_placements,
+    COUNT(DISTINCT o.opportunity_type) as media_type_diversity,
+    SUM(p.final_fee) as total_sync_fees,
+    AVG(p.final_fee) as average_sync_fee,
+    COUNT(DISTINCT o.music_supervisor) as unique_supervisors,
+    AVG(pitch.ai_match_score) as average_match_score,
+    SUM(ur.stream_count) as total_streams,
+    SUM(ur.attributed_revenue) as total_performance_revenue
+FROM sync_placement p
+JOIN sync_opportunity o ON p.opportunity_id = o.opportunity_id
+JOIN sync_pitch pitch ON p.pitch_id = pitch.pitch_id
+LEFT JOIN sync_usage_report ur ON p.placement_id = ur.placement_id
+WHERE p.deleted_at IS NULL
+GROUP BY p.asset_id;
+
+-- =====================================================
+-- STORED PROCEDURES
+-- =====================================================
+
+-- Procedure: calculate_sync_opportunity_match
+DELIMITER //
+CREATE PROCEDURE calculate_sync_opportunity_match(
+    IN p_opportunity_id BIGINT,
+    IN p_asset_id BIGINT
+)
+BEGIN
+    DECLARE v_match_score DECIMAL(5,4) DEFAULT 0.0000;
+    DECLARE v_mood_match DECIMAL(5,4) DEFAULT 0.0000;
+    DECLARE v_tempo_match DECIMAL(5,4) DEFAULT 0.0000;
+    DECLARE v_genre_match DECIMAL(5,4) DEFAULT 0.0000;
+    
+    -- This is a simplified version. In production, you would:
+    -- 1. Compare asset metadata with opportunity requirements
+    -- 2. Use AI/ML models for mood and context matching
+    -- 3. Consider historical performance data
+    -- 4. Apply weighted scoring based on opportunity priorities
+    
+    -- Calculate match score (placeholder logic)
+    SET v_match_score = 0.7500; -- Example score
+    
+    -- Return the results
+    SELECT 
+        v_match_score as overall_match_score,
+        v_mood_match as mood_match,
+        v_tempo_match as tempo_match,
+        v_genre_match as genre_match,
+        JSON_OBJECT(
+            'recommendation', IF(v_match_score > 0.7, 'Highly Recommended', 'Consider'),
+            'key_strengths', JSON_ARRAY('Mood alignment', 'Tempo match'),
+            'improvement_areas', JSON_ARRAY('Genre diversity')
+        ) as match_analysis;
+END//
+DELIMITER ;
+
+-- Procedure: process_sync_fee_negotiation
+DELIMITER //
+CREATE PROCEDURE process_sync_fee_negotiation(
+    IN p_fee_id BIGINT,
+    IN p_new_offer DECIMAL(15,2),
+    IN p_notes TEXT
+)
+BEGIN
+    DECLARE v_current_status VARCHAR(50);
+    DECLARE v_negotiation_history JSON;
+    
+    -- Get current fee status
+    SELECT status, negotiation_history 
+    INTO v_current_status, v_negotiation_history
+    FROM sync_fee 
+    WHERE fee_id = p_fee_id;
+    
+    -- Update negotiation history
+    SET v_negotiation_history = JSON_ARRAY_APPEND(
+        COALESCE(v_negotiation_history, JSON_ARRAY()),
+        '$',
+        JSON_OBJECT(
+            'date', NOW(),
+            'offer', p_new_offer,
+            'notes', p_notes,
+            'round', JSON_LENGTH(COALESCE(v_negotiation_history, JSON_ARRAY())) + 1
+        )
+    );
+    
+    -- Update fee record
+    UPDATE sync_fee
+    SET 
+        negotiation_history = v_negotiation_history,
+        negotiation_rounds = negotiation_rounds + 1,
+        status = 'negotiating',
+        updated_at = CURRENT_TIMESTAMP(6)
+    WHERE fee_id = p_fee_id;
+    
+    SELECT 'Negotiation round recorded successfully' as result;
+END//
+DELIMITER ;
+
+-- Procedure: generate_cue_sheet_export
+DELIMITER //
+CREATE PROCEDURE generate_cue_sheet_export(
+    IN p_cue_sheet_id BIGINT,
+    IN p_format VARCHAR(50) -- 'standard', 'ascap', 'bmi', 'sesac'
+)
+BEGIN
+    -- This procedure would format cue sheet data according to PRO specifications
+    -- For now, we'll return the raw data
+    
+    SELECT 
+        cs.production_title,
+        cs.episode_title,
+        cs.air_date,
+        cs.production_company,
+        csd.cue_number,
+        csd.cue_title,
+        csd.use_type,
+        csd.timing_start,
+        csd.timing_end,
+        csd.duration_seconds,
+        csd.composers,
+        csd.publishers,
+        csd.composer_splits,
+        csd.publisher_splits
+    FROM sync_cue_sheet cs
+    JOIN sync_cue_sheet_detail csd ON cs.cue_sheet_id = csd.cue_sheet_id
+    WHERE cs.cue_sheet_id = p_cue_sheet_id
+    ORDER BY csd.cue_number;
+END//
+DELIMITER ;
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Additional performance indexes
+CREATE INDEX idx_opportunity_supervisor_deadline 
+ON sync_opportunity(music_supervisor, submission_deadline);
+
+CREATE INDEX idx_pitch_opportunity_score 
+ON sync_pitch(opportunity_id, ai_match_score DESC);
+
+CREATE INDEX idx_placement_asset_date 
+ON sync_placement(asset_id, first_use_date);
+
+CREATE INDEX idx_usage_report_placement_period 
+ON sync_usage_report(placement_id, report_period_start, report_period_end);
+
+CREATE INDEX idx_agreement_type_status_date 
+ON license_agreement(agreement_type, status, effective_date);
+
