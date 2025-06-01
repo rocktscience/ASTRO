@@ -20,84 +20,6 @@ SET time_zone = '+00:00';
 
 SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
--- ======================================
--- 1. ID SEQUENCE SYSTEM & CUSTOM ID GENERATION
--- ======================================
-
-CREATE TABLE id_sequence (
-    entity_name VARCHAR(64) PRIMARY KEY COMMENT 'Entity name (e.g., work, recording)',
-    prefix CHAR(4) NOT NULL COMMENT '4-character prefix (e.g., RWOR)',
-    last_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Last used sequence number',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NULL,
-    updated_by BIGINT UNSIGNED NULL,
-    deleted_at DATETIME NULL,
-    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
-    CONSTRAINT chk_prefix_format CHECK (prefix REGEXP '^R[A-Z]{3}$')
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Initial sequence data with corrections
-INSERT INTO id_sequence (entity_name, prefix, last_id) VALUES
-    ('user', 'RUSR', 0),
-    ('person', 'RPER', 0),
-    ('party', 'RPTY', 0),
-    ('writer', 'RWRI', 0),
-    ('publisher', 'RPUB', 0),
-    ('artist', 'RART', 0),
-    ('label', 'RLAB', 0),
-    ('work', 'RWOR', 0),
-    ('recording', 'RREC', 0),
-    ('release', 'RREL', 0),
-    ('video', 'RVID', 0),
-    ('project', 'RPRO', 0),
-    ('agreement', 'RAGR', 0),
-    ('copyright', 'RCOP', 0),
-    ('contact', 'RCON', 0),
-    ('company', 'RCOM', 0),
-    ('address', 'RADD', 0),
-    ('royalty_statement', 'RRST', 0),
-    ('cwr_transmission', 'RCWR', 0),
-    ('ddex_delivery', 'RDDX', 0),
-    ('blockchain_transaction', 'RBTX', 0),
-    ('nft_asset', 'RNFT', 0),
-    ('file_asset', 'RFIL', 0),
-    ('task', 'RTSK', 0),
-    ('report_template', 'RRPT', 0),
-    ('generated_report', 'RGEN', 0),
-    ('cwr_correction_batch', 'RCCB', 0),
-    ('ftp_configuration', 'RFTP', 0),
-    ('ftp_delivery_queue', 'RFDQ', 0),
-    ('fan_investment', 'RFIN', 0),
-    ('rights_reversion', 'RREV', 0),
-    ('sample_clearance', 'RSCL', 0),
-    ('sync_opportunity', 'RSOP', 0),
-    ('venue', 'RVEN', 0),
-    ('performance_event', 'RPEV', 0),
-    ('playlist', 'RPLA', 0),
-    ('award_certification', 'RAWD', 0),
-    ('legal_case', 'RLCS', 0),
-    ('budget', 'RBUD', 0),
-    ('collection_statement', 'RCOL', 0),
-    ('workflow_approval', 'RWFA', 0);
-
--- Custom ID generation procedure
-DELIMITER $$
-CREATE PROCEDURE assign_custom_id(
-    IN p_entity_name VARCHAR(64),
-    OUT p_custom_id VARCHAR(10)
-)
-BEGIN
-    DECLARE v_next_id BIGINT UNSIGNED;
-    DECLARE v_prefix CHAR(4);
-    
-    UPDATE id_sequence SET last_id = last_id + 1 WHERE entity_name = p_entity_name;
-    SELECT last_id, prefix INTO v_next_id, v_prefix FROM id_sequence WHERE entity_name = p_entity_name;
-    SET p_custom_id = CONCAT(v_prefix, LPAD(v_next_id, 5, '0'));
-END $$
-DELIMITER ;
-
-
 -- =====================================================
 -- TEMPORARY USER TABLE DEFINITION (WILL BE MOVED TO USER & ACCESS TABLES SECTION)
 -- This table is defined here to resolve foreign key dependencies for created_by, updated_by, deleted_by.
@@ -116,15 +38,15 @@ CREATE TABLE user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ======================================
--- 2. CORE ENTITY TABLES
+-- 1. CORE ENTITY TABLES
 -- ======================================
 
--- =============================================
+-- ======================================
 -- PERSON TABLES
--- =============================================
+-- ======================================
 
 -- Person: Individual people (artists, writers, etc.)
-CREATE TABLE persons ( -- Renamed from 'person' to 'persons'
+CREATE TABLE persons ( from 'person' to 'persons'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -189,7 +111,7 @@ CREATE TABLE persons ( -- Renamed from 'person' to 'persons'
     CONSTRAINT fk_persons_person_type FOREIGN KEY (person_type_id) REFERENCES resource_db.person_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_persons_country FOREIGN KEY (nationality_country_id) REFERENCES resource_db.country(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_persons_pronoun FOREIGN KEY (pronoun_id) REFERENCES resource_db.pronoun(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_persons_emergency_contact FOREIGN KEY (emergency_contact_id) REFERENCES contacts(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'contacts'
+    CONSTRAINT fk_persons_emergency_contact FOREIGN KEY (emergency_contact_id) REFERENCES contacts(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'contacts'
     CONSTRAINT fk_persons_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_persons_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_persons_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -209,7 +131,7 @@ CREATE TABLE persons ( -- Renamed from 'person' to 'persons'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Person History
-CREATE TABLE persons_history ( -- Renamed from 'person_history'
+CREATE TABLE persons_history ( from 'person_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     person_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL, -- Changed to INT UNSIGNED
@@ -222,7 +144,7 @@ CREATE TABLE persons_history ( -- Renamed from 'person_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_persons_history_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_persons_history_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_persons_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_persons_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -234,7 +156,7 @@ CREATE TABLE persons_history ( -- Renamed from 'person_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Person Role: Links person to various roles
-CREATE TABLE person_roles ( -- Renamed from 'person_role'
+CREATE TABLE person_roles ( from 'person_role'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     person_id BIGINT UNSIGNED NOT NULL,
     role_type_id INT UNSIGNED NOT NULL, -- Changed from VARCHAR(50) to INT UNSIGNED (FK to resource_db.person_role_type)
@@ -252,7 +174,7 @@ CREATE TABLE person_roles ( -- Renamed from 'person_role'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_person_roles_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_person_roles_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_person_roles_type FOREIGN KEY (role_type_id) REFERENCES resource_db.person_role_type(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Added FK to lookup table
     CONSTRAINT fk_person_roles_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_person_roles_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -269,7 +191,7 @@ CREATE TABLE person_roles ( -- Renamed from 'person_role'
 -- =============================================
 
 -- Organization: Companies (labels, publishers, etc.)
-CREATE TABLE organizations ( -- Renamed from 'organization'
+CREATE TABLE organizations ( from 'organization'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -322,7 +244,7 @@ CREATE TABLE organizations ( -- Renamed from 'organization'
     
     -- Foreign Keys
     CONSTRAINT fk_organizations_type FOREIGN KEY (organization_type_id) REFERENCES resource_db.organization_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_organizations_parent FOREIGN KEY (parent_organization_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'organizations'
+    CONSTRAINT fk_organizations_parent FOREIGN KEY (parent_organization_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'organizations'
     CONSTRAINT fk_organizations_country FOREIGN KEY (country_id) REFERENCES resource_db.country(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_organizations_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_organizations_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -344,7 +266,7 @@ CREATE TABLE organizations ( -- Renamed from 'organization'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Organization History
-CREATE TABLE organizations_history ( -- Renamed from 'organization_history'
+CREATE TABLE organizations_history ( from 'organization_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     organization_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -357,7 +279,7 @@ CREATE TABLE organizations_history ( -- Renamed from 'organization_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_organizations_history_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'organizations'
+    CONSTRAINT fk_organizations_history_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'organizations'
     CONSTRAINT fk_organizations_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_organizations_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -368,7 +290,7 @@ CREATE TABLE organizations_history ( -- Renamed from 'organization_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Organization Person: Personnel/positions
-CREATE TABLE organization_persons ( -- Renamed from 'organization_person'
+CREATE TABLE organization_persons ( from 'organization_person'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     organization_id BIGINT UNSIGNED NOT NULL,
     person_id BIGINT UNSIGNED NOT NULL,
@@ -388,8 +310,8 @@ CREATE TABLE organization_persons ( -- Renamed from 'organization_person'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_org_persons_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'organizations'
-    CONSTRAINT fk_org_persons_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_org_persons_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'organizations'
+    CONSTRAINT fk_org_persons_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_org_persons_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_org_persons_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
@@ -406,7 +328,7 @@ CREATE TABLE organization_persons ( -- Renamed from 'organization_person'
 -- =============================================
 
 -- Contact: Contact information
-CREATE TABLE contacts ( -- Renamed from 'contact'
+CREATE TABLE contacts ( from 'contact'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL, -- e.g., 'PERSON', 'ORGANIZATION'
@@ -443,7 +365,7 @@ CREATE TABLE contacts ( -- Renamed from 'contact'
     
     -- Foreign Keys
     CONSTRAINT fk_contacts_type FOREIGN KEY (contact_type_id) REFERENCES resource_db.contact_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_contacts_address FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'addresses'
+    CONSTRAINT fk_contacts_address FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'addresses'
     CONSTRAINT fk_contacts_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_contacts_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_contacts_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -459,7 +381,7 @@ CREATE TABLE contacts ( -- Renamed from 'contact'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Contact History
-CREATE TABLE contacts_history ( -- Renamed from 'contact_history'
+CREATE TABLE contacts_history ( from 'contact_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     contact_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -472,7 +394,7 @@ CREATE TABLE contacts_history ( -- Renamed from 'contact_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_contacts_history_contact FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'contacts'
+    CONSTRAINT fk_contacts_history_contact FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'contacts'
     CONSTRAINT fk_contacts_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_contacts_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -482,7 +404,7 @@ CREATE TABLE contacts_history ( -- Renamed from 'contact_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Address: Physical addresses
-CREATE TABLE addresses ( -- Renamed from 'address'
+CREATE TABLE addresses ( from 'address'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL, -- e.g., 'PERSON', 'ORGANIZATION'
@@ -543,7 +465,7 @@ CREATE TABLE addresses ( -- Renamed from 'address'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Address History
-CREATE TABLE addresses_history ( -- Renamed from 'address_history'
+CREATE TABLE addresses_history ( from 'address_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     address_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -556,7 +478,7 @@ CREATE TABLE addresses_history ( -- Renamed from 'address_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_addresses_history_address FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'addresses'
+    CONSTRAINT fk_addresses_history_address FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'addresses'
     CONSTRAINT fk_addresses_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_addresses_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -570,7 +492,7 @@ CREATE TABLE addresses_history ( -- Renamed from 'address_history'
 -- =============================================
 
 -- Bank Account: Banking information
-CREATE TABLE bank_accounts ( -- Renamed from 'bank_account'
+CREATE TABLE bank_accounts ( from 'bank_account'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL, -- e.g., 'PERSON', 'ORGANIZATION'
@@ -630,7 +552,7 @@ CREATE TABLE bank_accounts ( -- Renamed from 'bank_account'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Bank Account History
-CREATE TABLE bank_accounts_history ( -- Renamed from 'bank_account_history'
+CREATE TABLE bank_accounts_history ( from 'bank_account_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     bank_account_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -643,7 +565,7 @@ CREATE TABLE bank_accounts_history ( -- Renamed from 'bank_account_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_bank_accounts_history_account FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'bank_accounts'
+    CONSTRAINT fk_bank_accounts_history_account FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'bank_accounts'
     CONSTRAINT fk_bank_accounts_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_bank_accounts_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -653,7 +575,7 @@ CREATE TABLE bank_accounts_history ( -- Renamed from 'bank_account_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Credit Card: Credit card information
-CREATE TABLE credit_cards ( -- Renamed from 'credit_card'
+CREATE TABLE credit_cards ( from 'credit_card'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL, -- e.g., 'PERSON', 'ORGANIZATION'
@@ -684,7 +606,7 @@ CREATE TABLE credit_cards ( -- Renamed from 'credit_card'
     
     -- Foreign Keys
     CONSTRAINT fk_credit_cards_type FOREIGN KEY (card_type_id) REFERENCES resource_db.card_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_credit_cards_billing_address FOREIGN KEY (billing_address_id) REFERENCES addresses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to 'addresses'
+    CONSTRAINT fk_credit_cards_billing_address FOREIGN KEY (billing_address_id) REFERENCES addresses(id) ON DELETE RESTRICT ON UPDATE CASCADE, to 'addresses'
     CONSTRAINT fk_credit_cards_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_credit_cards_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_credit_cards_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -701,7 +623,7 @@ CREATE TABLE credit_cards ( -- Renamed from 'credit_card'
 -- =============================================
 
 -- Work: Musical compositions
-CREATE TABLE works ( -- Renamed from 'work'
+CREATE TABLE works ( from 'work'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -807,7 +729,7 @@ CREATE TABLE works ( -- Renamed from 'work'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Work History
-CREATE TABLE works_history ( -- Renamed from 'work_history'
+CREATE TABLE works_history ( from 'work_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     work_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -820,7 +742,7 @@ CREATE TABLE works_history ( -- Renamed from 'work_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_works_history_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
+    CONSTRAINT fk_works_history_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
     CONSTRAINT fk_works_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_works_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -830,7 +752,7 @@ CREATE TABLE works_history ( -- Renamed from 'work_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Work Recording: Many-to-many work/recording link
-CREATE TABLE work_recordings ( -- Renamed from 'work_recording'
+CREATE TABLE work_recordings ( from 'work_recording'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     work_id BIGINT UNSIGNED NOT NULL,
     recording_id BIGINT UNSIGNED NOT NULL,
@@ -845,8 +767,8 @@ CREATE TABLE work_recordings ( -- Renamed from 'work_recording'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_recordings_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
-    CONSTRAINT fk_work_recordings_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_work_recordings_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
+    CONSTRAINT fk_work_recordings_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_work_recordings_relationship FOREIGN KEY (relationship_type_id) REFERENCES resource_db.work_recording_relationship_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_recordings_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_recordings_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -859,7 +781,7 @@ CREATE TABLE work_recordings ( -- Renamed from 'work_recording'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Work Sample: Samples and interpolations
-CREATE TABLE work_samples ( -- Renamed from 'work_sample'
+CREATE TABLE work_samples ( from 'work_sample'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     sampling_work_id BIGINT UNSIGNED NOT NULL,
     sampled_work_id BIGINT UNSIGNED NOT NULL,
@@ -878,8 +800,8 @@ CREATE TABLE work_samples ( -- Renamed from 'work_sample'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_samples_sampling FOREIGN KEY (sampling_work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
-    CONSTRAINT fk_work_samples_sampled FOREIGN KEY (sampled_work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to 'works'
+    CONSTRAINT fk_work_samples_sampling FOREIGN KEY (sampling_work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
+    CONSTRAINT fk_work_samples_sampled FOREIGN KEY (sampled_work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to 'works'
     CONSTRAINT fk_work_samples_type FOREIGN KEY (sample_type_id) REFERENCES resource_db.sample_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_samples_approval_status FOREIGN KEY (approval_status_id) REFERENCES resource_db.approval_status(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Added FK
     CONSTRAINT fk_work_samples_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -892,7 +814,7 @@ CREATE TABLE work_samples ( -- Renamed from 'work_sample'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Work Collaborator: Additional collaborators
-CREATE TABLE work_collaborators ( -- Renamed from 'work_collaborator'
+CREATE TABLE work_collaborators ( from 'work_collaborator'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     work_id BIGINT UNSIGNED NOT NULL,
     collaborator_person_id BIGINT UNSIGNED NOT NULL,
@@ -907,8 +829,8 @@ CREATE TABLE work_collaborators ( -- Renamed from 'work_collaborator'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_collaborators_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
-    CONSTRAINT fk_work_collaborators_person FOREIGN KEY (collaborator_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_work_collaborators_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
+    CONSTRAINT fk_work_collaborators_person FOREIGN KEY (collaborator_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_work_collaborators_role FOREIGN KEY (collaborator_role_id) REFERENCES resource_db.collaborator_role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_collaborators_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_collaborators_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -920,7 +842,7 @@ CREATE TABLE work_collaborators ( -- Renamed from 'work_collaborator'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Work Video: Work usage in videos
-CREATE TABLE work_videos ( -- Renamed from 'work_video'
+CREATE TABLE work_videos ( from 'work_video'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     work_id BIGINT UNSIGNED NOT NULL,
     video_id BIGINT UNSIGNED NOT NULL,
@@ -935,8 +857,8 @@ CREATE TABLE work_videos ( -- Renamed from 'work_video'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_videos_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
-    CONSTRAINT fk_work_videos_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'videos'
+    CONSTRAINT fk_work_videos_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
+    CONSTRAINT fk_work_videos_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'videos'
     CONSTRAINT fk_work_videos_usage_type FOREIGN KEY (usage_type_id) REFERENCES resource_db.video_usage_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_videos_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_work_videos_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -951,7 +873,7 @@ CREATE TABLE work_videos ( -- Renamed from 'work_video'
 -- =============================================
 
 -- Recording: Sound recordings
-CREATE TABLE recordings ( -- Renamed from 'recording'
+CREATE TABLE recordings ( from 'recording'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1025,13 +947,13 @@ CREATE TABLE recordings ( -- Renamed from 'recording'
     CONSTRAINT fk_recordings_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_type FOREIGN KEY (recording_type_id) REFERENCES resource_db.recording_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_parent FOREIGN KEY (parent_recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_recordings_label FOREIGN KEY (record_label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'labels'
+    CONSTRAINT fk_recordings_label FOREIGN KEY (record_label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'labels'
     CONSTRAINT fk_recordings_genre FOREIGN KEY (genre_id) REFERENCES resource_db.genre(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_subgenre FOREIGN KEY (subgenre_id) REFERENCES resource_db.subgenre(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_mood FOREIGN KEY (mood_id) REFERENCES resource_db.mood(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_key_signature FOREIGN KEY (key_signature_id) REFERENCES resource_db.key_signature(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_time_signature FOREIGN KEY (time_signature_id) REFERENCES resource_db.time_signature(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_recordings_audio_file FOREIGN KEY (audio_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'files'
+    CONSTRAINT fk_recordings_audio_file FOREIGN KEY (audio_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'files'
     CONSTRAINT fk_recordings_language FOREIGN KEY (language_id) REFERENCES resource_db.language(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1059,7 +981,7 @@ CREATE TABLE recordings ( -- Renamed from 'recording'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Recording History
-CREATE TABLE recordings_history ( -- Renamed from 'recording_history'
+CREATE TABLE recordings_history ( from 'recording_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     recording_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1072,7 +994,7 @@ CREATE TABLE recordings_history ( -- Renamed from 'recording_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_recordings_history_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_recordings_history_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_recordings_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recordings_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1082,7 +1004,7 @@ CREATE TABLE recordings_history ( -- Renamed from 'recording_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Recording Artist: Recording artist credits
-CREATE TABLE recording_artists ( -- Renamed from 'recording_artist'
+CREATE TABLE recording_artists ( from 'recording_artist'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     recording_id BIGINT UNSIGNED NOT NULL,
     artist_id BIGINT UNSIGNED NOT NULL,
@@ -1097,8 +1019,8 @@ CREATE TABLE recording_artists ( -- Renamed from 'recording_artist'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_recording_artists_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
-    CONSTRAINT fk_recording_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
+    CONSTRAINT fk_recording_artists_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
+    CONSTRAINT fk_recording_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
     CONSTRAINT fk_recording_artists_role FOREIGN KEY (artist_role_id) REFERENCES resource_db.artist_role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recording_artists_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recording_artists_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1110,7 +1032,7 @@ CREATE TABLE recording_artists ( -- Renamed from 'recording_artist'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Recording Producer: Producer credits
-CREATE TABLE recording_producers ( -- Renamed from 'recording_producer'
+CREATE TABLE recording_producers ( from 'recording_producer'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     recording_id BIGINT UNSIGNED NOT NULL,
     producer_person_id BIGINT UNSIGNED NOT NULL, -- Changed from producer_id to producer_person_id (FK to persons)
@@ -1126,7 +1048,7 @@ CREATE TABLE recording_producers ( -- Renamed from 'recording_producer'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_recording_producers_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_recording_producers_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_recording_producers_person FOREIGN KEY (producer_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- FK to persons
     CONSTRAINT fk_recording_producers_role FOREIGN KEY (producer_role_id) REFERENCES resource_db.producer_role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recording_producers_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1138,7 +1060,7 @@ CREATE TABLE recording_producers ( -- Renamed from 'recording_producer'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Recording Session: Session information
-CREATE TABLE recording_sessions ( -- Renamed from 'recording_session'
+CREATE TABLE recording_sessions ( from 'recording_session'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     recording_id BIGINT UNSIGNED NOT NULL,
     session_date DATE NOT NULL,
@@ -1157,7 +1079,7 @@ CREATE TABLE recording_sessions ( -- Renamed from 'recording_session'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_recording_sessions_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_recording_sessions_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_recording_sessions_engineer FOREIGN KEY (engineer_person_id) REFERENCES persons(id) ON DELETE SET NULL ON UPDATE CASCADE, -- FK to persons
     CONSTRAINT fk_recording_sessions_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_recording_sessions_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1169,7 +1091,7 @@ CREATE TABLE recording_sessions ( -- Renamed from 'recording_session'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Session Musician: Session musicians
-CREATE TABLE session_musicians ( -- Renamed from 'session_musician'
+CREATE TABLE session_musicians ( from 'session_musician'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     recording_session_id BIGINT UNSIGNED NOT NULL,
     musician_person_id BIGINT UNSIGNED NOT NULL, -- FK to persons
@@ -1185,8 +1107,8 @@ CREATE TABLE session_musicians ( -- Renamed from 'session_musician'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_session_musicians_session FOREIGN KEY (recording_session_id) REFERENCES recording_sessions(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recording_sessions'
-    CONSTRAINT fk_session_musicians_person FOREIGN KEY (musician_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_session_musicians_session FOREIGN KEY (recording_session_id) REFERENCES recording_sessions(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recording_sessions'
+    CONSTRAINT fk_session_musicians_person FOREIGN KEY (musician_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_session_musicians_instrument FOREIGN KEY (instrument_id) REFERENCES resource_db.instrument(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_session_musicians_union FOREIGN KEY (union_id) REFERENCES resource_db.union(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_session_musicians_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1203,7 +1125,7 @@ CREATE TABLE session_musicians ( -- Renamed from 'session_musician'
 -- =============================================
 
 -- Release: Albums, singles, EPs
-CREATE TABLE releases ( -- Renamed from 'release'
+CREATE TABLE releases ( from 'release'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1273,12 +1195,12 @@ CREATE TABLE releases ( -- Renamed from 'release'
     
     -- Foreign Keys
     CONSTRAINT fk_releases_type FOREIGN KEY (release_type_id) REFERENCES resource_db.release_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_releases_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'labels'
-    CONSTRAINT fk_releases_distributor FOREIGN KEY (distributor_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'organizations'
+    CONSTRAINT fk_releases_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'labels'
+    CONSTRAINT fk_releases_distributor FOREIGN KEY (distributor_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'organizations'
     CONSTRAINT fk_releases_genre FOREIGN KEY (genre_id) REFERENCES resource_db.genre(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_releases_subgenre FOREIGN KEY (subgenre_id) REFERENCES resource_db.subgenre(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_releases_format FOREIGN KEY (format_id) REFERENCES resource_db.release_format(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_releases_cover_art FOREIGN KEY (cover_art_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'files'
+    CONSTRAINT fk_releases_cover_art FOREIGN KEY (cover_art_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'files'
     CONSTRAINT fk_releases_language FOREIGN KEY (language_id) REFERENCES resource_db.language(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_releases_country FOREIGN KEY (country_id) REFERENCES resource_db.country(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_releases_price_tier FOREIGN KEY (price_tier_id) REFERENCES resource_db.price_tier(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1303,7 +1225,7 @@ CREATE TABLE releases ( -- Renamed from 'release'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Release History
-CREATE TABLE releases_history ( -- Renamed from 'release_history'
+CREATE TABLE releases_history ( from 'release_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     release_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1316,7 +1238,7 @@ CREATE TABLE releases_history ( -- Renamed from 'release_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_releases_history_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'releases'
+    CONSTRAINT fk_releases_history_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'releases'
     CONSTRAINT fk_releases_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_releases_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1326,7 +1248,7 @@ CREATE TABLE releases_history ( -- Renamed from 'release_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Release Artist: Release artist credits
-CREATE TABLE release_artists ( -- Renamed from 'release_artist'
+CREATE TABLE release_artists ( from 'release_artist'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     release_id BIGINT UNSIGNED NOT NULL,
     artist_id BIGINT UNSIGNED NOT NULL,
@@ -1341,8 +1263,8 @@ CREATE TABLE release_artists ( -- Renamed from 'release_artist'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_release_artists_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'releases'
-    CONSTRAINT fk_release_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
+    CONSTRAINT fk_release_artists_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'releases'
+    CONSTRAINT fk_release_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
     CONSTRAINT fk_release_artists_role FOREIGN KEY (artist_role_id) REFERENCES resource_db.artist_role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_artists_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_artists_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1353,7 +1275,7 @@ CREATE TABLE release_artists ( -- Renamed from 'release_artist'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Release Work: Direct release/work link
-CREATE TABLE release_works ( -- Renamed from 'release_work'
+CREATE TABLE release_works ( from 'release_work'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     release_id BIGINT UNSIGNED NOT NULL,
     work_id BIGINT UNSIGNED NOT NULL,
@@ -1367,8 +1289,8 @@ CREATE TABLE release_works ( -- Renamed from 'release_work'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_release_works_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'releases'
-    CONSTRAINT fk_release_works_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'works'
+    CONSTRAINT fk_release_works_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'releases'
+    CONSTRAINT fk_release_works_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'works'
     CONSTRAINT fk_release_works_inclusion FOREIGN KEY (inclusion_type_id) REFERENCES resource_db.inclusion_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_works_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_works_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1379,7 +1301,7 @@ CREATE TABLE release_works ( -- Renamed from 'release_work'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Release Territory: Territory-specific releases
-CREATE TABLE release_territories ( -- Renamed from 'release_territory'
+CREATE TABLE release_territories ( from 'release_territory'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     release_id BIGINT UNSIGNED NOT NULL,
     territory_id INT UNSIGNED NOT NULL, -- Changed to INT UNSIGNED
@@ -1395,7 +1317,7 @@ CREATE TABLE release_territories ( -- Renamed from 'release_territory'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_release_territories_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'releases'
+    CONSTRAINT fk_release_territories_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'releases'
     CONSTRAINT fk_release_territories_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_territories_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_release_territories_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1412,7 +1334,7 @@ CREATE TABLE release_territories ( -- Renamed from 'release_territory'
 -- =============================================
 
 -- Track: Tracks on releases
-CREATE TABLE tracks ( -- Renamed from 'track'
+CREATE TABLE tracks ( from 'track'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     release_id BIGINT UNSIGNED NOT NULL,
@@ -1445,8 +1367,8 @@ CREATE TABLE tracks ( -- Renamed from 'track'
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_tracks_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'releases'
-    CONSTRAINT fk_tracks_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_tracks_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'releases'
+    CONSTRAINT fk_tracks_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_tracks_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_tracks_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_tracks_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1462,7 +1384,7 @@ CREATE TABLE tracks ( -- Renamed from 'track'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Track History
-CREATE TABLE tracks_history ( -- Renamed from 'track_history'
+CREATE TABLE tracks_history ( from 'track_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     track_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1475,7 +1397,7 @@ CREATE TABLE tracks_history ( -- Renamed from 'track_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_tracks_history_track FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'tracks'
+    CONSTRAINT fk_tracks_history_track FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'tracks'
     CONSTRAINT fk_tracks_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_tracks_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1489,7 +1411,7 @@ CREATE TABLE tracks_history ( -- Renamed from 'track_history'
 -- =============================================
 
 -- Video: Music videos
-CREATE TABLE videos ( -- Renamed from 'video'
+CREATE TABLE videos ( from 'video'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1549,15 +1471,15 @@ CREATE TABLE videos ( -- Renamed from 'video'
     
     -- Foreign Keys
     CONSTRAINT fk_videos_type FOREIGN KEY (video_type_id) REFERENCES resource_db.video_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_videos_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'recordings'
+    CONSTRAINT fk_videos_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'recordings'
     CONSTRAINT fk_videos_country FOREIGN KEY (country_of_production_id) REFERENCES resource_db.country(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_language FOREIGN KEY (language_id) REFERENCES resource_db.language(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_resolution FOREIGN KEY (resolution_id) REFERENCES resource_db.video_resolution(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_aspect_ratio FOREIGN KEY (aspect_ratio_id) REFERENCES resource_db.aspect_ratio(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_frame_rate FOREIGN KEY (frame_rate_id) REFERENCES resource_db.frame_rate(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_codec FOREIGN KEY (codec_id) REFERENCES resource_db.codec(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_videos_file FOREIGN KEY (video_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'files'
-    CONSTRAINT fk_videos_thumbnail FOREIGN KEY (thumbnail_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'files'
+    CONSTRAINT fk_videos_file FOREIGN KEY (video_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'files'
+    CONSTRAINT fk_videos_thumbnail FOREIGN KEY (thumbnail_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'files'
     CONSTRAINT fk_videos_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_videos_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_videos_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1580,7 +1502,7 @@ CREATE TABLE videos ( -- Renamed from 'video'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Video History
-CREATE TABLE videos_history ( -- Renamed from 'video_history'
+CREATE TABLE videos_history ( from 'video_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     video_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1593,7 +1515,7 @@ CREATE TABLE videos_history ( -- Renamed from 'video_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_videos_history_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'videos'
+    CONSTRAINT fk_videos_history_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'videos'
     CONSTRAINT fk_videos_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_videos_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1603,7 +1525,7 @@ CREATE TABLE videos_history ( -- Renamed from 'video_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Video Artist: Video appearances
-CREATE TABLE video_artists ( -- Renamed from 'video_artist'
+CREATE TABLE video_artists ( from 'video_artist'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     video_id BIGINT UNSIGNED NOT NULL,
     artist_id BIGINT UNSIGNED NOT NULL,
@@ -1617,8 +1539,8 @@ CREATE TABLE video_artists ( -- Renamed from 'video_artist'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_video_artists_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'videos'
-    CONSTRAINT fk_video_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
+    CONSTRAINT fk_video_artists_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'videos'
+    CONSTRAINT fk_video_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
     CONSTRAINT fk_video_artists_appearance FOREIGN KEY (appearance_type_id) REFERENCES resource_db.appearance_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_video_artists_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_video_artists_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1633,7 +1555,7 @@ CREATE TABLE video_artists ( -- Renamed from 'video_artist'
 -- =============================================
 
 -- Artist: Recording artists
-CREATE TABLE artists ( -- Renamed from 'artist'
+CREATE TABLE artists ( from 'artist'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1691,8 +1613,8 @@ CREATE TABLE artists ( -- Renamed from 'artist'
     
     -- Foreign Keys
     CONSTRAINT fk_artists_type FOREIGN KEY (artist_type_id) REFERENCES resource_db.artist_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_artists_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'persons'
-    CONSTRAINT fk_artists_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'organizations'
+    CONSTRAINT fk_artists_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'persons'
+    CONSTRAINT fk_artists_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'organizations'
     CONSTRAINT fk_artists_country FOREIGN KEY (country_id) REFERENCES resource_db.country(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_artists_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_artists_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1715,7 +1637,7 @@ CREATE TABLE artists ( -- Renamed from 'artist'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Artist History
-CREATE TABLE artists_history ( -- Renamed from 'artist_history'
+CREATE TABLE artists_history ( from 'artist_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     artist_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1728,7 +1650,7 @@ CREATE TABLE artists_history ( -- Renamed from 'artist_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_artists_history_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
+    CONSTRAINT fk_artists_history_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
     CONSTRAINT fk_artists_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_artists_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1738,7 +1660,7 @@ CREATE TABLE artists_history ( -- Renamed from 'artist_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Artist Member: Band/group members
-CREATE TABLE artist_members ( -- Renamed from 'artist_member'
+CREATE TABLE artist_members ( from 'artist_member'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     artist_id BIGINT UNSIGNED NOT NULL,
     member_person_id BIGINT UNSIGNED NOT NULL,
@@ -1757,8 +1679,8 @@ CREATE TABLE artist_members ( -- Renamed from 'artist_member'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_artist_members_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
-    CONSTRAINT fk_artist_members_person FOREIGN KEY (member_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_artist_members_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
+    CONSTRAINT fk_artist_members_person FOREIGN KEY (member_person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_artist_members_role FOREIGN KEY (member_role_id) REFERENCES resource_db.member_role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_artist_members_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_artist_members_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -1771,7 +1693,7 @@ CREATE TABLE artist_members ( -- Renamed from 'artist_member'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Artist Writer: Artist/writer connections
-CREATE TABLE artist_writers ( -- Renamed from 'artist_writer'
+CREATE TABLE artist_writers ( from 'artist_writer'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     artist_id BIGINT UNSIGNED NOT NULL,
     writer_id BIGINT UNSIGNED NOT NULL,
@@ -1786,8 +1708,8 @@ CREATE TABLE artist_writers ( -- Renamed from 'artist_writer'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_artist_writers_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
-    CONSTRAINT fk_artist_writers_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'writers'
+    CONSTRAINT fk_artist_writers_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
+    CONSTRAINT fk_artist_writers_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'writers'
     CONSTRAINT fk_artist_writers_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_artist_writers_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
@@ -1802,7 +1724,7 @@ CREATE TABLE artist_writers ( -- Renamed from 'artist_writer'
 -- =============================================
 
 -- Writer: Songwriters/composers
-CREATE TABLE writers ( -- Renamed from 'writer'
+CREATE TABLE writers ( from 'writer'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1846,10 +1768,10 @@ CREATE TABLE writers ( -- Renamed from 'writer'
     
     -- Foreign Keys
     CONSTRAINT fk_writers_type FOREIGN KEY (writer_type_id) REFERENCES resource_db.writer_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_writers_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to 'persons'
+    CONSTRAINT fk_writers_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE RESTRICT ON UPDATE CASCADE, to 'persons'
     CONSTRAINT fk_writers_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.society(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_writers_publisher FOREIGN KEY (publisher_affiliation_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Changed to organizations (publishers)
-    CONSTRAINT fk_writers_agreement FOREIGN KEY (admin_agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'agreements'
+    CONSTRAINT fk_writers_agreement FOREIGN KEY (admin_agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'agreements'
     CONSTRAINT fk_writers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_writers_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_writers_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1870,7 +1792,7 @@ CREATE TABLE writers ( -- Renamed from 'writer'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Writer History
-CREATE TABLE writers_history ( -- Renamed from 'writer_history'
+CREATE TABLE writers_history ( from 'writer_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     writer_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1883,7 +1805,7 @@ CREATE TABLE writers_history ( -- Renamed from 'writer_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_writers_history_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'writers'
+    CONSTRAINT fk_writers_history_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'writers'
     CONSTRAINT fk_writers_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_writers_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -1897,7 +1819,7 @@ CREATE TABLE writers_history ( -- Renamed from 'writer_history'
 -- =============================================
 
 -- Publisher: Music publishers
-CREATE TABLE publishers ( -- Renamed from 'publisher'
+CREATE TABLE publishers ( from 'publisher'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -1946,11 +1868,11 @@ CREATE TABLE publishers ( -- Renamed from 'publisher'
     
     -- Foreign Keys
     CONSTRAINT fk_publishers_type FOREIGN KEY (publisher_type_id) REFERENCES resource_db.publisher_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_publishers_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to 'organizations'
-    CONSTRAINT fk_publishers_parent FOREIGN KEY (parent_publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'publishers'
+    CONSTRAINT fk_publishers_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT ON UPDATE CASCADE, to 'organizations'
+    CONSTRAINT fk_publishers_parent FOREIGN KEY (parent_publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'publishers'
     CONSTRAINT fk_publishers_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.society(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_publishers_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.society(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_publishers_admin FOREIGN KEY (admin_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'publishers'
+    CONSTRAINT fk_publishers_admin FOREIGN KEY (admin_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'publishers'
     CONSTRAINT fk_publishers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_publishers_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_publishers_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -1973,7 +1895,7 @@ CREATE TABLE publishers ( -- Renamed from 'publisher'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Publisher History
-CREATE TABLE publishers_history ( -- Renamed from 'publisher_history'
+CREATE TABLE publishers_history ( from 'publisher_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     publisher_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -1986,7 +1908,7 @@ CREATE TABLE publishers_history ( -- Renamed from 'publisher_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_publishers_history_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'publishers'
+    CONSTRAINT fk_publishers_history_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'publishers'
     CONSTRAINT fk_publishers_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_publishers_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -2000,7 +1922,7 @@ CREATE TABLE publishers_history ( -- Renamed from 'publisher_history'
 -- =============================================
 
 -- Label: Record labels
-CREATE TABLE labels ( -- Renamed from 'label'
+CREATE TABLE labels ( from 'label'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     custom_id VARCHAR(10) NULL UNIQUE, -- Added custom_id field
@@ -2042,8 +1964,8 @@ CREATE TABLE labels ( -- Renamed from 'label'
     
     -- Foreign Keys
     CONSTRAINT fk_labels_type FOREIGN KEY (label_type_id) REFERENCES resource_db.label_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_labels_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to 'organizations'
-    CONSTRAINT fk_labels_parent FOREIGN KEY (parent_label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to 'labels'
+    CONSTRAINT fk_labels_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT ON UPDATE CASCADE, to 'organizations'
+    CONSTRAINT fk_labels_parent FOREIGN KEY (parent_label_id) REFERENCES labels(id) ON DELETE SET NULL ON UPDATE CASCADE, to 'labels'
     CONSTRAINT fk_labels_distributor FOREIGN KEY (distributor_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, -- FK to organizations
     CONSTRAINT fk_labels_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_labels_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -2066,7 +1988,7 @@ CREATE TABLE labels ( -- Renamed from 'label'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Label History
-CREATE TABLE labels_history ( -- Renamed from 'label_history'
+CREATE TABLE labels_history ( from 'label_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     label_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -2079,7 +2001,7 @@ CREATE TABLE labels_history ( -- Renamed from 'label_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_labels_history_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'labels'
+    CONSTRAINT fk_labels_history_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'labels'
     CONSTRAINT fk_labels_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_labels_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -2089,7 +2011,7 @@ CREATE TABLE labels_history ( -- Renamed from 'label_history'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Label Artist: Label/artist contracts
-CREATE TABLE label_artists ( -- Renamed from 'label_artist'
+CREATE TABLE label_artists ( from 'label_artist'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     label_id BIGINT UNSIGNED NOT NULL,
     artist_id BIGINT UNSIGNED NOT NULL,
@@ -2108,8 +2030,8 @@ CREATE TABLE label_artists ( -- Renamed from 'label_artist'
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_label_artists_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'labels'
-    CONSTRAINT fk_label_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'artists'
+    CONSTRAINT fk_label_artists_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'labels'
+    CONSTRAINT fk_label_artists_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'artists'
     CONSTRAINT fk_label_artists_deal_type FOREIGN KEY (deal_type_id) REFERENCES resource_db.deal_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_label_artists_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_label_artists_created_by FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -2127,7 +2049,7 @@ CREATE TABLE label_artists ( -- Renamed from 'label_artist'
 -- =============================================
 
 -- Rights Holder: Unified rights holder entity
-CREATE TABLE rights_holders ( -- Renamed from 'rights_holder'
+CREATE TABLE rights_holders ( from 'rights_holder'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     external_id VARCHAR(100) NULL UNIQUE,
@@ -2177,7 +2099,7 @@ CREATE TABLE rights_holders ( -- Renamed from 'rights_holder'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Rights Holder History
-CREATE TABLE rights_holders_history ( -- Renamed from 'rights_holder_history'
+CREATE TABLE rights_holders_history ( from 'rights_holder_history'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     rights_holder_id BIGINT UNSIGNED NOT NULL,
     change_type_id INT UNSIGNED NOT NULL,
@@ -2190,7 +2112,7 @@ CREATE TABLE rights_holders_history ( -- Renamed from 'rights_holder_history'
     user_agent VARCHAR(500) NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_holders_history_holder FOREIGN KEY (rights_holder_id) REFERENCES rights_holders(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to 'rights_holders'
+    CONSTRAINT fk_rights_holders_history_holder FOREIGN KEY (rights_holder_id) REFERENCES rights_holders(id) ON DELETE CASCADE ON UPDATE CASCADE, to 'rights_holders'
     CONSTRAINT fk_rights_holders_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.change_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_rights_holders_history_user FOREIGN KEY (changed_by) REFERENCES user(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
@@ -2199,29 +2121,33 @@ CREATE TABLE rights_holders_history ( -- Renamed from 'rights_holder_history'
     INDEX idx_rights_holders_history_changed_at (changed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Legal Entity: Legal entity details
-CREATE TABLE legal_entity (
+-- =============================================
+-- SECTION 1: CORE ENTITY TABLES 
+-- =============================================
+
+-- legal_entities: Legal entity details
+CREATE TABLE legal_entities (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    custom_id VARCHAR(10) UNIQUE NULL COMMENT 'Custom catalog ID', -- Added custom_id
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    legal_entity_type_id TINYINT NOT NULL,
-    legal_name VARCHAR(500) NOT NULL COMMENT 'ENCRYPTED',
+    legal_entity_type_id INT UNSIGNED NOT NULL, -- Changed TINYINT to INT UNSIGNED for consistency with FK default
+    legal_name VARBINARY(500) NOT NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     trade_names JSON NULL,
-    registration_number VARCHAR(100) NULL COMMENT 'ENCRYPTED',
+    registration_number VARBINARY(100) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     registration_date DATE NULL,
     registration_country_id CHAR(3) NOT NULL,
-    registration_state VARCHAR(100) NULL,
-    tax_id VARCHAR(50) NULL COMMENT 'ENCRYPTED',
-    vat_number VARCHAR(50) NULL COMMENT 'ENCRYPTED',
+    tax_id VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    vat_number VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     lei_code VARCHAR(20) NULL,
     legal_form VARCHAR(100) NULL,
-    share_capital DECIMAL(15,2) NULL,
+    share_capital DECIMAL(19,8) NULL, -- Increased precision
     fiscal_year_end VARCHAR(5) NULL,
     employees_count INT NULL,
     parent_company_id BIGINT UNSIGNED NULL,
     ultimate_parent_id BIGINT UNSIGNED NULL,
-    consolidated_revenue DECIMAL(15,2) NULL,
+    consolidated_revenue DECIMAL(19,8) NULL, -- Increased precision
     is_public_company BOOLEAN DEFAULT FALSE,
     stock_symbol VARCHAR(10) NULL,
     stock_exchange VARCHAR(50) NULL,
@@ -2235,7 +2161,7 @@ CREATE TABLE legal_entity (
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, custom_id, entity_type, entity_id, legal_entity_type_id, legal_name, registration_number, registration_date, registration_country_id, tax_id, vat_number, lei_code, legal_form, share_capital, fiscal_year_end, employees_count, parent_company_id, ultimate_parent_id, consolidated_revenue, is_public_company, stock_symbol, stock_exchange, credit_rating, duns_number, is_verified, verification_date, verification_method, metadata, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
@@ -2250,42 +2176,42 @@ CREATE TABLE legal_entity (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_legal_entity_type FOREIGN KEY (legal_entity_type_id) REFERENCES resource_db.legal_entity_type(id),
-    CONSTRAINT fk_legal_entity_country FOREIGN KEY (registration_country_id) REFERENCES resource_db.country(id),
-    CONSTRAINT fk_legal_entity_parent FOREIGN KEY (parent_company_id) REFERENCES legal_entity(id),
-    CONSTRAINT fk_legal_entity_ultimate FOREIGN KEY (ultimate_parent_id) REFERENCES legal_entity(id),
-    CONSTRAINT fk_legal_entity_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_legal_entity_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_legal_entity_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_legal_entities_type FOREIGN KEY (legal_entity_type_id) REFERENCES resource_db.legal_entity_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_country FOREIGN KEY (registration_country_id) REFERENCES resource_db.country(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_parent FOREIGN KEY (parent_company_id) REFERENCES legal_entities(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_ultimate FOREIGN KEY (ultimate_parent_id) REFERENCES legal_entities(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_entities_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_legal_entity_entity (entity_type, entity_id),
-    INDEX idx_legal_entity_type (legal_entity_type_id),
-    INDEX idx_legal_entity_country (registration_country_id),
-    INDEX idx_legal_entity_tax_id (tax_id),
-    INDEX idx_legal_entity_vat (vat_number),
-    INDEX idx_legal_entity_lei (lei_code),
-    INDEX idx_legal_entity_duns (duns_number),
-    INDEX idx_legal_entity_parent (parent_company_id),
-    INDEX idx_legal_entity_public (is_public_company),
-    INDEX idx_legal_entity_active_deleted (is_active, is_deleted)
+    INDEX idx_legal_entities_entity (entity_type, entity_id),
+    INDEX idx_legal_entities_type (legal_entity_type_id),
+    INDEX idx_legal_entities_country (registration_country_id),
+    INDEX idx_legal_entities_tax_id (tax_id),
+    INDEX idx_legal_entities_vat (vat_number),
+    INDEX idx_legal_entities_lei (lei_code),
+    INDEX idx_legal_entities_duns (duns_number),
+    INDEX idx_legal_entities_parent (parent_company_id),
+    INDEX idx_legal_entities_public (is_public_company),
+    INDEX idx_legal_entities_active_deleted (is_active, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Legal Representative: Authorized representatives
-CREATE TABLE legal_representative (
+-- legal_representatives: Authorized representatives
+CREATE TABLE legal_representatives (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     legal_entity_id BIGINT UNSIGNED NOT NULL,
     person_id BIGINT UNSIGNED NOT NULL,
-    representative_type_id TINYINT NOT NULL,
+    representative_type_id INT UNSIGNED NOT NULL, -- Changed TINYINT
     title VARCHAR(100) NULL,
     department VARCHAR(100) NULL,
     authority_scope TEXT NULL,
     signing_authority BOOLEAN DEFAULT FALSE,
-    financial_limit DECIMAL(15,2) NULL,
+    financial_limit DECIMAL(19,8) NULL, -- Increased precision
     valid_from DATE NOT NULL,
     valid_to DATE NULL,
-    power_of_attorney_file_id BIGINT UNSIGNED NULL,
+    power_of_attorney_file_id BIGINT UNSIGNED NULL, -- FK to files.id
     is_primary BOOLEAN DEFAULT FALSE,
     notes TEXT NULL,
     
@@ -2301,42 +2227,42 @@ CREATE TABLE legal_representative (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_legal_rep_entity FOREIGN KEY (legal_entity_id) REFERENCES legal_entity(id),
-    CONSTRAINT fk_legal_rep_person FOREIGN KEY (person_id) REFERENCES person(id),
-    CONSTRAINT fk_legal_rep_type FOREIGN KEY (representative_type_id) REFERENCES resource_db.representative_type(id),
-    CONSTRAINT fk_legal_rep_file FOREIGN KEY (power_of_attorney_file_id) REFERENCES file(id),
-    CONSTRAINT fk_legal_rep_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_legal_rep_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_legal_rep_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_legal_reps_entity FOREIGN KEY (legal_entity_id) REFERENCES legal_entities(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_type FOREIGN KEY (representative_type_id) REFERENCES resource_db.representative_type(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_file FOREIGN KEY (power_of_attorney_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_legal_reps_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_legal_rep_entity (legal_entity_id),
-    INDEX idx_legal_rep_person (person_id),
-    INDEX idx_legal_rep_type (representative_type_id),
-    INDEX idx_legal_rep_primary (is_primary),
-    INDEX idx_legal_rep_signing (signing_authority),
-    INDEX idx_legal_rep_valid_dates (valid_from, valid_to),
-    INDEX idx_legal_rep_active_deleted (is_active, is_deleted)
+    INDEX idx_legal_reps_entity (legal_entity_id),
+    INDEX idx_legal_reps_person (person_id),
+    INDEX idx_legal_reps_type (representative_type_id),
+    INDEX idx_legal_reps_primary (is_primary),
+    INDEX idx_legal_reps_signing (signing_authority),
+    INDEX idx_legal_reps_valid_dates (valid_from, valid_to),
+    INDEX idx_legal_reps_active_deleted (is_active, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Society Member: PRO/MRO memberships
-CREATE TABLE society_member (
+-- society_members: PRO/MRO memberships
+CREATE TABLE society_members (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    society_id INT NOT NULL,
-    member_type VARCHAR(50) NOT NULL,
-    member_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    society_id INT UNSIGNED NOT NULL, -- Changed INT
+    member_type VARCHAR(50) NOT NULL, -- e.g., 'person', 'organization'
+    member_id BIGINT UNSIGNED NOT NULL, -- Polymorphic ID
     member_number VARCHAR(50) NOT NULL,
-    membership_type_id TINYINT NOT NULL,
-    territory_id INT NULL,
+    membership_type_id INT UNSIGNED NOT NULL, -- Changed TINYINT
+    territory_id INT UNSIGNED NULL, -- Changed INT
     ipi_name_number VARCHAR(11) NULL,
     ipi_base_number VARCHAR(13) NULL,
     cae_number VARCHAR(9) NULL,
     join_date DATE NOT NULL,
     termination_date DATE NULL,
-    status VARCHAR(50) DEFAULT 'ACTIVE',
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- Consider FK to resource_db.member_status
     rights_granted JSON NULL,
-    share_percentage DECIMAL(5,2) NULL,
+    share_percentage DECIMAL(5,4) NULL, -- Increased precision
     is_exclusive BOOLEAN DEFAULT FALSE,
     voting_rights BOOLEAN DEFAULT TRUE,
     board_member BOOLEAN DEFAULT FALSE,
@@ -2354,36 +2280,37 @@ CREATE TABLE society_member (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_society_member_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_society_member_type FOREIGN KEY (membership_type_id) REFERENCES resource_db.membership_type(id),
-    CONSTRAINT fk_society_member_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_society_member_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_society_member_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_society_member_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_society_members_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_members_type FOREIGN KEY (membership_type_id) REFERENCES resource_db.membership_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_members_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_members_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_society_members_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_members_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_society_member_society (society_id),
-    INDEX idx_society_member_member (member_type, member_id),
-    INDEX idx_society_member_number (member_number),
-    INDEX idx_society_member_type (membership_type_id),
-    INDEX idx_society_member_territory (territory_id),
-    INDEX idx_society_member_dates (join_date, termination_date),
-    INDEX idx_society_member_status (status),
-    INDEX idx_society_member_exclusive (is_exclusive),
-    INDEX idx_society_member_active_deleted (is_active, is_deleted)
+    INDEX idx_society_members_society (society_id),
+    INDEX idx_society_members_member (member_type, member_id),
+    INDEX idx_society_members_number (member_number),
+    INDEX idx_society_members_type (membership_type_id),
+    INDEX idx_society_members_territory (territory_id),
+    INDEX idx_society_members_dates (join_date, termination_date),
+    INDEX idx_society_members_status (status),
+    INDEX idx_society_members_exclusive (is_exclusive),
+    INDEX idx_society_members_active_deleted (is_active, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Contributor: Generic contributor type
-CREATE TABLE contributor (
+-- contributors: Generic contributor type
+CREATE TABLE contributors (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    contributor_type VARCHAR(50) NOT NULL,
-    contributor_id BIGINT UNSIGNED NOT NULL,
-    name VARCHAR(300) NOT NULL,
-    sort_name VARCHAR(300) NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    custom_id VARCHAR(10) UNIQUE NULL COMMENT 'Custom catalog ID', -- Added custom_id
+    contributor_type VARCHAR(50) NOT NULL, -- e.g., 'person', 'organization'
+    contributor_id BIGINT UNSIGNED NOT NULL, -- Polymorphic ID
+    name VARBINARY(300) NOT NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    sort_name VARBINARY(300) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     role_category VARCHAR(50) NULL,
     credits_count INT DEFAULT 0,
-    primary_genre_id INT NULL,
+    primary_genre_id INT UNSIGNED NULL, -- Changed INT
     notable_works JSON NULL,
     rating DECIMAL(3,2) NULL,
     is_featured BOOLEAN DEFAULT FALSE,
@@ -2403,38 +2330,39 @@ CREATE TABLE contributor (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_contributor_genre FOREIGN KEY (primary_genre_id) REFERENCES resource_db.genre(id),
-    CONSTRAINT fk_contributor_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_contributor_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_contributor_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_contributors_genre FOREIGN KEY (primary_genre_id) REFERENCES resource_db.genres(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_contributors_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_contributors_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_contributors_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_contributor_type_id (contributor_type, contributor_id),
-    INDEX idx_contributor_name (name),
-    INDEX idx_contributor_sort_name (sort_name),
-    INDEX idx_contributor_genre (primary_genre_id),
-    INDEX idx_contributor_featured (is_featured),
-    INDEX idx_contributor_verified (is_verified),
-    INDEX idx_contributor_active_deleted (is_active, is_deleted),
-    INDEX idx_contributor_credits (credits_count)
+    INDEX idx_contributors_type_id (contributor_type, contributor_id),
+    INDEX idx_contributors_name (name),
+    INDEX idx_contributors_sort_name (sort_name),
+    INDEX idx_contributors_genre (primary_genre_id),
+    INDEX idx_contributors_featured (is_featured),
+    INDEX idx_contributors_verified (is_verified),
+    INDEX idx_contributors_active_deleted (is_active, is_deleted),
+    INDEX idx_contributors_credits (credits_count)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
--- ENTITY SUPPORT TABLES
+-- ENTITY SUPPORT TABLES 
 -- =============================================
 
--- Entity Alias: Multiple names/aliases for any entity
-CREATE TABLE entity_alias (
+-- entity_aliases: Multiple names/aliases for any entity
+CREATE TABLE entity_aliases (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    alias_type_id TINYINT NOT NULL,
-    alias_name VARCHAR(200) NOT NULL,
+    alias_type_id INT UNSIGNED NOT NULL, -- Changed TINYINT
+    alias_name VARBINARY(200) NOT NULL, -- Changed to VARBINARY
     is_primary BOOLEAN DEFAULT FALSE,
     is_legal_name BOOLEAN DEFAULT FALSE,
     used_from DATE NULL,
     used_to DATE NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT
     notes TEXT NULL,
     
     -- Audit columns
@@ -2445,30 +2373,31 @@ CREATE TABLE entity_alias (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_alias_type FOREIGN KEY (alias_type_id) REFERENCES resource_db.alias_type(id),
-    CONSTRAINT fk_entity_alias_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_entity_alias_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_entity_alias_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_entity_aliases_type FOREIGN KEY (alias_type_id) REFERENCES resource_db.alias_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_aliases_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_aliases_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_aliases_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_alias_entity (entity_type, entity_id),
-    INDEX idx_entity_alias_name (alias_name),
-    INDEX idx_entity_alias_type (alias_type_id),
-    INDEX idx_entity_alias_dates (used_from, used_to),
-    INDEX idx_entity_alias_active (is_active)
+    INDEX idx_entity_aliases_entity (entity_type, entity_id),
+    INDEX idx_entity_aliases_name (alias_name),
+    INDEX idx_entity_aliases_type (alias_type_id),
+    INDEX idx_entity_aliases_dates (used_from, used_to),
+    INDEX idx_entity_aliases_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Entity Identifier: Flexible identifier storage
-CREATE TABLE entity_identifier (
+-- entity_identifiers: Flexible identifier storage
+CREATE TABLE entity_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL,
-    identifier_value VARCHAR(50) NOT NULL,
-    status VARCHAR(20) DEFAULT 'ACTIVE',
+    identifier_type_id INT UNSIGNED NOT NULL, -- Changed INT
+    identifier_value VARBINARY(50) NOT NULL COMMENT 'ENCRYPTED if sensitive, otherwise VARCHAR', -- Changed to VARBINARY
+    status VARCHAR(20) DEFAULT 'ACTIVE', -- Consider FK to resource_db.identifier_statuses
     issued_date DATE NULL,
     issued_by VARCHAR(100) NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT
     is_primary BOOLEAN DEFAULT FALSE,
     
     -- Audit columns
@@ -2478,27 +2407,28 @@ CREATE TABLE entity_identifier (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.identifier_type(id),
-    CONSTRAINT fk_entity_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_entity_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_entity_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_entity_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_identifier (identifier_type_id, identifier_value),
-    INDEX idx_entity_identifier_entity (entity_type, entity_id),
-    INDEX idx_entity_identifier_value (identifier_value),
-    INDEX idx_entity_identifier_status (status)
+    INDEX idx_entity_identifiers_entity (entity_type, entity_id),
+    INDEX idx_entity_identifiers_value (identifier_value),
+    INDEX idx_entity_identifiers_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Entity Translation: Multi-language translations
-CREATE TABLE entity_translation (
+-- entity_translations: Multi-language translations
+CREATE TABLE entity_translations (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
     field_name VARCHAR(50) NOT NULL,
     language_id CHAR(3) NOT NULL,
     translated_value TEXT NOT NULL,
-    translation_type VARCHAR(20) DEFAULT 'MANUAL',
+    translation_type VARCHAR(20) DEFAULT 'MANUAL', -- Consider FK to resource_db.translation_types
     translator_id BIGINT UNSIGNED NULL,
     translation_date DATE NULL,
     is_approved BOOLEAN DEFAULT FALSE,
@@ -2510,26 +2440,27 @@ CREATE TABLE entity_translation (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_translation_language FOREIGN KEY (language_id) REFERENCES resource_db.language(id),
-    CONSTRAINT fk_entity_translation_translator FOREIGN KEY (translator_id) REFERENCES user(id),
-    CONSTRAINT fk_entity_translation_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_entity_translation_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_entity_translations_language FOREIGN KEY (language_id) REFERENCES resource_db.languages(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_translations_translator FOREIGN KEY (translator_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_translations_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_translations_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_translation_entity (entity_type, entity_id, language_id),
-    INDEX idx_entity_translation_field (field_name),
-    INDEX idx_entity_translation_approved (is_approved)
+    INDEX idx_entity_translations_entity (entity_type, entity_id, language_id),
+    INDEX idx_entity_translations_field (field_name),
+    INDEX idx_entity_translations_approved (is_approved)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Entity Metadata: DDEX/CWR metadata storage
-CREATE TABLE entity_metadata (
+-- entity_metadatas: DDEX/CWR metadata storage
+CREATE TABLE entity_metadatas (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    metadata_schema_id INT NOT NULL,
+    metadata_schema_id INT UNSIGNED NOT NULL, -- Changed INT
     metadata_version VARCHAR(10) NOT NULL,
     metadata_json JSON NOT NULL,
-    validation_status VARCHAR(20) DEFAULT 'PENDING',
+    validation_status VARCHAR(20) DEFAULT 'PENDING', -- Consider FK to resource_db.validation_statuses
     validation_errors JSON NULL,
     last_validated DATETIME NULL,
     
@@ -2540,56 +2471,61 @@ CREATE TABLE entity_metadata (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_metadata_schema FOREIGN KEY (metadata_schema_id) REFERENCES resource_db.metadata_schema(id),
-    CONSTRAINT fk_entity_metadata_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_entity_metadata_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_entity_metadatas_schema FOREIGN KEY (metadata_schema_id) REFERENCES resource_db.metadata_schemas(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_metadatas_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_metadatas_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_metadata_entity (entity_type, entity_id),
-    INDEX idx_entity_metadata_schema (metadata_schema_id),
-    INDEX idx_entity_metadata_status (validation_status)
+    INDEX idx_entity_metadatas_entity (entity_type, entity_id),
+    INDEX idx_entity_metadatas_schema (metadata_schema_id),
+    INDEX idx_entity_metadatas_status (validation_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- entity_credit - Detailed credits/liner notes
-CREATE TABLE entity_credit (
+-- entity_credits: Detailed credits/liner notes
+CREATE TABLE entity_credits (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
-    entity_type VARCHAR(50) NOT NULL COMMENT 'recording, release, work, video',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    entity_type VARCHAR(50) NOT NULL COMMENT 'recording, releases, works, videos', to plural
     entity_id BIGINT UNSIGNED NOT NULL,
-    credited_entity_type VARCHAR(50) NOT NULL COMMENT 'person, organization, artist',
+    credited_entity_type VARCHAR(50) NOT NULL COMMENT 'persons, organizations, artists', to plural
     credited_entity_id BIGINT UNSIGNED NOT NULL,
-    credit_role_id INT NOT NULL,
-    instrument_id INT NULL,
-    credit_text VARCHAR(500) NULL COMMENT 'As it appears on album',
+    credit_role_id INT UNSIGNED NOT NULL, -- Changed INT
+    instrument_id INT UNSIGNED NULL, -- Changed INT
+    credit_text VARBINARY(500) NULL COMMENT 'As it appears on album, ENCRYPTED', -- Changed to VARBINARY
     is_featured BOOLEAN DEFAULT FALSE,
     display_order INT DEFAULT 0,
     notes TEXT NULL,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_credit_role FOREIGN KEY (credit_role_id) REFERENCES resource_db.credit_role(id),
-    CONSTRAINT fk_entity_credit_instrument FOREIGN KEY (instrument_id) REFERENCES resource_db.instrument(id),
+    CONSTRAINT fk_entity_credits_role FOREIGN KEY (credit_role_id) REFERENCES resource_db.credit_roles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_credits_instrument FOREIGN KEY (instrument_id) REFERENCES resource_db.instruments(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_entity_credits_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_credits_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_credits_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_credits_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_credit (entity_type, entity_id),
+    INDEX idx_entity_credits (entity_type, entity_id),
     INDEX idx_credited_entity (credited_entity_type, credited_entity_id),
     INDEX idx_credit_role (credit_role_id),
     INDEX idx_display_order (display_order),
@@ -2600,43 +2536,48 @@ CREATE TABLE entity_credit (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- entity_territory_data - Territory-specific data
+-- entity_territory_data: Territory-specific data
 CREATE TABLE entity_territory_data (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    territory_id INT NOT NULL,
+    territory_id INT UNSIGNED NOT NULL, -- Changed INT
     field_name VARCHAR(50) NOT NULL,
     field_value TEXT NULL,
     effective_date DATE NULL,
     expiry_date DATE NULL,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_territory_data_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
+    CONSTRAINT fk_entity_territory_data_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_entity_territory_data_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_territory_data_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_territory_data_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_territory_data_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_territory (entity_type, entity_id, territory_id),
-    INDEX idx_territory (territory_id),
+    INDEX idx_entity_territory_data (entity_type, entity_id, territory_id),
+    INDEX idx_territory_data (territory_id),
     INDEX idx_field_name (field_name),
     INDEX idx_effective_dates (effective_date, expiry_date),
     INDEX idx_deleted_at (deleted_at),
@@ -2646,43 +2587,48 @@ CREATE TABLE entity_territory_data (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- entity_rating - Content ratings
-CREATE TABLE entity_rating (
+-- entity_ratings: Content ratings
+CREATE TABLE entity_ratings (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    rating_system_id INT NOT NULL,
+    rating_system_id INT UNSIGNED NOT NULL, -- Changed INT
     rating_value VARCHAR(20) NOT NULL,
     rating_reason TEXT NULL,
     rated_date DATE NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_rating_system FOREIGN KEY (rating_system_id) REFERENCES resource_db.rating_system(id),
-    CONSTRAINT fk_entity_rating_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
+    CONSTRAINT fk_entity_ratings_system FOREIGN KEY (rating_system_id) REFERENCES resource_db.rating_systems(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_ratings_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_entity_ratings_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_ratings_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_ratings_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_ratings_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_entity_rating (entity_type, entity_id),
+    INDEX idx_entity_ratings (entity_type, entity_id),
     INDEX idx_rating_system (rating_system_id),
     INDEX idx_territory (territory_id),
     INDEX idx_deleted_at (deleted_at),
@@ -2692,41 +2638,46 @@ CREATE TABLE entity_rating (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- entity_relationship - Entity relationships (covers, samples)
-CREATE TABLE entity_relationship (
+-- entity_relationships: Entity relationships (covers, samples)
+CREATE TABLE entity_relationships (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     source_type VARCHAR(50) NOT NULL,
     source_id BIGINT UNSIGNED NOT NULL,
     target_type VARCHAR(50) NOT NULL,
     target_id BIGINT UNSIGNED NOT NULL,
-    relationship_type_id INT NOT NULL,
-    relationship_status VARCHAR(20) DEFAULT 'ACTIVE',
+    relationship_type_id INT UNSIGNED NOT NULL, -- Changed INT
+    relationship_status VARCHAR(20) DEFAULT 'ACTIVE', -- Consider FK to resource_db.relationship_statuses
     start_date DATE NULL,
     end_date DATE NULL,
     notes TEXT NULL,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_entity_relationship_type FOREIGN KEY (relationship_type_id) REFERENCES resource_db.relationship_type(id),
+    CONSTRAINT fk_entity_relationships_type FOREIGN KEY (relationship_type_id) REFERENCES resource_db.relationship_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_entity_relationships_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_relationships_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_relationships_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_relationships_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_source (source_type, source_id),
@@ -2740,41 +2691,46 @@ CREATE TABLE entity_relationship (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- external_link - External platform links
-CREATE TABLE external_link (
+-- external_links: External platform links
+CREATE TABLE external_links (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
-    entity_type VARCHAR(50) NOT NULL COMMENT 'artist, work, recording, etc.',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    entity_type VARCHAR(50) NOT NULL COMMENT 'artists, works, recordings, etc.', to plural
     entity_id BIGINT UNSIGNED NOT NULL,
-    link_type_id INT NOT NULL,
+    link_type_id INT UNSIGNED NOT NULL, -- Changed INT
     url VARCHAR(500) NOT NULL,
-    platform_id INT NULL COMMENT 'Auto-detected from URL',
+    platform_id INT UNSIGNED NULL COMMENT 'Auto-detected from URL', -- Changed INT
     platform_identifier VARCHAR(100) NULL COMMENT 'Extracted ID from URL',
     is_verified BOOLEAN DEFAULT FALSE,
     is_primary BOOLEAN DEFAULT FALSE,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_external_link_type FOREIGN KEY (link_type_id) REFERENCES resource_db.link_type(id),
-    CONSTRAINT fk_external_link_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platform(id),
+    CONSTRAINT fk_external_links_type FOREIGN KEY (link_type_id) REFERENCES resource_db.link_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_external_links_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platforms(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_external_links_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_external_links_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_external_links_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_external_links_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_entity_link (entity_type, entity_id),
@@ -2789,43 +2745,48 @@ CREATE TABLE external_link (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- user_control - User control over entities
-CREATE TABLE user_control (
+-- user_controls: User control over entities
+CREATE TABLE user_controls (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
-    entity_type VARCHAR(50) NOT NULL COMMENT 'work, recording, person, etc.',
+    entity_type VARCHAR(50) NOT NULL COMMENT 'works, recordings, persons, etc.', to plural
     entity_id BIGINT UNSIGNED NOT NULL,
-    control_type_id TINYINT NOT NULL COMMENT 'Full Control, View Only, Edit, etc.',
+    control_type_id INT UNSIGNED NOT NULL COMMENT 'Full Control, View Only, Edit, etc.', -- Changed TINYINT
     control_source VARCHAR(50) NULL COMMENT 'manual, agreement, role',
-    source_id BIGINT UNSIGNED NULL COMMENT 'agreement_id if from agreement',
+    source_id BIGINT UNSIGNED NULL COMMENT 'agreement_id if from agreement', -- Assuming agreement.id is BIGINT
     granted_by BIGINT UNSIGNED NULL,
     granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME NULL,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_user_control_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_user_control_type FOREIGN KEY (control_type_id) REFERENCES resource_db.control_type(id),
-    CONSTRAINT fk_user_control_granted_by FOREIGN KEY (granted_by) REFERENCES user(id),
+    CONSTRAINT fk_user_controls_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_user_controls_type FOREIGN KEY (control_type_id) REFERENCES resource_db.control_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_user_controls_granted_by FOREIGN KEY (granted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_user_controls_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_user_controls_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_user_controls_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_user_controls_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_user_entity (user_id, entity_type, entity_id),
@@ -2840,43 +2801,48 @@ CREATE TABLE user_control (
     UNIQUE INDEX uk_user_control (user_id, entity_type, entity_id, control_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- management_relationship - Management connections
-CREATE TABLE management_relationship (
+-- management_relationships: Management connections
+CREATE TABLE management_relationships (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     manager_person_id BIGINT UNSIGNED NULL,
     management_company_id BIGINT UNSIGNED NULL,
-    client_type VARCHAR(50) NOT NULL COMMENT 'artist, writer, producer',
+    client_type VARCHAR(50) NOT NULL COMMENT 'artists, writers, producers', to plural
     client_id BIGINT UNSIGNED NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NULL,
-    commission_percentage DECIMAL(5,2) NULL,
-    territory_id INT NULL,
+    commission_percentage DECIMAL(5,4) NULL, -- Increased precision
+    territory_id INT UNSIGNED NULL, -- Changed INT
     is_exclusive BOOLEAN DEFAULT TRUE,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_management_manager FOREIGN KEY (manager_person_id) REFERENCES person(id),
-    CONSTRAINT fk_management_company FOREIGN KEY (management_company_id) REFERENCES organization(id),
-    CONSTRAINT fk_management_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
+    CONSTRAINT fk_management_managers FOREIGN KEY (manager_person_id) REFERENCES persons(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_management_companies FOREIGN KEY (management_company_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_management_territories FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_management_relationships_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_management_relationships_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_management_relationships_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_management_relationships_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Constraints
     CONSTRAINT chk_management_entity CHECK (manager_person_id IS NOT NULL OR management_company_id IS NOT NULL),
@@ -2894,10 +2860,10 @@ CREATE TABLE management_relationship (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- anr_relationship - A&R relationships
-CREATE TABLE anr_relationship (
+-- anr_relationships: A&R relationships
+CREATE TABLE anr_relationships (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     anr_person_id BIGINT UNSIGNED NOT NULL,
     label_id BIGINT UNSIGNED NOT NULL,
     artist_id BIGINT UNSIGNED NULL,
@@ -2907,28 +2873,33 @@ CREATE TABLE anr_relationship (
     notes TEXT NULL,
     
     -- Audit columns
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255) NULL,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    deleted_by VARCHAR(255) NULL,
-    archived_at TIMESTAMP NULL DEFAULT NULL,
-    archived_by VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NOT NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    deleted_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    deleted_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
+    archived_at DATETIME NULL DEFAULT NULL, -- Changed TIMESTAMP to DATETIME
+    archived_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(255) to BIGINT UNSIGNED
     archive_reason TEXT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version INT NOT NULL DEFAULT 1,
     
     -- Security columns
     row_hash VARCHAR(64) NULL,
-    last_integrity_check TIMESTAMP NULL,
+    last_integrity_check DATETIME NULL, -- Changed TIMESTAMP to DATETIME
     encryption_version INT NULL,
-    data_classification_id INT NULL,
+    data_classification_id INT UNSIGNED NULL, -- Changed INT
     
     -- Foreign Keys
-    CONSTRAINT fk_anr_person FOREIGN KEY (anr_person_id) REFERENCES person(id),
-    CONSTRAINT fk_anr_label FOREIGN KEY (label_id) REFERENCES label(id),
-    CONSTRAINT fk_anr_artist FOREIGN KEY (artist_id) REFERENCES artist(id),
+    CONSTRAINT fk_anr_persons FOREIGN KEY (anr_person_id) REFERENCES persons(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_anr_labels FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_anr_artists FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    -- Added FKs for audit columns
+    CONSTRAINT fk_anr_relationships_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_anr_relationships_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_anr_relationships_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_anr_relationships_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_anr_person (anr_person_id),
@@ -2943,9 +2914,8 @@ CREATE TABLE anr_relationship (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- SECTION 1: CORE ENTITY PROCEDURES & VIEWS
+-- SECTION 1: CORE ENTITY PROCEDURES & VIEWS 
 -- =====================================================
-
 
 -- =====================================================
 -- ENTITY SEARCH PROCEDURES (Fuzzy Matching)
@@ -2968,14 +2938,15 @@ BEGIN
     SET v_search_pattern = CONCAT('%', REPLACE(LOWER(p_search_term), ' ', '%'), '%');
     
     -- Create temporary table for results
+    -- entity_id changed from CHAR(36) to BIGINT UNSIGNED
     CREATE TEMPORARY TABLE IF NOT EXISTS temp_search_results (
-        entity_id CHAR(36),
+        entity_id BIGINT UNSIGNED,
         entity_type VARCHAR(50),
         primary_name VARCHAR(255),
         legal_name VARCHAR(255),
         match_score DECIMAL(5,2),
         is_active BOOLEAN,
-        verified_status VARCHAR(50),
+        verified_status VARCHAR(50), -- Assumed string status; consider FK to resource_db.verification_statuses
         created_date DATETIME
     );
     
@@ -2997,21 +2968,23 @@ BEGIN
             p.is_active,
             p.verification_status,
             p.created_at
-        FROM person p
-        WHERE (p.is_active = 1 OR p_include_inactive = TRUE)
+        FROM persons p to plural
+        WHERE (p.is_active = TRUE OR p_include_inactive = TRUE)
             AND (
                 LOWER(p.display_name) LIKE v_search_pattern
                 OR LOWER(p.first_name) LIKE v_search_pattern
                 OR LOWER(p.last_name) LIKE v_search_pattern
                 OR LOWER(p.stage_name) LIKE v_search_pattern
                 OR p.id IN (
-                    SELECT entity_id FROM person_alias 
-                    WHERE LOWER(alias_name) LIKE v_search_pattern
-                        AND (is_active = 1 OR p_include_inactive = TRUE)
+                    SELECT entity_id FROM entity_aliases -- Using generic entity_aliases
+                    WHERE entity_type = 'person'
+                      AND LOWER(alias_name) LIKE v_search_pattern
+                      AND (is_active = TRUE OR p_include_inactive = TRUE)
                 )
                 OR p.id IN (
-                    SELECT person_id FROM person_identifier
-                    WHERE identifier_value LIKE v_search_pattern
+                    SELECT entity_id FROM entity_identifiers -- Using generic entity_identifiers
+                    WHERE entity_type = 'person'
+                      AND identifier_value LIKE v_search_pattern
                 )
             );
     END IF;
@@ -3034,20 +3007,22 @@ BEGIN
             o.is_active,
             o.verification_status,
             o.created_at
-        FROM organization o
-        WHERE (o.is_active = 1 OR p_include_inactive = TRUE)
+        FROM organizations o to plural
+        WHERE (o.is_active = TRUE OR p_include_inactive = TRUE)
             AND (
                 LOWER(o.name) LIKE v_search_pattern
                 OR LOWER(o.legal_name) LIKE v_search_pattern
                 OR LOWER(o.trading_name) LIKE v_search_pattern
                 OR o.id IN (
-                    SELECT entity_id FROM organization_alias 
-                    WHERE LOWER(alias_name) LIKE v_search_pattern
-                        AND (is_active = 1 OR p_include_inactive = TRUE)
+                    SELECT entity_id FROM entity_aliases -- Using generic entity_aliases
+                    WHERE entity_type = 'organization'
+                      AND LOWER(alias_name) LIKE v_search_pattern
+                      AND (is_active = TRUE OR p_include_inactive = TRUE)
                 )
                 OR o.id IN (
-                    SELECT organization_id FROM organization_identifier
-                    WHERE identifier_value LIKE v_search_pattern
+                    SELECT entity_id FROM entity_identifiers -- Using generic entity_identifiers
+                    WHERE entity_type = 'organization'
+                      AND identifier_value LIKE v_search_pattern
                 )
             );
     END IF;
@@ -3070,7 +3045,7 @@ CREATE PROCEDURE sp_search_persons_advanced(
     IN p_birth_date_from DATE,
     IN p_birth_date_to DATE,
     IN p_country_id CHAR(3),
-    IN p_person_type_id INT,
+    IN p_person_type_id INT UNSIGNED,
     IN p_include_inactive BOOLEAN,
     IN p_limit INT,
     IN p_offset INT
@@ -3083,26 +3058,26 @@ BEGIN
         COUNT(DISTINCT w.id) as writer_count,
         COUNT(DISTINCT a.id) as artist_count,
         COUNT(DISTINCT pr.id) as producer_count
-    FROM person p
-    LEFT JOIN person_type pt ON p.person_type_id = pt.id
-    LEFT JOIN country c ON p.nationality_country_id = c.id
-    LEFT JOIN writer w ON w.person_id = p.id
-    LEFT JOIN artist a ON a.person_id = p.id
-    LEFT JOIN producer pr ON pr.person_id = p.id
-    WHERE (p.is_active = 1 OR p_include_inactive = TRUE)
+    FROM persons p to plural
+    LEFT JOIN resource_db.person_types pt ON p.person_type_id = pt.id lookup table
+    LEFT JOIN resource_db.countries c ON p.nationality_country_id = c.id lookup table
+    LEFT JOIN writers w ON w.person_id = p.id to plural
+    LEFT JOIN artists a ON a.person_id = p.id to plural
+    LEFT JOIN producers pr ON pr.person_id = p.id to plural
+    WHERE (p.is_active = TRUE OR p_include_inactive = TRUE)
         AND (p_first_name IS NULL OR p.first_name LIKE CONCAT('%', p_first_name, '%'))
         AND (p_last_name IS NULL OR p.last_name LIKE CONCAT('%', p_last_name, '%'))
         AND (p_stage_name IS NULL OR p.stage_name LIKE CONCAT('%', p_stage_name, '%'))
         AND (p_ipi_number IS NULL OR EXISTS (
-            SELECT 1 FROM person_identifier pi 
-            WHERE pi.person_id = p.id 
-                AND pi.identifier_type = 'IPI' 
+            SELECT 1 FROM entity_identifiers pi -- Using generic entity_identifiers
+            WHERE pi.entity_id = p.id AND pi.entity_type = 'person'
+                AND pi.identifier_type_id = (SELECT id FROM resource_db.identifier_types WHERE code = 'IPI') -- Referencing identifier_types
                 AND pi.identifier_value = p_ipi_number
         ))
         AND (p_isni_code IS NULL OR EXISTS (
-            SELECT 1 FROM person_identifier pi 
-            WHERE pi.person_id = p.id 
-                AND pi.identifier_type = 'ISNI' 
+            SELECT 1 FROM entity_identifiers pi -- Using generic entity_identifiers
+            WHERE pi.entity_id = p.id AND pi.entity_type = 'person'
+                AND pi.identifier_type_id = (SELECT id FROM resource_db.identifier_types WHERE code = 'ISNI') -- Referencing identifier_types
                 AND pi.identifier_value = p_isni_code
         ))
         AND (p_birth_date_from IS NULL OR p.birth_date >= p_birth_date_from)
@@ -3117,9 +3092,9 @@ END$$
 -- Search Organizations with Fuzzy Matching
 CREATE PROCEDURE sp_search_organizations_advanced(
     IN p_name VARCHAR(255),
-    IN p_organization_type_id INT,
+    IN p_organization_type_id INT UNSIGNED,
     IN p_country_id CHAR(3),
-    IN p_tax_id VARCHAR(50),
+    IN p_tax_id VARBINARY(50), -- Changed to VARBINARY
     IN p_include_inactive BOOLEAN,
     IN p_limit INT,
     IN p_offset INT
@@ -3132,17 +3107,17 @@ BEGIN
         COUNT(DISTINCT l.id) as label_count,
         COUNT(DISTINCT p.id) as publisher_count,
         COUNT(DISTINCT d.id) as distributor_count
-    FROM organization o
-    LEFT JOIN organization_type ot ON o.organization_type_id = ot.id
-    LEFT JOIN country c ON o.country_id = c.id
-    LEFT JOIN label l ON l.organization_id = o.id
-    LEFT JOIN publisher p ON p.organization_id = o.id
-    LEFT JOIN distributor d ON d.organization_id = o.id
-    WHERE (o.is_active = 1 OR p_include_inactive = TRUE)
+    FROM organizations o to plural
+    LEFT JOIN resource_db.organization_types ot ON o.organization_type_id = ot.id lookup table
+    LEFT JOIN resource_db.countries c ON o.country_id = c.id lookup table
+    LEFT JOIN labels l ON l.organization_id = o.id to plural
+    LEFT JOIN publishers p ON p.organization_id = o.id to plural
+    LEFT JOIN distributors d ON d.organization_id = o.id to plural
+    WHERE (o.is_active = TRUE OR p_include_inactive = TRUE)
         AND (p_name IS NULL OR (
             o.name LIKE CONCAT('%', p_name, '%')
             OR o.legal_name LIKE CONCAT('%', p_name, '%')
-            OR o.trading_name LIKE CONCAT('%', p_name, '%')
+            OR o.trading_name LIKE CONCAT('%', p_name, '%') -- Assuming trading_name exists in organizations
         ))
         AND (p_organization_type_id IS NULL OR o.organization_type_id = p_organization_type_id)
         AND (p_country_id IS NULL OR o.country_id = p_country_id)
@@ -3155,7 +3130,7 @@ END$$
 DELIMITER ;
 
 -- =====================================================
--- OWNERSHIP CHAIN VIEWS
+-- OWNERSHIP CHAIN VIEWS 
 -- =====================================================
 
 -- Writer Ownership Chain View
@@ -3171,32 +3146,32 @@ WITH RECURSIVE ownership_chain AS (
         ww.role_id,
         wr.name as role_name,
         1 as chain_level,
-        CAST(ww.writer_id AS CHAR(1000)) as chain_path
-    FROM work_writer ww
-    JOIN writer w ON ww.writer_id = w.id
-    JOIN person p ON w.person_id = p.id
-    LEFT JOIN writer_role wr ON ww.role_id = wr.id
-    WHERE ww.is_active = 1
+        CAST(ww.writer_id AS CHAR(20)) as chain_path -- Changed to CHAR(20) for BIGINT
+    FROM work_writers ww to plural
+    JOIN writers w ON ww.writer_id = w.id to plural
+    JOIN persons p ON w.person_id = p.id to plural
+    LEFT JOIN resource_db.writer_roles wr ON ww.role_id = wr.id lookup table
+    WHERE ww.is_active = TRUE
     
     UNION ALL
     
     -- Recursive case: Sub-publisher chains
     SELECT 
         oc.work_id,
-        sp.writer_id,
+        sp.writer_id, -- Assuming this is the next entity in chain
         w.person_id,
         p.display_name as writer_name,
         oc.ownership_share * (sp.share_percentage / 100) as ownership_share,
-        sp.role_id,
+        sp.role_id, -- Assuming role_id here is for the writer in sub_publisher
         wr.name as role_name,
         oc.chain_level + 1,
         CONCAT(oc.chain_path, '->', sp.writer_id)
     FROM ownership_chain oc
-    JOIN sub_publisher sp ON sp.original_publisher_id = oc.writer_id
-    JOIN writer w ON sp.writer_id = w.id
-    JOIN person p ON w.person_id = p.id
-    LEFT JOIN writer_role wr ON sp.role_id = wr.id
-    WHERE sp.is_active = 1
+    JOIN sub_publishers sp ON sp.original_publisher_id = oc.writer_id to plural, assuming original_publisher_id is writer_id for this chain
+    JOIN writers w ON sp.writer_id = w.id to plural
+    JOIN persons p ON w.person_id = p.id to plural
+    LEFT JOIN resource_db.writer_roles wr ON sp.role_id = wr.id lookup table
+    WHERE sp.is_active = TRUE
         AND oc.chain_level < 10 -- Prevent infinite recursion
 )
 SELECT * FROM ownership_chain;
@@ -3216,13 +3191,13 @@ WITH RECURSIVE publisher_chain AS (
         wp.territory_id,
         t.name as territory_name,
         1 as chain_level,
-        CAST(wp.publisher_id AS CHAR(1000)) as chain_path
-    FROM work_publisher wp
-    JOIN publisher p ON wp.publisher_id = p.id
-    JOIN organization o ON p.organization_id = o.id
-    LEFT JOIN publisher_type pt ON wp.role_id = pt.id
-    LEFT JOIN territory t ON wp.territory_id = t.id
-    WHERE wp.is_active = 1
+        CAST(wp.publisher_id AS CHAR(20)) as chain_path -- Changed to CHAR(20) for BIGINT
+    FROM work_publishers wp to plural
+    JOIN publishers p ON wp.publisher_id = p.id to plural
+    JOIN organizations o ON p.organization_id = o.id to plural
+    LEFT JOIN resource_db.publisher_types pt ON wp.role_id = pt.id lookup table
+    LEFT JOIN resource_db.territories t ON wp.territory_id = t.id lookup table
+    WHERE wp.is_active = TRUE
     
     UNION ALL
     
@@ -3240,12 +3215,12 @@ WITH RECURSIVE publisher_chain AS (
         pc.chain_level + 1,
         CONCAT(pc.chain_path, '->', sp.sub_publisher_id)
     FROM publisher_chain pc
-    JOIN sub_publisher_agreement sp ON sp.original_publisher_id = pc.publisher_id
-    JOIN publisher p ON sp.sub_publisher_id = p.id
-    JOIN organization o ON p.organization_id = o.id
-    LEFT JOIN publisher_type pt ON sp.role_id = pt.id
-    LEFT JOIN territory t ON COALESCE(sp.territory_id, pc.territory_id) = t.id
-    WHERE sp.is_active = 1
+    JOIN sub_publisher_agreements sp ON sp.original_publisher_id = pc.publisher_id to plural
+    JOIN publishers p ON sp.sub_publisher_id = p.id to plural
+    JOIN organizations o ON p.organization_id = o.id to plural
+    LEFT JOIN resource_db.publisher_types pt ON sp.role_id = pt.id lookup table
+    LEFT JOIN resource_db.territories t ON COALESCE(sp.territory_id, pc.territory_id) = t.id lookup table
+    WHERE sp.is_active = TRUE
         AND pc.chain_level < 10
 )
 SELECT * FROM publisher_chain;
@@ -3269,17 +3244,17 @@ SELECT
     ro.start_date,
     ro.end_date,
     ro.is_active
-FROM recording_ownership ro
-LEFT JOIN person p ON ro.owner_type = 'person' AND ro.owner_id = p.id
-LEFT JOIN organization o ON ro.owner_type = 'organization' AND ro.owner_id = o.id
-LEFT JOIN label l ON ro.owner_type = 'label' AND ro.owner_id = l.id
-LEFT JOIN organization l_org ON l.organization_id = l_org.id
-LEFT JOIN recording_role rr ON ro.role_id = rr.id
-LEFT JOIN territory t ON ro.territory_id = t.id
-WHERE ro.is_active = 1;
+FROM recording_ownerships ro to plural
+LEFT JOIN persons p ON ro.owner_type = 'person' AND ro.owner_id = p.id to plural
+LEFT JOIN organizations o ON ro.owner_type = 'organization' AND ro.owner_id = o.id to plural
+LEFT JOIN labels l ON ro.owner_type = 'label' AND ro.owner_id = l.id to plural
+LEFT JOIN organizations l_org ON l.organization_id = l_org.id to plural
+LEFT JOIN resource_db.recording_roles rr ON ro.role_id = rr.id lookup table
+LEFT JOIN resource_db.territories t ON ro.territory_id = t.id lookup table
+WHERE ro.is_active = TRUE;
 
 -- =====================================================
--- CREDIT AGGREGATION VIEWS
+-- CREDIT AGGREGATION VIEWS 
 -- =====================================================
 
 -- Comprehensive Work Credits View
@@ -3308,16 +3283,16 @@ SELECT
     COUNT(DISTINCT wp.publisher_id) as publisher_count,
     w.created_at,
     w.updated_at
-FROM work w
-LEFT JOIN work_writer ww ON w.id = ww.work_id AND ww.is_active = 1
-LEFT JOIN writer wr_entity ON ww.writer_id = wr_entity.id
-LEFT JOIN person pw ON wr_entity.person_id = pw.id
-LEFT JOIN writer_role wr ON ww.role_id = wr.id
-LEFT JOIN work_publisher wp ON w.id = wp.work_id AND wp.is_active = 1
-LEFT JOIN publisher p ON wp.publisher_id = p.id
-LEFT JOIN organization po ON p.organization_id = po.id
-LEFT JOIN publisher_type pt ON wp.role_id = pt.id
-WHERE w.is_active = 1
+FROM works w to plural
+LEFT JOIN work_writers ww ON w.id = ww.work_id AND ww.is_active = TRUE to plural
+LEFT JOIN writers wr_entity ON ww.writer_id = wr_entity.id to plural
+LEFT JOIN persons pw ON wr_entity.person_id = pw.id to plural
+LEFT JOIN resource_db.writer_roles wr ON ww.role_id = wr.id lookup table
+LEFT JOIN work_publishers wp ON w.id = wp.work_id AND wp.is_active = TRUE to plural
+LEFT JOIN publishers p ON wp.publisher_id = p.id to plural
+LEFT JOIN organizations po ON p.organization_id = po.id to plural
+LEFT JOIN resource_db.publisher_types pt ON wp.role_id = pt.id lookup table
+WHERE w.is_active = TRUE
 GROUP BY w.id;
 
 -- Recording Credits View
@@ -3348,29 +3323,29 @@ SELECT
     ) ORDER BY rm.display_order SEPARATOR ', ') as musicians,
     r.created_at,
     r.updated_at
-FROM recording r
+FROM recordings r to plural
 -- Primary artist
-LEFT JOIN recording_artist ra_primary ON r.id = ra_primary.recording_id 
-    AND ra_primary.role_id = 1 AND ra_primary.is_active = 1
-LEFT JOIN artist pa ON ra_primary.artist_id = pa.id
-LEFT JOIN person pa_p ON pa.person_id = pa_p.id
+LEFT JOIN recording_artists ra_primary ON r.id = ra_primary.recording_id 
+    AND ra_primary.role_id = 1 AND ra_primary.is_active = TRUE to plural
+LEFT JOIN artists pa ON ra_primary.artist_id = pa.id to plural
+LEFT JOIN persons pa_p ON pa.person_id = pa_p.id to plural
 -- All artists
-LEFT JOIN recording_artist ra ON r.id = ra.recording_id AND ra.is_active = 1
-LEFT JOIN artist fa ON ra.artist_id = fa.id
-LEFT JOIN person fa_p ON fa.person_id = fa_p.id
+LEFT JOIN recording_artists ra ON r.id = ra.recording_id AND ra.is_active = TRUE to plural
+LEFT JOIN artists fa ON ra.artist_id = fa.id to plural
+LEFT JOIN persons fa_p ON fa.person_id = fa_p.id to plural
 -- Producers
-LEFT JOIN recording_producer rp ON r.id = rp.recording_id AND rp.is_active = 1
-LEFT JOIN producer prod ON rp.producer_id = prod.id
-LEFT JOIN person prod_p ON prod.person_id = prod_p.id
+LEFT JOIN recording_producers rp ON r.id = rp.recording_id AND rp.is_active = TRUE to plural
+LEFT JOIN producers prod ON rp.producer_id = prod.id to plural
+LEFT JOIN persons prod_p ON prod.person_id = prod_p.id to plural
 -- Engineers
-LEFT JOIN recording_engineer re ON r.id = re.recording_id AND re.is_active = 1
-LEFT JOIN person eng_p ON re.person_id = eng_p.id
-LEFT JOIN engineer_type et ON re.engineer_type_id = et.id
+LEFT JOIN recording_engineers re ON r.id = re.recording_id AND re.is_active = TRUE to plural
+LEFT JOIN persons eng_p ON re.person_id = eng_p.id to plural
+LEFT JOIN resource_db.engineer_types et ON re.engineer_type_id = et.id lookup table
 -- Musicians
-LEFT JOIN recording_musician rm ON r.id = rm.recording_id AND rm.is_active = 1
-LEFT JOIN person mus_p ON rm.person_id = mus_p.id
-LEFT JOIN instrument i ON rm.instrument_id = i.id
-WHERE r.is_active = 1
+LEFT JOIN recording_musicians rm ON r.id = rm.recording_id AND rm.is_active = TRUE to plural
+LEFT JOIN persons mus_p ON rm.person_id = mus_p.id to plural
+LEFT JOIN resource_db.instruments i ON rm.instrument_id = i.id lookup table
+WHERE r.is_active = TRUE
 GROUP BY r.id;
 
 -- Person Credits Summary View
@@ -3400,20 +3375,20 @@ SELECT
     ) as last_credit_date,
     p.created_at,
     p.updated_at
-FROM person p
-LEFT JOIN writer w ON p.id = w.person_id AND w.is_active = 1
-LEFT JOIN artist a ON p.id = a.person_id AND a.is_active = 1
-LEFT JOIN producer pr ON p.id = pr.person_id AND pr.is_active = 1
-LEFT JOIN work_writer ww ON w.id = ww.writer_id AND ww.is_active = 1
-LEFT JOIN recording_artist ra ON a.id = ra.artist_id AND ra.is_active = 1
-LEFT JOIN recording_producer rp ON pr.id = rp.producer_id AND rp.is_active = 1
-LEFT JOIN recording_engineer re ON p.id = re.person_id AND re.is_active = 1
-LEFT JOIN recording_musician rm ON p.id = rm.person_id AND rm.is_active = 1
-WHERE p.is_active = 1
+FROM persons p to plural
+LEFT JOIN writers w ON p.id = w.person_id AND w.is_active = TRUE to plural
+LEFT JOIN artists a ON p.id = a.person_id AND a.is_active = TRUE to plural
+LEFT JOIN producers pr ON p.id = pr.person_id AND pr.is_active = TRUE to plural
+LEFT JOIN work_writers ww ON w.id = ww.writer_id AND ww.is_active = TRUE to plural
+LEFT JOIN recording_artists ra ON a.id = ra.artist_id AND ra.is_active = TRUE to plural
+LEFT JOIN recording_producers rp ON pr.id = rp.producer_id AND rp.is_active = TRUE to plural
+LEFT JOIN recording_engineers re ON p.id = re.person_id AND re.is_active = TRUE to plural
+LEFT JOIN recording_musicians rm ON p.id = rm.person_id AND rm.is_active = TRUE to plural
+WHERE p.is_active = TRUE
 GROUP BY p.id;
 
 -- =====================================================
--- ENTITY RELATIONSHIP MAPPING VIEWS
+-- ENTITY RELATIONSHIP MAPPING VIEWS 
 -- =====================================================
 
 -- Person Relationships Network View
@@ -3433,14 +3408,14 @@ SELECT
         WHEN rt.reverse_type_id IS NOT NULL THEN rt2.name
         ELSE CONCAT('Related to ', rt.name)
     END as reverse_relationship_type
-FROM person_relationship pr
-JOIN person p1 ON pr.person_id = p1.id
-JOIN person p2 ON pr.related_person_id = p2.id
-JOIN relationship_type rt ON pr.relationship_type_id = rt.id
-LEFT JOIN relationship_type rt2 ON rt.reverse_type_id = rt2.id
-WHERE pr.is_active = 1
-    AND p1.is_active = 1
-    AND p2.is_active = 1;
+FROM person_relationships pr to plural
+JOIN persons p1 ON pr.person_id = p1.id to plural
+JOIN persons p2 ON pr.related_person_id = p2.id to plural
+JOIN resource_db.relationship_types rt ON pr.relationship_type_id = rt.id lookup table
+LEFT JOIN resource_db.relationship_types rt2 ON rt.reverse_type_id = rt2.id lookup table
+WHERE pr.is_active = TRUE
+    AND p1.is_active = TRUE
+    AND p2.is_active = TRUE;
 
 -- Organization Relationships View
 CREATE OR REPLACE VIEW vw_organization_relationships AS
@@ -3453,18 +3428,18 @@ SELECT
     o2.name as related_organization_name,
     o2.organization_type_id as related_organization_type_id,
     ot2.name as related_organization_type,
-    orel.relationship_type,
+    orel.relationship_type, -- Assuming this column exists in organization_relationships and is a direct string or needs a type_id
     orel.start_date,
     orel.end_date,
     orel.is_active
-FROM organization_relationship orel
-JOIN organization o1 ON orel.organization_id = o1.id
-JOIN organization o2 ON orel.related_organization_id = o2.id
-JOIN organization_type ot1 ON o1.organization_type_id = ot1.id
-JOIN organization_type ot2 ON o2.organization_type_id = ot2.id
-WHERE orel.is_active = 1
-    AND o1.is_active = 1
-    AND o2.is_active = 1;
+FROM organization_relationships orel to plural
+JOIN organizations o1 ON orel.organization_id = o1.id to plural
+JOIN organizations o2 ON orel.related_organization_id = o2.id to plural
+JOIN resource_db.organization_types ot1 ON o1.organization_type_id = ot1.id lookup table
+JOIN resource_db.organization_types ot2 ON o2.organization_type_id = ot2.id lookup table
+WHERE orel.is_active = TRUE
+    AND o1.is_active = TRUE
+    AND o2.is_active = TRUE;
 
 -- Entity Collaboration Network View
 CREATE OR REPLACE VIEW vw_collaboration_network AS
@@ -3480,13 +3455,13 @@ SELECT
     COUNT(DISTINCT w1.work_id) as collaboration_count,
     MIN(w1.created_at) as first_collaboration,
     MAX(w1.created_at) as last_collaboration
-FROM work_writer w1
-JOIN work_writer w2 ON w1.work_id = w2.work_id AND w1.writer_id < w2.writer_id
-JOIN writer wr1 ON w1.writer_id = wr1.id
-JOIN writer wr2 ON w2.writer_id = wr2.id
-JOIN person p1 ON wr1.person_id = p1.id
-JOIN person p2 ON wr2.person_id = p2.id
-WHERE w1.is_active = 1 AND w2.is_active = 1
+FROM work_writers w1 to plural
+JOIN work_writers w2 ON w1.work_id = w2.work_id AND w1.writer_id < w2.writer_id to plural
+JOIN writers wr1 ON w1.writer_id = wr1.id to plural
+JOIN writers wr2 ON w2.writer_id = wr2.id to plural
+JOIN persons p1 ON wr1.person_id = p1.id to plural
+JOIN persons p2 ON wr2.person_id = p2.id to plural
+WHERE w1.is_active = TRUE AND w2.is_active = TRUE
 GROUP BY w1.writer_id, w2.writer_id
 
 UNION ALL
@@ -3503,17 +3478,17 @@ SELECT
     COUNT(DISTINCT a1.recording_id) as collaboration_count,
     MIN(a1.created_at) as first_collaboration,
     MAX(a1.created_at) as last_collaboration
-FROM recording_artist a1
-JOIN recording_artist a2 ON a1.recording_id = a2.recording_id AND a1.artist_id < a2.artist_id
-JOIN artist ar1 ON a1.artist_id = ar1.id
-JOIN artist ar2 ON a2.artist_id = ar2.id
-JOIN person p1 ON ar1.person_id = p1.id
-JOIN person p2 ON ar2.person_id = p2.id
-WHERE a1.is_active = 1 AND a2.is_active = 1
+FROM recording_artists a1 to plural
+JOIN recording_artists a2 ON a1.recording_id = a2.recording_id AND a1.artist_id < a2.artist_id to plural
+JOIN artists ar1 ON a1.artist_id = ar1.id to plural
+JOIN artists ar2 ON a2.artist_id = ar2.id to plural
+JOIN persons p1 ON ar1.person_id = p1.id to plural
+JOIN persons p2 ON ar2.person_id = p2.id to plural
+WHERE a1.is_active = TRUE AND a2.is_active = TRUE
 GROUP BY a1.artist_id, a2.artist_id;
 
 -- =====================================================
--- AUDIT TRAIL PROCEDURES
+-- AUDIT TRAIL PROCEDURES 
 -- =====================================================
 
 DELIMITER $$
@@ -3521,17 +3496,18 @@ DELIMITER $$
 -- Create Audit Log Entry
 CREATE PROCEDURE sp_create_audit_log(
     IN p_table_name VARCHAR(100),
-    IN p_record_id CHAR(36),
+    IN p_record_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_action VARCHAR(50),
-    IN p_user_id CHAR(36),
+    IN p_user_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_old_values JSON,
     IN p_new_values JSON,
     IN p_ip_address VARCHAR(45),
     IN p_user_agent VARCHAR(500)
 )
 BEGIN
-    INSERT INTO audit_log (
-        id,
+    INSERT INTO audit_logs ( to plural
+        id, -- audit_logs primary key is BIGINT AUTO_INCREMENT
+        aid, -- Added aid
         table_name,
         record_id,
         action,
@@ -3542,11 +3518,12 @@ BEGIN
         user_agent,
         created_at
     ) VALUES (
-        UUID(),
+        NULL, -- Auto-incremented
+        UNHEX(REPLACE(UUID(), '-', '')), -- Generate UUID for aid
         p_table_name,
-        p_record_id,
+        p_record_id, -- Now BIGINT UNSIGNED
         p_action,
-        p_user_id,
+        p_user_id, -- Now BIGINT UNSIGNED
         p_old_values,
         p_new_values,
         p_ip_address,
@@ -3558,7 +3535,7 @@ END$$
 -- Get Audit History for a Record
 CREATE PROCEDURE sp_get_audit_history(
     IN p_table_name VARCHAR(100),
-    IN p_record_id CHAR(36),
+    IN p_record_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_limit INT,
     IN p_offset INT
 )
@@ -3567,8 +3544,8 @@ BEGIN
         al.*,
         u.email as user_email,
         CONCAT_WS(' ', u.first_name, u.last_name) as user_name
-    FROM audit_log al
-    LEFT JOIN user u ON al.user_id = u.id
+    FROM audit_logs al to plural
+    LEFT JOIN users u ON al.user_id = u.id to plural
     WHERE al.table_name = p_table_name
         AND al.record_id = p_record_id
     ORDER BY al.created_at DESC
@@ -3578,26 +3555,28 @@ END$$
 -- Create Entity History Entry
 CREATE PROCEDURE sp_create_entity_history(
     IN p_entity_type VARCHAR(50),
-    IN p_entity_id CHAR(36),
+    IN p_entity_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_field_name VARCHAR(100),
     IN p_old_value TEXT,
     IN p_new_value TEXT,
-    IN p_changed_by CHAR(36),
+    IN p_changed_by BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_change_reason TEXT
 )
 BEGIN
-    INSERT INTO entity_history (
-        id,
+    INSERT INTO entity_histories ( to plural
+        id, -- entity_histories primary key is BIGINT AUTO_INCREMENT
+        aid, -- Added aid
         entity_type,
-        entity_id,
+        entity_id, -- Now BIGINT UNSIGNED
         field_name,
         old_value,
         new_value,
-        changed_by,
+        changed_by, -- Now BIGINT UNSIGNED
         change_reason,
         changed_at
     ) VALUES (
-        UUID(),
+        NULL, -- Auto-incremented
+        UNHEX(REPLACE(UUID(), '-', '')), -- Generate UUID for aid
         p_entity_type,
         p_entity_id,
         p_field_name,
@@ -3612,14 +3591,14 @@ END$$
 DELIMITER ;
 
 -- =====================================================
--- DATA VALIDATION PROCEDURES
+-- DATA VALIDATION PROCEDURES 
 -- =====================================================
 
 DELIMITER $$
 
 -- Validate Person Data
 CREATE PROCEDURE sp_validate_person(
-    IN p_person_id CHAR(36),
+    IN p_person_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     OUT p_is_valid BOOLEAN,
     OUT p_validation_errors JSON
 )
@@ -3654,19 +3633,19 @@ BEGIN
             ELSE v_errors
         END
     INTO v_errors, v_errors, v_errors, v_errors, v_errors, v_errors
-    FROM person
+    FROM persons to plural
     WHERE id = p_person_id;
     
     -- Check for duplicate IPI numbers
     IF EXISTS (
-        SELECT 1 FROM person_identifier pi1
-        JOIN person_identifier pi2 ON pi1.identifier_value = pi2.identifier_value
-        WHERE pi1.person_id = p_person_id
-            AND pi2.person_id != p_person_id
-            AND pi1.identifier_type = 'IPI'
-            AND pi2.identifier_type = 'IPI'
-            AND pi1.is_active = 1
-            AND pi2.is_active = 1
+        SELECT 1 FROM entity_identifiers pi1 -- Using generic entity_identifiers
+        JOIN entity_identifiers pi2 ON pi1.identifier_value = pi2.identifier_value
+        WHERE pi1.entity_id = p_person_id AND pi1.entity_type = 'person'
+            AND pi2.entity_id != p_person_id AND pi2.entity_type = 'person'
+            AND pi1.identifier_type_id = (SELECT id FROM resource_db.identifier_types WHERE code = 'IPI')
+            AND pi2.identifier_type_id = (SELECT id FROM resource_db.identifier_types WHERE code = 'IPI')
+            AND pi1.is_active = TRUE
+            AND pi2.is_active = TRUE
     ) THEN
         SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
             JSON_OBJECT('field', 'ipi_number', 'error', 'IPI number already exists for another person'));
@@ -3677,9 +3656,9 @@ BEGIN
     SET p_validation_errors = v_errors;
 END$$
 
--- Validate Organization Data
+-- Validate Organizations Data
 CREATE PROCEDURE sp_validate_organization(
-    IN p_organization_id CHAR(36),
+    IN p_organization_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     OUT p_is_valid BOOLEAN,
     OUT p_validation_errors JSON
 )
@@ -3710,18 +3689,18 @@ BEGIN
             ELSE v_errors
         END
     INTO v_errors, v_errors, v_errors, v_errors, v_errors
-    FROM organization
+    FROM organizations to plural
     WHERE id = p_organization_id;
     
     -- Check for duplicate tax IDs in same country
     IF EXISTS (
-        SELECT 1 FROM organization o1
-        JOIN organization o2 ON o1.tax_id = o2.tax_id AND o1.country_id = o2.country_id
+        SELECT 1 FROM organizations o1 to plural
+        JOIN organizations o2 ON o1.tax_id = o2.tax_id AND o1.country_id = o2.country_id to plural
         WHERE o1.id = p_organization_id
             AND o2.id != p_organization_id
             AND o1.tax_id IS NOT NULL
-            AND o1.is_active = 1
-            AND o2.is_active = 1
+            AND o1.is_active = TRUE
+            AND o2.is_active = TRUE
     ) THEN
         SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
             JSON_OBJECT('field', 'tax_id', 'error', 'Tax ID already exists for another organization in this country'));
@@ -3735,21 +3714,21 @@ END$$
 -- Validate Entity Relationships
 CREATE PROCEDURE sp_validate_entity_relationships(
     IN p_entity_type VARCHAR(50),
-    IN p_entity_id CHAR(36),
+    IN p_entity_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     OUT p_is_valid BOOLEAN,
     OUT p_validation_errors JSON
 )
 BEGIN
     DECLARE v_errors JSON DEFAULT JSON_ARRAY();
-    DECLARE v_total_share DECIMAL(5,2);
+    DECLARE v_total_share DECIMAL(5,4); -- Increased precision
     
     IF p_entity_type = 'work' THEN
         -- Check writer shares
         SELECT SUM(ownership_share) INTO v_total_share
-        FROM work_writer
-        WHERE work_id = p_entity_id AND is_active = 1;
+        FROM work_writers to plural
+        WHERE work_id = p_entity_id AND is_active = TRUE;
         
-        IF v_total_share != 100 THEN
+        IF COALESCE(v_total_share, 0) != 100 THEN -- Added COALESCE for NULL check
             SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
                 JSON_OBJECT('field', 'writer_shares', 'error', 
                     CONCAT('Total writer shares must equal 100%. Current: ', COALESCE(v_total_share, 0), '%')));
@@ -3757,10 +3736,10 @@ BEGIN
         
         -- Check publisher shares
         SELECT SUM(ownership_share) INTO v_total_share
-        FROM work_publisher
-        WHERE work_id = p_entity_id AND is_active = 1;
+        FROM work_publishers to plural
+        WHERE work_id = p_entity_id AND is_active = TRUE;
         
-        IF v_total_share > 100 THEN
+        IF COALESCE(v_total_share, 0) > 100 THEN -- Added COALESCE
             SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
                 JSON_OBJECT('field', 'publisher_shares', 'error', 
                     CONCAT('Total publisher shares cannot exceed 100%. Current: ', v_total_share, '%')));
@@ -3769,10 +3748,10 @@ BEGIN
     ELSEIF p_entity_type = 'recording' THEN
         -- Check for at least one primary artist
         IF NOT EXISTS (
-            SELECT 1 FROM recording_artist
+            SELECT 1 FROM recording_artists to plural
             WHERE recording_id = p_entity_id 
-                AND role_id = 1 -- Primary artist
-                AND is_active = 1
+                AND role_id = (SELECT id FROM resource_db.artist_roles WHERE code = 'PRIMARY_ARTIST') -- Using FK to lookup table
+                AND is_active = TRUE
         ) THEN
             SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
                 JSON_OBJECT('field', 'primary_artist', 'error', 'Recording must have at least one primary artist'));
@@ -3780,12 +3759,12 @@ BEGIN
         
         -- Check ownership shares
         SELECT SUM(ownership_share) INTO v_total_share
-        FROM recording_ownership
+        FROM recording_ownerships to plural
         WHERE recording_id = p_entity_id 
-            AND is_active = 1
+            AND is_active = TRUE
             AND (end_date IS NULL OR end_date > CURDATE());
         
-        IF v_total_share != 100 AND v_total_share IS NOT NULL THEN
+        IF COALESCE(v_total_share, 0) != 100 THEN -- Added COALESCE
             SET v_errors = JSON_ARRAY_APPEND(v_errors, '$', 
                 JSON_OBJECT('field', 'ownership_shares', 'error', 
                     CONCAT('Total ownership shares must equal 100%. Current: ', v_total_share, '%')));
@@ -3799,7 +3778,7 @@ END$$
 DELIMITER ;
 
 -- =====================================================
--- SOFT DELETE AND RESTORE PROCEDURES
+-- SOFT DELETE AND RESTORE PROCEDURES 
 -- =====================================================
 
 DELIMITER $$
@@ -3807,8 +3786,8 @@ DELIMITER $$
 -- Generic Soft Delete Procedure
 CREATE PROCEDURE sp_soft_delete(
     IN p_table_name VARCHAR(100),
-    IN p_record_id CHAR(36),
-    IN p_deleted_by CHAR(36),
+    IN p_record_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
+    IN p_deleted_by BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_delete_reason TEXT
 )
 BEGIN
@@ -3816,13 +3795,14 @@ BEGIN
     DECLARE v_old_values JSON;
     
     -- Get current values for audit
+    -- Note: This dynamic SQL needs careful security review (SQL injection)
     SET @sql = CONCAT('SELECT JSON_OBJECT(''is_active'', is_active, ''is_deleted'', is_deleted) INTO @old_values FROM ', p_table_name, ' WHERE id = ?');
     PREPARE stmt FROM @sql;
     EXECUTE stmt USING p_record_id;
     DEALLOCATE PREPARE stmt;
     
     -- Update the record
-    SET @sql = CONCAT('UPDATE ', p_table_name, ' SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ?');
+    SET @sql = CONCAT('UPDATE ', p_table_name, ' SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = ? WHERE id = ?');
     PREPARE stmt FROM @sql;
     EXECUTE stmt USING p_deleted_by, p_record_id;
     DEALLOCATE PREPARE stmt;
@@ -3830,23 +3810,23 @@ BEGIN
     -- Create audit log
     CALL sp_create_audit_log(
         p_table_name,
-        p_record_id,
+        p_record_id, -- Now BIGINT UNSIGNED
         'SOFT_DELETE',
-        p_deleted_by,
+        p_deleted_by, -- Now BIGINT UNSIGNED
         @old_values,
-        JSON_OBJECT('is_active', 0, 'is_deleted', 1, 'reason', p_delete_reason),
+        JSON_OBJECT('is_active', FALSE, 'is_deleted', TRUE, 'reason', p_delete_reason),
         NULL,
         NULL
     );
     
     -- Create entity history
     CALL sp_create_entity_history(
-        p_table_name,
-        p_record_id,
+        p_table_name, -- entity_type in entity_histories is VARCHAR
+        p_record_id, -- Now BIGINT UNSIGNED
         'is_deleted',
         '0',
         '1',
-        p_deleted_by,
+        p_deleted_by, -- Now BIGINT UNSIGNED
         p_delete_reason
     );
 END$$
@@ -3854,8 +3834,8 @@ END$$
 -- Generic Restore Procedure
 CREATE PROCEDURE sp_restore_deleted(
     IN p_table_name VARCHAR(100),
-    IN p_record_id CHAR(36),
-    IN p_restored_by CHAR(36),
+    IN p_record_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
+    IN p_restored_by BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_restore_reason TEXT
 )
 BEGIN
@@ -3863,14 +3843,14 @@ BEGIN
     DECLARE v_old_values JSON;
     
     -- Check if record exists and is deleted
-    SET @sql = CONCAT('SELECT JSON_OBJECT(''is_active'', is_active, ''is_deleted'', is_deleted) INTO @old_values FROM ', p_table_name, ' WHERE id = ? AND is_deleted = 1');
+    SET @sql = CONCAT('SELECT JSON_OBJECT(''is_active'', is_active, ''is_deleted'', is_deleted) INTO @old_values FROM ', p_table_name, ' WHERE id = ? AND is_deleted = TRUE');
     PREPARE stmt FROM @sql;
     EXECUTE stmt USING p_record_id;
     DEALLOCATE PREPARE stmt;
     
     IF @old_values IS NOT NULL THEN
         -- Restore the record
-        SET @sql = CONCAT('UPDATE ', p_table_name, ' SET is_active = 1, is_deleted = 0, deleted_at = NULL, deleted_by = NULL WHERE id = ?');
+        SET @sql = CONCAT('UPDATE ', p_table_name, ' SET is_active = TRUE, is_deleted = FALSE, deleted_at = NULL, deleted_by = NULL WHERE id = ?');
         PREPARE stmt FROM @sql;
         EXECUTE stmt USING p_record_id;
         DEALLOCATE PREPARE stmt;
@@ -3878,32 +3858,32 @@ BEGIN
         -- Create audit log
         CALL sp_create_audit_log(
             p_table_name,
-            p_record_id,
+            p_record_id, -- Now BIGINT UNSIGNED
             'RESTORE',
-            p_restored_by,
+            p_restored_by, -- Now BIGINT UNSIGNED
             @old_values,
-            JSON_OBJECT('is_active', 1, 'is_deleted', 0, 'reason', p_restore_reason),
+            JSON_OBJECT('is_active', TRUE, 'is_deleted', FALSE, 'reason', p_restore_reason),
             NULL,
             NULL
         );
         
         -- Create entity history
         CALL sp_create_entity_history(
-            p_table_name,
-            p_record_id,
+            p_table_name, -- entity_type in entity_histories is VARCHAR
+            p_record_id, -- Now BIGINT UNSIGNED
             'is_deleted',
             '1',
             '0',
-            p_restored_by,
+            p_restored_by, -- Now BIGINT UNSIGNED
             p_restore_reason
         );
     END IF;
 END$$
 
--- Cascade Soft Delete for Person
-CREATE PROCEDURE sp_soft_delete_person_cascade(
-    IN p_person_id CHAR(36),
-    IN p_deleted_by CHAR(36),
+-- Cascade Soft Delete for Persons
+CREATE PROCEDURE sp_soft_delete_persons_cascade( to plural
+    IN p_person_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
+    IN p_deleted_by BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_delete_reason TEXT
 )
 BEGIN
@@ -3916,30 +3896,30 @@ BEGIN
     START TRANSACTION;
     
     -- Soft delete the person
-    CALL sp_soft_delete('person', p_person_id, p_deleted_by, p_delete_reason);
+    CALL sp_soft_delete('persons', p_person_id, p_deleted_by, p_delete_reason); table
     
-    -- Soft delete related entities
-    UPDATE writer SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE person_id = p_person_id;
+    -- Soft delete related entities (assuming these tables exist and have person_id FK)
+    UPDATE writers SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE person_id = p_person_id; to plural
     
-    UPDATE artist SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE person_id = p_person_id;
+    UPDATE artists SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE person_id = p_person_id; to plural
     
-    UPDATE producer SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE person_id = p_person_id;
+    UPDATE producers SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE person_id = p_person_id; to plural
     
-    UPDATE person_alias SET is_active = 0 WHERE entity_id = p_person_id;
-    UPDATE person_identifier SET is_active = 0 WHERE person_id = p_person_id;
-    UPDATE person_contact SET is_active = 0 WHERE person_id = p_person_id;
-    UPDATE person_social_media SET is_active = 0 WHERE person_id = p_person_id;
+    UPDATE entity_aliases SET is_active = FALSE WHERE entity_id = p_person_id AND entity_type = 'person'; to plural
+    UPDATE entity_identifiers SET is_active = FALSE WHERE entity_id = p_person_id AND entity_type = 'person'; to plural
+    UPDATE person_contacts SET is_active = FALSE WHERE person_id = p_person_id; to plural
+    UPDATE person_social_medias SET is_active = FALSE WHERE person_id = p_person_id; to plural
     
     COMMIT;
 END$$
 
--- Cascade Soft Delete for Organization
-CREATE PROCEDURE sp_soft_delete_organization_cascade(
-    IN p_organization_id CHAR(36),
-    IN p_deleted_by CHAR(36),
+-- Cascade Soft Delete for Organizations
+CREATE PROCEDURE sp_soft_delete_organizations_cascade( to plural
+    IN p_organization_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
+    IN p_deleted_by BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_delete_reason TEXT
 )
 BEGIN
@@ -3952,22 +3932,22 @@ BEGIN
     START TRANSACTION;
     
     -- Soft delete the organization
-    CALL sp_soft_delete('organization', p_organization_id, p_deleted_by, p_delete_reason);
+    CALL sp_soft_delete('organizations', p_organization_id, p_deleted_by, p_delete_reason); table
     
-    -- Soft delete related entities
-    UPDATE publisher SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE organization_id = p_organization_id;
+    -- Soft delete related entities (assuming these tables exist and have organization_id FK)
+    UPDATE publishers SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE organization_id = p_organization_id; to plural
     
-    UPDATE label SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE organization_id = p_organization_id;
+    UPDATE labels SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE organization_id = p_organization_id; to plural
     
-    UPDATE distributor SET is_active = 0, is_deleted = 1, deleted_at = NOW(), deleted_by = p_deleted_by 
-    WHERE organization_id = p_organization_id;
+    UPDATE distributors SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_deleted_by 
+    WHERE organization_id = p_organization_id; to plural
     
-    UPDATE organization_alias SET is_active = 0 WHERE entity_id = p_organization_id;
-    UPDATE organization_identifier SET is_active = 0 WHERE organization_id = p_organization_id;
-    UPDATE organization_contact SET is_active = 0 WHERE organization_id = p_organization_id;
-    UPDATE organization_social_media SET is_active = 0 WHERE organization_id = p_organization_id;
+    UPDATE entity_aliases SET is_active = FALSE WHERE entity_id = p_organization_id AND entity_type = 'organization'; to plural
+    UPDATE entity_identifiers SET is_active = FALSE WHERE entity_id = p_organization_id AND entity_type = 'organization'; to plural
+    UPDATE organization_contacts SET is_active = FALSE WHERE organization_id = p_organization_id; to plural
+    UPDATE organization_social_medias SET is_active = FALSE WHERE organization_id = p_organization_id; to plural
     
     COMMIT;
 END$$
@@ -3975,7 +3955,7 @@ END$$
 DELIMITER ;
 
 -- =====================================================
--- ADDITIONAL UTILITY VIEWS
+-- ADDITIONAL UTILITY VIEWS 
 -- =====================================================
 
 -- Entity Verification Status View
@@ -3984,16 +3964,16 @@ SELECT
     'person' as entity_type,
     p.id as entity_id,
     p.display_name as entity_name,
-    p.verification_status,
+    p.verification_status, -- Assuming verification_status is a direct string or FK to resource_db.verification_statuses
     p.verification_date,
     p.verified_by,
     u.email as verified_by_email,
     p.verification_notes,
     p.created_at,
     p.updated_at
-FROM person p
-LEFT JOIN user u ON p.verified_by = u.id
-WHERE p.is_active = 1
+FROM persons p to plural
+LEFT JOIN users u ON p.verified_by = u.id to plural
+WHERE p.is_active = TRUE
 
 UNION ALL
 
@@ -4001,16 +3981,16 @@ SELECT
     'organization' as entity_type,
     o.id as entity_id,
     o.name as entity_name,
-    o.verification_status,
+    o.verification_status, -- Assuming verification_status is a direct string or FK to resource_db.verification_statuses
     o.verification_date,
     o.verified_by,
     u.email as verified_by_email,
     o.verification_notes,
     o.created_at,
     o.updated_at
-FROM organization o
-LEFT JOIN user u ON o.verified_by = u.id
-WHERE o.is_active = 1;
+FROM organizations o to plural
+LEFT JOIN users u ON o.verified_by = u.id to plural
+WHERE o.is_active = TRUE;
 
 -- Entity Activity Summary View
 CREATE OR REPLACE VIEW vw_entity_activity_summary AS
@@ -4028,14 +4008,14 @@ SELECT
         COALESCE(r.created_at, '1900-01-01'),
         COALESCE(pr.created_at, '1900-01-01')
     )) as last_activity_date
-FROM person p
-LEFT JOIN writer w ON p.id = w.person_id AND w.is_active = 1
-LEFT JOIN work_writer ww ON w.id = ww.writer_id AND ww.is_active = 1
-LEFT JOIN artist a ON p.id = a.person_id AND a.is_active = 1
-LEFT JOIN recording_artist ra ON a.id = ra.artist_id AND ra.is_active = 1
-LEFT JOIN release r ON r.primary_artist_id = a.id AND r.is_active = 1
-LEFT JOIN person_role pr ON p.id = pr.person_id AND pr.is_active = 1
-WHERE p.is_active = 1
+FROM persons p to plural
+LEFT JOIN writers w ON p.id = w.person_id AND w.is_active = TRUE to plural
+LEFT JOIN work_writers ww ON w.id = ww.writer_id AND ww.is_active = TRUE to plural
+LEFT JOIN artists a ON p.id = a.person_id AND a.is_active = TRUE to plural
+LEFT JOIN recording_artists ra ON a.id = ra.artist_id AND ra.is_active = TRUE to plural
+LEFT JOIN releases r ON r.primary_artist_id = a.id AND r.is_active = TRUE to plural
+LEFT JOIN person_roles pr ON p.id = pr.person_id AND pr.is_active = TRUE to plural
+WHERE p.is_active = TRUE
 GROUP BY p.id
 
 UNION ALL
@@ -4054,50 +4034,49 @@ SELECT
         COALESCE(r.created_at, '1900-01-01'),
         COALESCE(orr.created_at, '1900-01-01')
     )) as last_activity_date
-FROM organization o
-LEFT JOIN publisher p ON o.id = p.organization_id AND p.is_active = 1
-LEFT JOIN work_publisher wp ON p.id = wp.publisher_id AND wp.is_active = 1
-LEFT JOIN label l ON o.id = l.organization_id AND l.is_active = 1
-LEFT JOIN recording_ownership ro ON l.id = ro.owner_id AND ro.owner_type = 'label' AND ro.is_active = 1
-LEFT JOIN release r ON r.label_id = l.id AND r.is_active = 1
-LEFT JOIN organization_role orr ON o.id = orr.organization_id AND orr.is_active = 1
-WHERE o.is_active = 1
+FROM organizations o to plural
+LEFT JOIN publishers p ON o.id = p.organization_id AND p.is_active = TRUE to plural
+LEFT JOIN work_publishers wp ON p.id = wp.publisher_id AND wp.is_active = TRUE to plural
+LEFT JOIN labels l ON o.id = l.organization_id AND l.is_active = TRUE to plural
+LEFT JOIN recording_ownerships ro ON l.id = ro.owner_id AND ro.owner_type = 'label' AND ro.is_active = TRUE to plural
+LEFT JOIN releases r ON r.label_id = l.id AND r.is_active = TRUE to plural
+LEFT JOIN organization_roles orr ON o.id = orr.organization_id AND orr.is_active = TRUE to plural
+WHERE o.is_active = TRUE
 GROUP BY o.id;
 
 -- =====================================================
--- PERFORMANCE OPTIMIZATION INDEXES
+-- PERFORMANCE OPTIMIZATION INDEXES 
 -- =====================================================
 
 -- Add indexes for frequently searched fields
-CREATE INDEX idx_person_search ON person(display_name, first_name, last_name, stage_name);
-CREATE INDEX idx_organization_search ON organization(name, legal_name, trading_name);
-CREATE INDEX idx_person_alias_search ON person_alias(alias_name);
-CREATE INDEX idx_organization_alias_search ON organization_alias(alias_name);
-CREATE INDEX idx_person_identifier_search ON person_identifier(identifier_type, identifier_value);
-CREATE INDEX idx_organization_identifier_search ON organization_identifier(identifier_type, identifier_value);
+CREATE INDEX idx_persons_search ON persons(display_name, first_name, last_name, stage_name);
+CREATE INDEX idx_organizations_search ON organizations(name, legal_name, trading_name);
+CREATE INDEX idx_entity_aliases_search ON entity_aliases(alias_name);
+CREATE INDEX idx_entity_identifiers_search ON entity_identifiers(identifier_type_id, identifier_value);, using type_id for efficiency
+CREATE INDEX idx_entity_identifiers_value ON entity_identifiers(identifier_value); -- New, for direct value search
 
 -- Add indexes for relationship queries
-CREATE INDEX idx_work_writer_work ON work_writer(work_id, is_active);
-CREATE INDEX idx_work_writer_writer ON work_writer(writer_id, is_active);
-CREATE INDEX idx_work_publisher_work ON work_publisher(work_id, is_active);
-CREATE INDEX idx_work_publisher_publisher ON work_publisher(publisher_id, is_active);
-CREATE INDEX idx_recording_artist_recording ON recording_artist(recording_id, is_active);
-CREATE INDEX idx_recording_artist_artist ON recording_artist(artist_id, is_active);
+CREATE INDEX idx_work_writers_work ON work_writers(work_id, is_active);
+CREATE INDEX idx_work_writers_writer ON work_writers(writer_id, is_active);
+CREATE INDEX idx_work_publishers_work ON work_publishers(work_id, is_active);
+CREATE INDEX idx_work_publishers_publisher ON work_publishers(publisher_id, is_active);
+CREATE INDEX idx_recording_artists_recording ON recording_artists(recording_id, is_active);
+CREATE INDEX idx_recording_artists_artist ON recording_artists(artist_id, is_active);
 
 -- Add indexes for audit queries
-CREATE INDEX idx_audit_log_lookup ON audit_log(table_name, record_id, created_at);
-CREATE INDEX idx_entity_history_lookup ON entity_history(entity_type, entity_id, changed_at);
+CREATE INDEX idx_audit_logs_lookup ON audit_logs(table_name, record_id, created_at);
+CREATE INDEX idx_entity_histories_lookup ON entity_histories(entity_type, entity_id, changed_at);
 
 -- =============================================
--- SECTION 2: SECURITY
+-- SECTION 2: SECURITY TABLES 
 -- =============================================
 
--- encryption_key - Master encryption keys
-CREATE TABLE encryption_key (
+-- encryption_keys: Master encryption keys
+CREATE TABLE encryption_keys (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     key_name VARCHAR(100) NOT NULL,
-    key_type_id INT NOT NULL COMMENT 'FK to resource_db.encryption_key_type',
+    key_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.encryption_key_types', -- Changed INT, renamed lookup table
     algorithm VARCHAR(50) NOT NULL DEFAULT 'AES-256-GCM',
     key_value VARBINARY(512) NOT NULL COMMENT 'Encrypted key material',
     key_salt VARBINARY(256) NOT NULL,
@@ -4109,11 +4088,11 @@ CREATE TABLE encryption_key (
     rotation_schedule_days INT DEFAULT 90,
     next_rotation_date DATE NULL,
     is_primary BOOLEAN DEFAULT TRUE,
-    status_id INT NOT NULL COMMENT 'FK to resource_db.encryption_key_status',
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.encryption_key_statuses', -- Changed INT, renamed lookup table
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, key_name, key_type_id, algorithm, key_value, key_salt, key_version, purpose, created_date, expires_date, last_used_date, rotation_schedule_days, next_rotation_date, is_primary, status_id, metadata, is_active, is_deleted), 256)) STORED,
     last_integrity_check DATETIME NULL,
     
     -- Audit columns
@@ -4131,12 +4110,12 @@ CREATE TABLE encryption_key (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_encryption_key_type FOREIGN KEY (key_type_id) REFERENCES resource_db.encryption_key_type(id),
-    CONSTRAINT fk_encryption_key_status FOREIGN KEY (status_id) REFERENCES resource_db.encryption_key_status(id),
-    CONSTRAINT fk_encryption_key_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_encryption_key_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_encryption_key_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_encryption_key_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_encryption_keys_type FOREIGN KEY (key_type_id) REFERENCES resource_db.encryption_key_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_encryption_keys_status FOREIGN KEY (status_id) REFERENCES resource_db.encryption_key_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_encryption_keys_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_encryption_keys_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_encryption_keys_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_encryption_keys_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_key_type (key_type_id),
@@ -4148,24 +4127,24 @@ CREATE TABLE encryption_key (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- encryption_key_rotation - Key rotation history
-CREATE TABLE encryption_key_rotation (
+-- encryption_key_rotations: Key rotation history
+CREATE TABLE encryption_key_rotations (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     old_key_id BIGINT UNSIGNED NOT NULL,
     new_key_id BIGINT UNSIGNED NOT NULL,
-    rotation_type_id INT NOT NULL COMMENT 'FK to resource_db.key_rotation_type',
+    rotation_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.key_rotation_types', -- Changed INT, renamed lookup table
     rotation_reason VARCHAR(500) NULL,
     started_at DATETIME NOT NULL,
     completed_at DATETIME NULL,
     records_affected BIGINT DEFAULT 0,
     records_processed BIGINT DEFAULT 0,
-    status_id INT NOT NULL COMMENT 'FK to resource_db.rotation_status',
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rotation_statuses', -- Changed INT, renamed lookup table
     error_message TEXT NULL,
     rollback_performed BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, old_key_id, new_key_id, rotation_type_id, rotation_reason, started_at, completed_at, records_affected, records_processed, status_id, error_message, rollback_performed), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -4174,12 +4153,12 @@ CREATE TABLE encryption_key_rotation (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_key_rotation_old_key FOREIGN KEY (old_key_id) REFERENCES encryption_key(id),
-    CONSTRAINT fk_key_rotation_new_key FOREIGN KEY (new_key_id) REFERENCES encryption_key(id),
-    CONSTRAINT fk_key_rotation_type FOREIGN KEY (rotation_type_id) REFERENCES resource_db.key_rotation_type(id),
-    CONSTRAINT fk_key_rotation_status FOREIGN KEY (status_id) REFERENCES resource_db.rotation_status(id),
-    CONSTRAINT fk_key_rotation_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_key_rotation_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_key_rotations_old_key FOREIGN KEY (old_key_id) REFERENCES encryption_keys(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_key_rotations_new_key FOREIGN KEY (new_key_id) REFERENCES encryption_keys(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_key_rotations_type FOREIGN KEY (rotation_type_id) REFERENCES resource_db.key_rotation_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_key_rotations_status FOREIGN KEY (status_id) REFERENCES resource_db.rotation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_key_rotations_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_key_rotations_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_rotation_status (status_id),
@@ -4189,22 +4168,24 @@ CREATE TABLE encryption_key_rotation (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- field_encryption - Which fields are encrypted
-CREATE TABLE field_encryption (
+-- field_encryptions: Which fields are encrypted
+CREATE TABLE field_encryptions (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     table_name VARCHAR(100) NOT NULL,
     column_name VARCHAR(100) NOT NULL,
-    encryption_type_id INT NOT NULL COMMENT 'FK to resource_db.field_encryption_type',
+    encryption_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.field_encryption_types', -- Changed INT, renamed lookup table
     encryption_key_id BIGINT UNSIGNED NOT NULL,
     algorithm VARCHAR(50) NOT NULL DEFAULT 'AES-256-GCM',
     is_searchable BOOLEAN DEFAULT FALSE,
     search_index_type VARCHAR(50) NULL COMMENT 'blind index, phonetic, etc',
-    mask_pattern VARCHAR(100) NULL COMMENT 'e.g. XXX-XX-#### for SSN',
-    sensitivity_level_id INT NOT NULL COMMENT 'FK to resource_db.data_sensitivity_level',
+    mask_pattern VARBINARY(100) NULL COMMENT 'e.g. XXX-XX-#### for SSN, changed to VARBINARY', -- Changed to VARBINARY
+    mask_character CHAR(1) DEFAULT 'X', -- Retained for consistency
+    sensitivity_level_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.data_sensitivity_levels', -- Changed INT, renamed lookup table
     compliance_tags JSON NULL COMMENT '["GDPR", "PCI", "HIPAA"]',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, table_name, column_name, encryption_type_id, encryption_key_id, algorithm, is_searchable, search_index_type, mask_pattern, sensitivity_level_id, compliance_tags, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4218,12 +4199,12 @@ CREATE TABLE field_encryption (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_field_encryption_type FOREIGN KEY (encryption_type_id) REFERENCES resource_db.field_encryption_type(id),
-    CONSTRAINT fk_field_encryption_key FOREIGN KEY (encryption_key_id) REFERENCES encryption_key(id),
-    CONSTRAINT fk_field_encryption_sensitivity FOREIGN KEY (sensitivity_level_id) REFERENCES resource_db.data_sensitivity_level(id),
-    CONSTRAINT fk_field_encryption_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_field_encryption_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_field_encryption_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_field_encryptions_type FOREIGN KEY (encryption_type_id) REFERENCES resource_db.field_encryption_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_field_encryptions_key FOREIGN KEY (encryption_key_id) REFERENCES encryption_keys(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_field_encryptions_sensitivity FOREIGN KEY (sensitivity_level_id) REFERENCES resource_db.data_sensitivity_levels(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_field_encryptions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_field_encryptions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_field_encryptions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_table_column (table_name, column_name),
@@ -4233,15 +4214,15 @@ CREATE TABLE field_encryption (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- data_masking_rule - Data masking policies
-CREATE TABLE data_masking_rule (
+-- data_masking_rules: Data masking policies
+CREATE TABLE data_masking_rules (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     rule_name VARCHAR(100) NOT NULL,
     table_name VARCHAR(100) NOT NULL,
     column_name VARCHAR(100) NOT NULL,
-    masking_type_id INT NOT NULL COMMENT 'FK to resource_db.data_masking_type',
-    mask_pattern VARCHAR(100) NULL,
+    masking_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.data_masking_types', -- Changed INT, renamed lookup table
+    mask_pattern VARBINARY(100) NULL COMMENT 'Changed to VARBINARY', -- Changed to VARBINARY
     mask_character CHAR(1) DEFAULT 'X',
     preserve_length BOOLEAN DEFAULT TRUE,
     preserve_format BOOLEAN DEFAULT TRUE,
@@ -4251,7 +4232,7 @@ CREATE TABLE data_masking_rule (
     priority INT DEFAULT 100,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rule_name, table_name, column_name, masking_type_id, mask_pattern, mask_character, preserve_length, preserve_format, role_exceptions, user_exceptions, condition_sql, priority, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4268,11 +4249,11 @@ CREATE TABLE data_masking_rule (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_masking_rule_type FOREIGN KEY (masking_type_id) REFERENCES resource_db.data_masking_type(id),
-    CONSTRAINT fk_masking_rule_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_masking_rule_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_masking_rule_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_masking_rule_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_masking_rules_type FOREIGN KEY (masking_type_id) REFERENCES resource_db.data_masking_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_masking_rules_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_masking_rules_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_masking_rules_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_masking_rules_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_table_column (table_name, column_name),
@@ -4282,23 +4263,23 @@ CREATE TABLE data_masking_rule (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- access_control_list - Fine-grained permissions
-CREATE TABLE access_control_list (
+-- access_control_lists: Fine-grained permissions
+CREATE TABLE access_control_lists (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     resource_type VARCHAR(50) NOT NULL COMMENT 'table, api_endpoint, feature, etc',
     resource_identifier VARCHAR(200) NOT NULL,
-    principal_type_id INT NOT NULL COMMENT 'FK to resource_db.principal_type',
+    principal_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.principal_types', -- Changed INT, renamed lookup table
     principal_id BIGINT UNSIGNED NOT NULL,
-    permission_type_id INT NOT NULL COMMENT 'FK to resource_db.permission_type',
-    grant_type_id INT NOT NULL COMMENT 'FK to resource_db.grant_type',
+    permission_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.permission_types', -- Changed INT, renamed lookup table
+    grant_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.grant_types', -- Changed INT, renamed lookup table
     conditions JSON NULL COMMENT 'Additional conditions for access',
     valid_from DATETIME NULL,
     valid_until DATETIME NULL,
     priority INT DEFAULT 100 COMMENT 'Higher priority rules override lower',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, resource_type, resource_identifier, principal_type_id, principal_id, permission_type_id, grant_type_id, conditions, valid_from, valid_until, priority, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4315,13 +4296,13 @@ CREATE TABLE access_control_list (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_acl_principal_type FOREIGN KEY (principal_type_id) REFERENCES resource_db.principal_type(id),
-    CONSTRAINT fk_acl_permission_type FOREIGN KEY (permission_type_id) REFERENCES resource_db.permission_type(id),
-    CONSTRAINT fk_acl_grant_type FOREIGN KEY (grant_type_id) REFERENCES resource_db.grant_type(id),
-    CONSTRAINT fk_acl_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_acl_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_acl_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_acl_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_acls_principal_type FOREIGN KEY (principal_type_id) REFERENCES resource_db.principal_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_permission_type FOREIGN KEY (permission_type_id) REFERENCES resource_db.permission_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_grant_type FOREIGN KEY (grant_type_id) REFERENCES resource_db.grant_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_acls_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_resource (resource_type, resource_identifier),
@@ -4335,16 +4316,16 @@ CREATE TABLE access_control_list (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- row_level_security - Row-level access rules
-CREATE TABLE row_level_security (
+-- row_level_securities: Row-level access rules
+CREATE TABLE row_level_securities (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     policy_name VARCHAR(100) NOT NULL,
     table_name VARCHAR(100) NOT NULL,
-    policy_type_id INT NOT NULL COMMENT 'FK to resource_db.rls_policy_type',
-    applies_to_id INT NOT NULL COMMENT 'FK to resource_db.rls_applies_to',
-    role_id BIGINT UNSIGNED NULL,
-    user_id BIGINT UNSIGNED NULL,
+    policy_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rls_policy_types', -- Changed INT, renamed lookup table
+    applies_to_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rls_applies_tos', -- Changed INT, renamed lookup table
+    role_id BIGINT UNSIGNED NULL, -- FK to roles.id
+    user_id BIGINT UNSIGNED NULL, -- FK to users.id
     filter_predicate TEXT NOT NULL COMMENT 'SQL WHERE clause',
     check_predicate TEXT NULL COMMENT 'SQL CHECK constraint',
     error_message VARCHAR(500) NULL,
@@ -4352,7 +4333,7 @@ CREATE TABLE row_level_security (
     priority INT DEFAULT 100,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, policy_name, table_name, policy_type_id, applies_to_id, role_id, user_id, filter_predicate, check_predicate, error_message, bypass_rls, priority, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4369,14 +4350,14 @@ CREATE TABLE row_level_security (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rls_policy_type FOREIGN KEY (policy_type_id) REFERENCES resource_db.rls_policy_type(id),
-    CONSTRAINT fk_rls_applies_to FOREIGN KEY (applies_to_id) REFERENCES resource_db.rls_applies_to(id),
-    CONSTRAINT fk_rls_role FOREIGN KEY (role_id) REFERENCES role(id),
-    CONSTRAINT fk_rls_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_rls_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rls_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rls_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rls_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rls_policy_type FOREIGN KEY (policy_type_id) REFERENCES resource_db.rls_policy_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_rls_applies_to FOREIGN KEY (applies_to_id) REFERENCES resource_db.rls_applies_tos(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_rls_roles FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_rls_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_rls_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_rls_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_rls_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_rls_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_table_name (table_name),
@@ -4388,20 +4369,20 @@ CREATE TABLE row_level_security (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- column_level_security - Column-level access rules
-CREATE TABLE column_level_security (
+-- column_level_securities: Column-level access rules
+CREATE TABLE column_level_securities (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     table_name VARCHAR(100) NOT NULL,
     column_name VARCHAR(100) NOT NULL,
-    role_id BIGINT UNSIGNED NULL,
-    user_id BIGINT UNSIGNED NULL,
-    permission_id INT NOT NULL COMMENT 'FK to resource_db.column_permission_type',
+    role_id BIGINT UNSIGNED NULL, -- FK to roles.id
+    user_id BIGINT UNSIGNED NULL, -- FK to users.id
+    permission_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.column_permission_types', -- Changed INT, renamed lookup table
     mask_on_read BOOLEAN DEFAULT FALSE,
     audit_access BOOLEAN DEFAULT TRUE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, table_name, column_name, role_id, user_id, permission_id, mask_on_read, audit_access, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4418,13 +4399,13 @@ CREATE TABLE column_level_security (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_cls_permission FOREIGN KEY (permission_id) REFERENCES resource_db.column_permission_type(id),
-    CONSTRAINT fk_cls_role FOREIGN KEY (role_id) REFERENCES role(id),
-    CONSTRAINT fk_cls_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_cls_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_cls_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_cls_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_cls_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_cls_permission FOREIGN KEY (permission_id) REFERENCES resource_db.column_permission_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_cls_roles FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_cls_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_cls_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_cls_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_cls_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_cls_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_column_principal (table_name, column_name, role_id, user_id),
@@ -4437,20 +4418,20 @@ CREATE TABLE column_level_security (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- security_audit_log - Security-specific events
-CREATE TABLE security_audit_log (
+-- security_audit_logs: Security-specific events
+CREATE TABLE security_audit_logs (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    event_type VARCHAR(50) NOT NULL,
-    severity_id INT NOT NULL COMMENT 'FK to resource_db.security_severity',
-    user_id BIGINT UNSIGNED NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    event_type VARCHAR(50) NOT NULL, -- Consider FK to resource_db.security_event_types
+    severity_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.security_severities', -- Changed INT, renamed lookup table
+    user_id BIGINT UNSIGNED NULL, -- FK to users.id
     session_id VARCHAR(128) NULL,
     ip_address VARCHAR(45) NULL,
     user_agent VARCHAR(500) NULL,
     resource_type VARCHAR(50) NULL,
-    resource_id VARCHAR(100) NULL,
+    resource_id VARCHAR(100) NULL, -- Can be BIGINT or UUID, keeping VARCHAR(100) for flexibility
     action VARCHAR(100) NOT NULL,
-    result_id INT NOT NULL COMMENT 'FK to resource_db.security_result',
+    result_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.security_results', -- Changed INT, renamed lookup table
     failure_reason VARCHAR(500) NULL,
     request_data JSON NULL,
     response_data JSON NULL,
@@ -4470,15 +4451,15 @@ CREATE TABLE security_audit_log (
     is_suspicious BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, event_type, severity_id, user_id, session_id, ip_address, user_agent, resource_type, resource_id, action, result_id, failure_reason, request_data, response_data, stack_trace, correlation_id, country_code, region, city, latitude, longitude, threat_score, threat_indicators, is_suspicious), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys
-    CONSTRAINT fk_security_audit_severity FOREIGN KEY (severity_id) REFERENCES resource_db.security_severity(id),
-    CONSTRAINT fk_security_audit_result FOREIGN KEY (result_id) REFERENCES resource_db.security_result(id),
-    CONSTRAINT fk_security_audit_user FOREIGN KEY (user_id) REFERENCES user(id),
+    CONSTRAINT fk_security_audit_severities FOREIGN KEY (severity_id) REFERENCES resource_db.security_severities(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_security_audit_results FOREIGN KEY (result_id) REFERENCES resource_db.security_results(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_security_audit_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_event_type (event_type),
@@ -4493,13 +4474,13 @@ CREATE TABLE security_audit_log (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- suspicious_activity - Anomaly detection
-CREATE TABLE suspicious_activity (
+-- suspicious_activities: Anomaly detection
+CREATE TABLE suspicious_activities (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    activity_type VARCHAR(50) NOT NULL,
-    threat_level_id INT NOT NULL COMMENT 'FK to resource_db.threat_level',
-    user_id BIGINT UNSIGNED NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    activity_type VARCHAR(50) NOT NULL, -- Consider FK to resource_db.activity_types
+    threat_level_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.threat_levels', -- Changed INT, renamed lookup table
+    user_id BIGINT UNSIGNED NULL, -- FK to users.id
     ip_address VARCHAR(45) NULL,
     session_id VARCHAR(128) NULL,
     description TEXT NOT NULL,
@@ -4507,31 +4488,31 @@ CREATE TABLE suspicious_activity (
     score INT NOT NULL COMMENT 'Threat score 0-100',
     pattern_matched VARCHAR(200) NULL,
     false_positive BOOLEAN DEFAULT FALSE,
-    investigation_status_id INT NOT NULL COMMENT 'FK to resource_db.investigation_status',
+    investigation_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.investigation_statuses', -- Changed INT, renamed lookup table
     investigation_notes TEXT NULL,
-    resolved_by BIGINT UNSIGNED NULL,
+    resolved_by BIGINT UNSIGNED NULL, -- FK to users.id
     resolved_at DATETIME NULL,
     action_taken VARCHAR(500) NULL,
     automated_response JSON NULL COMMENT 'Automated actions taken',
     
     -- Related data
-    related_activities JSON NULL COMMENT 'UUIDs of related suspicious activities',
+    related_activities JSON NULL COMMENT 'UUIDs of related suspicious activities (stored as JSON array)',
     affected_resources JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, activity_type, threat_level_id, user_id, ip_address, session_id, description, indicators, score, pattern_matched, false_positive, investigation_status_id, investigation_notes, resolved_by, resolved_at, action_taken, automated_response, related_activities, affected_resources, created_at, updated_at), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_suspicious_threat_level FOREIGN KEY (threat_level_id) REFERENCES resource_db.threat_level(id),
-    CONSTRAINT fk_suspicious_investigation_status FOREIGN KEY (investigation_status_id) REFERENCES resource_db.investigation_status(id),
-    CONSTRAINT fk_suspicious_activity_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_suspicious_activity_resolved_by FOREIGN KEY (resolved_by) REFERENCES user(id),
-    CONSTRAINT fk_suspicious_activity_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_suspicious_threat_levels FOREIGN KEY (threat_level_id) REFERENCES resource_db.threat_levels(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_suspicious_investigation_statuses FOREIGN KEY (investigation_status_id) REFERENCES resource_db.investigation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_suspicious_activities_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_suspicious_activities_resolved_by FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_suspicious_activities_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_activity_type (activity_type),
@@ -4546,17 +4527,17 @@ CREATE TABLE suspicious_activity (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ip_whitelist - Allowed IP addresses
-CREATE TABLE ip_whitelist (
+-- ip_whitelists: Allowed IP addresses
+CREATE TABLE ip_whitelists (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    ip_address VARCHAR(45) NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    ip_address VARCHAR(45) NOT NULL UNIQUE, -- Added UNIQUE
     ip_range_start VARCHAR(45) NULL,
     ip_range_end VARCHAR(45) NULL,
     subnet_mask VARCHAR(45) NULL,
     description VARCHAR(500) NOT NULL,
-    owner_type_id INT NOT NULL COMMENT 'FK to resource_db.ip_owner_type',
-    owner_id BIGINT UNSIGNED NULL,
+    owner_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ip_owner_types', -- Changed INT, renamed lookup table
+    owner_id BIGINT UNSIGNED NULL, -- Polymorphic ID: user_id, organization_id, etc.
     valid_from DATETIME NULL,
     valid_until DATETIME NULL,
     auto_renew BOOLEAN DEFAULT FALSE,
@@ -4564,7 +4545,7 @@ CREATE TABLE ip_whitelist (
     hit_count BIGINT DEFAULT 0,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, ip_address, ip_range_start, ip_range_end, subnet_mask, description, owner_type_id, owner_id, valid_from, valid_until, auto_renew, last_seen, hit_count, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4581,11 +4562,11 @@ CREATE TABLE ip_whitelist (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_ip_whitelist_owner_type FOREIGN KEY (owner_type_id) REFERENCES resource_db.ip_owner_type(id),
-    CONSTRAINT fk_ip_whitelist_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_whitelist_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_whitelist_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_whitelist_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_ip_whitelists_owner_type FOREIGN KEY (owner_type_id) REFERENCES resource_db.ip_owner_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_whitelists_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_whitelists_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_whitelists_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_whitelists_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_ip_address (ip_address),
@@ -4597,26 +4578,26 @@ CREATE TABLE ip_whitelist (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ip_blacklist - Blocked IP addresses
-CREATE TABLE ip_blacklist (
+-- ip_blacklists: Blocked IP addresses
+CREATE TABLE ip_blacklists (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    ip_address VARCHAR(45) NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    ip_address VARCHAR(45) NOT NULL UNIQUE, -- Added UNIQUE
     ip_range_start VARCHAR(45) NULL,
     ip_range_end VARCHAR(45) NULL,
     subnet_mask VARCHAR(45) NULL,
     block_reason VARCHAR(500) NOT NULL,
-    threat_type VARCHAR(100) NULL,
+    threat_type VARCHAR(100) NULL, -- Consider FK to resource_db.threat_types
     threat_source VARCHAR(200) NULL COMMENT 'Where threat intel came from',
-    severity_id INT NOT NULL COMMENT 'FK to resource_db.security_severity',
-    block_type_id INT NOT NULL COMMENT 'FK to resource_db.block_type',
+    severity_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.security_severities', -- Changed INT, renamed lookup table
+    block_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.block_types', -- Changed INT, renamed lookup table
     expires_at DATETIME NULL,
     hit_count BIGINT DEFAULT 0,
     last_blocked DATETIME NULL,
     auto_expire BOOLEAN DEFAULT TRUE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, ip_address, ip_range_start, ip_range_end, subnet_mask, block_reason, threat_type, threat_source, severity_id, block_type_id, expires_at, hit_count, last_blocked, auto_expire, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4633,12 +4614,12 @@ CREATE TABLE ip_blacklist (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_ip_blacklist_severity FOREIGN KEY (severity_id) REFERENCES resource_db.security_severity(id),
-    CONSTRAINT fk_ip_blacklist_block_type FOREIGN KEY (block_type_id) REFERENCES resource_db.block_type(id),
-    CONSTRAINT fk_ip_blacklist_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_blacklist_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_blacklist_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_ip_blacklist_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_ip_blacklists_severity FOREIGN KEY (severity_id) REFERENCES resource_db.security_severities(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_blacklists_block_type FOREIGN KEY (block_type_id) REFERENCES resource_db.block_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_blacklists_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_blacklists_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_blacklists_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ip_blacklists_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_ip_address (ip_address),
@@ -4651,14 +4632,14 @@ CREATE TABLE ip_blacklist (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- geo_restriction - Geographic access rules
-CREATE TABLE geo_restriction (
+-- geo_restrictions: Geographic access rules
+CREATE TABLE geo_restrictions (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     restriction_name VARCHAR(100) NOT NULL,
-    restriction_type_id INT NOT NULL COMMENT 'FK to resource_db.geo_restriction_type',
-    applies_to_id INT NOT NULL COMMENT 'FK to resource_db.geo_applies_to',
-    country_code CHAR(2) NULL,
+    restriction_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.geo_restriction_types', -- Changed INT, renamed lookup table
+    applies_to_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.geo_applies_tos', -- Changed INT, renamed lookup table
+    country_code CHAR(2) NULL, -- Consider FK to resource_db.countries.code
     region_code VARCHAR(10) NULL,
     city VARCHAR(100) NULL,
     postal_code VARCHAR(20) NULL,
@@ -4666,13 +4647,13 @@ CREATE TABLE geo_restriction (
     latitude_max DECIMAL(10,8) NULL,
     longitude_min DECIMAL(11,8) NULL,
     longitude_max DECIMAL(11,8) NULL,
-    role_exceptions JSON NULL COMMENT 'Roles exempt from this restriction',
-    user_exceptions JSON NULL COMMENT 'User IDs exempt from this restriction',
+    role_exceptions JSON NULL COMMENT 'Roles that can see unmasked data (JSON array of role_ids)',
+    user_exceptions JSON NULL COMMENT 'User IDs that can see unmasked data (JSON array of user_ids)',
     valid_from DATETIME NULL,
     valid_until DATETIME NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, restriction_name, restriction_type_id, applies_to_id, country_code, region_code, city, postal_code, latitude_min, latitude_max, longitude_min, longitude_max, role_exceptions, user_exceptions, valid_from, valid_until, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4689,12 +4670,12 @@ CREATE TABLE geo_restriction (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_geo_restriction_type FOREIGN KEY (restriction_type_id) REFERENCES resource_db.geo_restriction_type(id),
-    CONSTRAINT fk_geo_restriction_applies_to FOREIGN KEY (applies_to_id) REFERENCES resource_db.geo_applies_to(id),
-    CONSTRAINT fk_geo_restriction_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_geo_restriction_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_geo_restriction_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_geo_restriction_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_geo_restrictions_type FOREIGN KEY (restriction_type_id) REFERENCES resource_db.geo_restriction_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_geo_restrictions_applies_to FOREIGN KEY (applies_to_id) REFERENCES resource_db.geo_applies_tos(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_geo_restrictions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_geo_restrictions_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_geo_restrictions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_geo_restrictions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_restriction_type (restriction_type_id),
@@ -4706,14 +4687,14 @@ CREATE TABLE geo_restriction (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- device_fingerprint - Trusted devices
-CREATE TABLE device_fingerprint (
+-- device_fingerprints: Trusted devices
+CREATE TABLE device_fingerprints (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
-    fingerprint_hash VARCHAR(128) NOT NULL,
+    fingerprint_hash VARBINARY(128) NOT NULL UNIQUE COMMENT 'ENCRYPTED HASH', -- Changed to VARBINARY, Added UNIQUE
     device_name VARCHAR(100) NULL,
-    device_type_id INT NOT NULL COMMENT 'FK to resource_db.device_type',
+    device_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.device_types', -- Changed INT, renamed lookup table
     browser_name VARCHAR(50) NULL,
     browser_version VARCHAR(50) NULL,
     os_name VARCHAR(50) NULL,
@@ -4721,11 +4702,11 @@ CREATE TABLE device_fingerprint (
     screen_resolution VARCHAR(20) NULL,
     timezone VARCHAR(50) NULL,
     language VARCHAR(10) NULL,
-    canvas_fingerprint VARCHAR(128) NULL,
-    webgl_fingerprint VARCHAR(128) NULL,
-    audio_fingerprint VARCHAR(128) NULL,
-    font_list_hash VARCHAR(128) NULL,
-    plugin_list_hash VARCHAR(128) NULL,
+    canvas_fingerprint VARBINARY(128) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    webgl_fingerprint VARBINARY(128) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    audio_fingerprint VARBINARY(128) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    font_list_hash VARBINARY(128) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    plugin_list_hash VARBINARY(128) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     trust_score INT DEFAULT 50 COMMENT '0-100 trust level',
     is_trusted BOOLEAN DEFAULT FALSE,
     last_seen DATETIME NULL,
@@ -4737,7 +4718,7 @@ CREATE TABLE device_fingerprint (
     tor_detected BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, user_id, fingerprint_hash, device_name, device_type_id, browser_name, browser_version, os_name, os_version, screen_resolution, timezone, language, canvas_fingerprint, webgl_fingerprint, audio_fingerprint, font_list_hash, plugin_list_hash, trust_score, is_trusted, last_seen, seen_count, vpn_detected, proxy_detected, tor_detected, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4754,15 +4735,14 @@ CREATE TABLE device_fingerprint (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_device_fingerprint_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_device_fingerprint_device_type FOREIGN KEY (device_type_id) REFERENCES resource_db.device_type(id),
-    CONSTRAINT fk_device_fingerprint_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_device_fingerprint_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_device_fingerprint_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_device_fingerprint_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_device_fingerprints_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_device_fingerprints_device_type FOREIGN KEY (device_type_id) REFERENCES resource_db.device_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_device_fingerprints_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_device_fingerprints_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_device_fingerprints_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_device_fingerprints_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
-    UNIQUE KEY uk_user_fingerprint (user_id, fingerprint_hash),
     INDEX idx_user_id (user_id),
     INDEX idx_fingerprint_hash (fingerprint_hash),
     INDEX idx_device_type (device_type_id),
@@ -4773,19 +4753,19 @@ CREATE TABLE device_fingerprint (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- security_question - User security questions
-CREATE TABLE security_question (
+-- security_questions: User security questions
+CREATE TABLE security_questions (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
-    question_id INT NOT NULL COMMENT 'FK to resource_db.security_question_type',
-    answer_hash VARCHAR(255) NOT NULL COMMENT 'Hashed answer',
+    question_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.security_question_types', -- Changed INT, renamed lookup table
+    answer_hash VARBINARY(255) NOT NULL COMMENT 'Hashed answer, changed to VARBINARY', -- Changed to VARBINARY
     hint VARCHAR(100) NULL COMMENT 'Optional hint',
     last_used DATETIME NULL,
     use_count INT DEFAULT 0,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, user_id, question_id, answer_hash, hint, last_used, use_count, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4802,12 +4782,12 @@ CREATE TABLE security_question (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_security_question_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_security_question_type FOREIGN KEY (question_id) REFERENCES resource_db.security_question_type(id),
-    CONSTRAINT fk_security_question_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_security_question_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_security_question_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_security_question_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_security_questions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_security_questions_type FOREIGN KEY (question_id) REFERENCES resource_db.security_question_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_security_questions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_security_questions_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_security_questions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_security_questions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_user_id (user_id),
@@ -4817,26 +4797,27 @@ CREATE TABLE security_question (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- password_history - Prevent password reuse
-CREATE TABLE password_history (
+-- password_histories: Prevent password reuse
+CREATE TABLE password_histories (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARBINARY(255) NOT NULL COMMENT 'Changed to VARBINARY', -- Changed to VARBINARY
     set_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_date DATETIME NULL,
-    change_reason_id INT NOT NULL COMMENT 'FK to resource_db.password_change_reason',
+    change_reason_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.password_change_reasons', -- Changed INT, renamed lookup table
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, user_id, password_hash, set_date, expired_date, change_reason_id), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT UNSIGNED NOT NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_password_history_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_password_history_change_reason FOREIGN KEY (change_reason_id) REFERENCES resource_db.password_change_reason(id),
-    CONSTRAINT fk_password_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_password_histories_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_password_histories_change_reason FOREIGN KEY (change_reason_id) REFERENCES resource_db.password_change_reasons(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_password_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_user_id (user_id),
@@ -4845,16 +4826,16 @@ CREATE TABLE password_history (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- mfa_device - Multi-factor authentication devices
-CREATE TABLE mfa_device (
+-- mfa_devices: Multi-factor authentication devices
+CREATE TABLE mfa_devices (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
     device_name VARCHAR(100) NOT NULL,
-    device_type_id INT NOT NULL COMMENT 'FK to resource_db.mfa_device_type',
+    device_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.mfa_device_types', -- Changed INT, renamed lookup table
     secret_encrypted VARBINARY(512) NULL COMMENT 'Encrypted secret for TOTP',
-    phone_number VARCHAR(50) NULL COMMENT 'For SMS, encrypted',
-    email_address VARCHAR(255) NULL COMMENT 'For email MFA, encrypted',
+    phone_number VARBINARY(50) NULL COMMENT 'For SMS, encrypted, changed to VARBINARY', -- Changed to VARBINARY
+    email_address VARBINARY(255) NULL COMMENT 'For email MFA, encrypted, changed to VARBINARY', -- Changed to VARBINARY
     hardware_id VARCHAR(100) NULL COMMENT 'For hardware tokens',
     is_primary BOOLEAN DEFAULT FALSE,
     is_backup BOOLEAN DEFAULT FALSE,
@@ -4863,7 +4844,7 @@ CREATE TABLE mfa_device (
     trust_expires_at DATETIME NULL COMMENT 'Remember this device until',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, user_id, device_name, device_type_id, secret_encrypted, phone_number, email_address, hardware_id, is_primary, is_backup, last_used, use_count, trust_expires_at, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
@@ -4881,12 +4862,12 @@ CREATE TABLE mfa_device (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_mfa_device_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_mfa_device_type FOREIGN KEY (device_type_id) REFERENCES resource_db.mfa_device_type(id),
-    CONSTRAINT fk_mfa_device_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_mfa_device_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_mfa_device_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_mfa_device_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_mfa_devices_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_mfa_devices_type FOREIGN KEY (device_type_id) REFERENCES resource_db.mfa_device_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_mfa_devices_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_mfa_devices_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_mfa_devices_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_mfa_devices_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_user_id (user_id),
@@ -4897,14 +4878,15 @@ CREATE TABLE mfa_device (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- session_security - Enhanced session tracking
-CREATE TABLE session_security (
+-- session_securities: Enhanced session tracking
+CREATE TABLE session_securities (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     session_id VARCHAR(128) NOT NULL UNIQUE,
     user_id BIGINT UNSIGNED NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     user_agent VARCHAR(500) NULL,
-    device_fingerprint_id BIGINT UNSIGNED NULL,
+    device_fingerprint_id BIGINT UNSIGNED NULL, -- FK to device_fingerprints.id
     started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_activity DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME NOT NULL,
@@ -4912,12 +4894,12 @@ CREATE TABLE session_security (
     termination_reason VARCHAR(100) NULL,
     
     -- Session data
-    auth_method VARCHAR(50) NOT NULL COMMENT 'password, sso, mfa, etc',
+    auth_method VARCHAR(50) NOT NULL COMMENT 'password, sso, mfa, etc', -- Consider FK to resource_db.auth_methods
     mfa_verified BOOLEAN DEFAULT FALSE,
     risk_score INT DEFAULT 0 COMMENT '0-100 risk level',
     
     -- Location tracking
-    country_code CHAR(2) NULL,
+    country_code CHAR(2) NULL, -- Consider FK to resource_db.countries.code
     region VARCHAR(100) NULL,
     city VARCHAR(100) NULL,
     latitude DECIMAL(10,8) NULL,
@@ -4929,15 +4911,15 @@ CREATE TABLE session_security (
     location_mismatch BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, session_id, user_id, ip_address, user_agent, device_fingerprint_id, started_at, last_activity, expires_at, terminated_at, termination_reason, auth_method, mfa_verified, risk_score, country_code, region, city, latitude, longitude, is_suspicious, vpn_detected, location_mismatch), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     -- Foreign Keys
-    CONSTRAINT fk_session_security_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_session_security_device FOREIGN KEY (device_fingerprint_id) REFERENCES device_fingerprint(id),
+    CONSTRAINT fk_session_securities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_session_securities_device FOREIGN KEY (device_fingerprint_id) REFERENCES device_fingerprints(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_session_id (session_id),
@@ -4950,20 +4932,21 @@ CREATE TABLE session_security (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- api_key_permission - Granular API permissions
-CREATE TABLE api_key_permission (
+-- api_key_permissions: Granular API permissions
+CREATE TABLE api_key_permissions (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    api_key_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    api_key_id BIGINT UNSIGNED NOT NULL, -- FK to api_keys.id
     endpoint_pattern VARCHAR(200) NOT NULL COMMENT 'e.g. /api/v1/works/*',
-    http_method VARCHAR(10) NOT NULL COMMENT 'GET, POST, PUT, DELETE, *',
+    http_method VARCHAR(10) NOT NULL COMMENT 'GET, POST, PUT, DELETE, *', -- Consider FK to resource_db.http_methods
     rate_limit INT NULL COMMENT 'Requests per hour',
-    ip_whitelist JSON NULL COMMENT 'Allowed IPs for this endpoint',
-    required_headers JSON NULL COMMENT 'Headers that must be present',
-    allowed_parameters JSON NULL COMMENT 'Allowed query/body parameters',
-    response_fields JSON NULL COMMENT 'Fields to include/exclude in response',
+    ip_whitelist JSON NULL COMMENT 'Allowed IPs for this endpoint (JSON array of IPs)',
+    required_headers JSON NULL COMMENT 'Headers that must be present (JSON array of key-value pairs)',
+    allowed_parameters JSON NULL COMMENT 'Allowed query/body parameters (JSON object)',
+    response_fields JSON NULL COMMENT 'Fields to include/exclude in response (JSON object)',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, api_key_id, endpoint_pattern, http_method, rate_limit, ip_whitelist, required_headers, allowed_parameters, response_fields, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -4977,10 +4960,10 @@ CREATE TABLE api_key_permission (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_api_key_permission_key FOREIGN KEY (api_key_id) REFERENCES api_key(id),
-    CONSTRAINT fk_api_key_permission_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_api_key_permission_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_api_key_permission_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_api_key_permissions_key FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_api_key_permissions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_api_key_permissions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_api_key_permissions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_api_key_id (api_key_id),
@@ -4989,11 +4972,12 @@ CREATE TABLE api_key_permission (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- data_classification - Sensitivity levels
-CREATE TABLE data_classification (
+-- data_classifications: Sensitivity levels
+CREATE TABLE data_classifications (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     classification_name VARCHAR(50) NOT NULL UNIQUE,
-    classification_level INT NOT NULL COMMENT '1=Public, 2=Internal, 3=Confidential, 4=Restricted',
+    classification_level INT NOT NULL COMMENT '1=Public, 2=Internal, 3=Confidential, 4=Restricted', -- Consider FK to resource_db.classification_levels
     description TEXT NULL,
     handling_requirements TEXT NULL,
     encryption_required BOOLEAN DEFAULT TRUE,
@@ -5003,7 +4987,7 @@ CREATE TABLE data_classification (
     compliance_frameworks JSON NULL COMMENT '["GDPR", "PCI", "HIPAA"]',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, classification_name, classification_level, description, handling_requirements, encryption_required, audit_access, retention_days, disposal_method, compliance_frameworks, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -5017,9 +5001,9 @@ CREATE TABLE data_classification (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_data_classification_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_data_classification_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_data_classification_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_data_classifications_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_data_classifications_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_data_classifications_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_classification_level (classification_level),
@@ -5027,20 +5011,20 @@ CREATE TABLE data_classification (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- privacy_shield - GDPR/CCPA compliance
-CREATE TABLE privacy_shield (
+-- privacy_shields: GDPR/CCPA compliance
+CREATE TABLE privacy_shields (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     user_id BIGINT UNSIGNED NOT NULL,
-    request_type_id INT NOT NULL COMMENT 'FK to resource_db.privacy_request_type',
-    status_id INT NOT NULL COMMENT 'FK to resource_db.privacy_request_status',
+    request_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.privacy_request_types', -- Changed INT, renamed lookup table
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.privacy_request_statuses', -- Changed INT, renamed lookup table
     requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     processed_at DATETIME NULL,
-    processed_by BIGINT UNSIGNED NULL,
+    processed_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Request details
     request_details JSON NOT NULL,
-    verification_method VARCHAR(100) NULL,
+    verification_method VARCHAR(100) NULL, -- Consider FK to resource_db.verification_methods
     verification_completed BOOLEAN DEFAULT FALSE,
     
     -- Response
@@ -5050,24 +5034,24 @@ CREATE TABLE privacy_shield (
     export_expires_at DATETIME NULL,
     
     -- Compliance tracking
-    regulation VARCHAR(50) NOT NULL COMMENT 'GDPR, CCPA, etc',
+    regulation VARCHAR(50) NOT NULL COMMENT 'GDPR, CCPA, etc', -- Consider FK to resource_db.regulations
     article_reference VARCHAR(50) NULL COMMENT 'e.g. GDPR Article 17',
     deadline_date DATE NOT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, user_id, request_type_id, status_id, requested_at, processed_at, processed_by, request_details, verification_method, verification_completed, response_data, rejection_reason, data_export_url, export_expires_at, regulation, article_reference, deadline_date), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_privacy_shield_user FOREIGN KEY (user_id) REFERENCES user(id),
-    CONSTRAINT fk_privacy_shield_request_type FOREIGN KEY (request_type_id) REFERENCES resource_db.privacy_request_type(id),
-    CONSTRAINT fk_privacy_shield_status FOREIGN KEY (status_id) REFERENCES resource_db.privacy_request_status(id),
-    CONSTRAINT fk_privacy_shield_processed_by FOREIGN KEY (processed_by) REFERENCES user(id),
-    CONSTRAINT fk_privacy_shield_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_privacy_shields_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_privacy_shields_request_type FOREIGN KEY (request_type_id) REFERENCES resource_db.privacy_request_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_privacy_shields_status FOREIGN KEY (status_id) REFERENCES resource_db.privacy_request_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_privacy_shields_processed_by FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_privacy_shields_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_user_id (user_id),
@@ -5079,12 +5063,13 @@ CREATE TABLE privacy_shield (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 -- =============================================
--- SECTION 2: SECURITY PROCEDURES & VIEWS
+-- SECTION 2: SECURITY PROCEDURES & VIEWS 
 -- =============================================
 
 -- =============================================
--- ENCRYPTION KEY MANAGEMENT PROCEDURES
+-- ENCRYPTION KEY MANAGEMENT PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -5093,7 +5078,7 @@ DELIMITER $$
 CREATE PROCEDURE sp_rotate_encryption_key(
     IN p_old_key_id BIGINT UNSIGNED,
     IN p_rotation_reason VARCHAR(500),
-    IN p_user_id BIGINT UNSIGNED
+    IN p_user_id BIGINT UNSIGNED -- Changed to BIGINT UNSIGNED
 )
 BEGIN
     DECLARE v_new_key_id BIGINT UNSIGNED;
@@ -5107,7 +5092,8 @@ BEGIN
     START TRANSACTION;
     
     -- Create new key
-    INSERT INTO encryption_key (
+    INSERT INTO encryption_keys ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         key_name,
         key_type_id,
         algorithm,
@@ -5120,6 +5106,7 @@ BEGIN
         created_by
     )
     SELECT 
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         CONCAT(key_name, '_ROTATED_', DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')),
         key_type_id,
         algorithm,
@@ -5129,22 +5116,23 @@ BEGIN
         key_version + 1,
         purpose,
         rotation_schedule_days,
-        (SELECT id FROM resource_db.encryption_key_status WHERE code = 'ACTIVE'),
+        (SELECT id FROM resource_db.encryption_key_statuses WHERE code = 'ACTIVE'), lookup
         p_user_id
-    FROM encryption_key
+    FROM encryption_keys to plural
     WHERE id = p_old_key_id;
     
     SET v_new_key_id = LAST_INSERT_ID();
     
     -- Update old key status
-    UPDATE encryption_key 
-    SET status_id = (SELECT id FROM resource_db.encryption_key_status WHERE code = 'ROTATING'),
+    UPDATE encryption_keys to plural
+    SET status_id = (SELECT id FROM resource_db.encryption_key_statuses WHERE code = 'ROTATING'), lookup
         is_primary = FALSE,
         updated_by = p_user_id
     WHERE id = p_old_key_id;
     
     -- Create rotation record
-    INSERT INTO encryption_key_rotation (
+    INSERT INTO encryption_key_rotations ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         old_key_id,
         new_key_id,
         rotation_type_id,
@@ -5153,12 +5141,13 @@ BEGIN
         status_id,
         created_by
     ) VALUES (
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         p_old_key_id,
         v_new_key_id,
-        (SELECT id FROM resource_db.key_rotation_type WHERE code = 'MANUAL'),
+        (SELECT id FROM resource_db.key_rotation_types WHERE code = 'MANUAL'), lookup
         p_rotation_reason,
         NOW(),
-        (SELECT id FROM resource_db.rotation_status WHERE code = 'IN_PROGRESS'),
+        (SELECT id FROM resource_db.rotation_statuses WHERE code = 'IN_PROGRESS'), lookup
         p_user_id
     );
     
@@ -5184,26 +5173,26 @@ BEGIN
             WHEN k.next_rotation_date <= DATE_ADD(NOW(), INTERVAL 7 DAY) THEN 'DUE_SOON'
             ELSE 'OK'
         END AS rotation_status
-    FROM encryption_key k
+    FROM encryption_keys k to plural
     WHERE k.is_active = TRUE
         AND k.is_primary = TRUE
-        AND k.status_id = (SELECT id FROM resource_db.encryption_key_status WHERE code = 'ACTIVE')
+        AND k.status_id = (SELECT id FROM resource_db.encryption_key_statuses WHERE code = 'ACTIVE') lookup
     ORDER BY k.next_rotation_date ASC;
 END$$
 
 DELIMITER ;
 
 -- =============================================
--- ACCESS CONTROL PROCEDURES
+-- ACCESS CONTROL PROCEDURES 
 -- =============================================
 
 DELIMITER $$
 
 -- Check user access to resource
 CREATE FUNCTION fn_check_user_access(
-    p_user_id BIGINT UNSIGNED,
+    p_user_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     p_resource_type VARCHAR(50),
-    p_resource_id VARCHAR(200),
+    p_resource_id VARCHAR(200), -- Kept VARCHAR as it can be BIGINT or UUID string or other identifiers
     p_permission_type VARCHAR(50)
 ) RETURNS BOOLEAN
 READS SQL DATA
@@ -5214,20 +5203,20 @@ BEGIN
     
     -- Get user's roles
     SELECT JSON_ARRAYAGG(role_id) INTO v_user_roles
-    FROM user_role
+    FROM user_roles to plural
     WHERE user_id = p_user_id 
         AND is_active = TRUE
         AND (expires_at IS NULL OR expires_at > NOW());
     
     -- Check direct user permissions
     SELECT COUNT(*) > 0 INTO v_has_access
-    FROM access_control_list acl
+    FROM access_control_lists acl to plural
     WHERE acl.resource_type = p_resource_type
         AND acl.resource_identifier = p_resource_id
-        AND acl.principal_type_id = (SELECT id FROM resource_db.principal_type WHERE code = 'USER')
+        AND acl.principal_type_id = (SELECT id FROM resource_db.principal_types WHERE code = 'USER') lookup
         AND acl.principal_id = p_user_id
-        AND acl.permission_type_id = (SELECT id FROM resource_db.permission_type WHERE code = p_permission_type)
-        AND acl.grant_type_id = (SELECT id FROM resource_db.grant_type WHERE code = 'ALLOW')
+        AND acl.permission_type_id = (SELECT id FROM resource_db.permission_types WHERE code = p_permission_type) lookup
+        AND acl.grant_type_id = (SELECT id FROM resource_db.grant_types WHERE code = 'ALLOW') lookup
         AND acl.is_active = TRUE
         AND (acl.valid_from IS NULL OR acl.valid_from <= NOW())
         AND (acl.valid_until IS NULL OR acl.valid_until >= NOW());
@@ -5235,13 +5224,13 @@ BEGIN
     -- If no direct access, check role-based permissions
     IF NOT v_has_access AND v_user_roles IS NOT NULL THEN
         SELECT COUNT(*) > 0 INTO v_has_access
-        FROM access_control_list acl
+        FROM access_control_lists acl to plural
         WHERE acl.resource_type = p_resource_type
             AND acl.resource_identifier = p_resource_id
-            AND acl.principal_type_id = (SELECT id FROM resource_db.principal_type WHERE code = 'ROLE')
+            AND acl.principal_type_id = (SELECT id FROM resource_db.principal_types WHERE code = 'ROLE') lookup
             AND JSON_CONTAINS(v_user_roles, CAST(acl.principal_id AS JSON), '$')
-            AND acl.permission_type_id = (SELECT id FROM resource_db.permission_type WHERE code = p_permission_type)
-            AND acl.grant_type_id = (SELECT id FROM resource_db.grant_type WHERE code = 'ALLOW')
+            AND acl.permission_type_id = (SELECT id FROM resource_db.permission_types WHERE code = p_permission_type) lookup
+            AND acl.grant_type_id = (SELECT id FROM resource_db.grant_types WHERE code = 'ALLOW') lookup
             AND acl.is_active = TRUE
             AND (acl.valid_from IS NULL OR acl.valid_from <= NOW())
             AND (acl.valid_until IS NULL OR acl.valid_until >= NOW());
@@ -5250,22 +5239,22 @@ BEGIN
     -- Check for explicit deny (overrides allow)
     IF v_has_access THEN
         SELECT COUNT(*) > 0 INTO v_has_access
-        FROM access_control_list acl
+        FROM access_control_lists acl to plural
         WHERE acl.resource_type = p_resource_type
             AND acl.resource_identifier = p_resource_id
             AND (
-                (acl.principal_type_id = (SELECT id FROM resource_db.principal_type WHERE code = 'USER') 
+                (acl.principal_type_id = (SELECT id FROM resource_db.principal_types WHERE code = 'USER') 
                  AND acl.principal_id = p_user_id)
                 OR 
-                (acl.principal_type_id = (SELECT id FROM resource_db.principal_type WHERE code = 'ROLE') 
+                (acl.principal_type_id = (SELECT id FROM resource_db.principal_types WHERE code = 'ROLE') 
                  AND JSON_CONTAINS(v_user_roles, CAST(acl.principal_id AS JSON), '$'))
             )
-            AND acl.permission_type_id = (SELECT id FROM resource_db.permission_type WHERE code = p_permission_type)
-            AND acl.grant_type_id = (SELECT id FROM resource_db.grant_type WHERE code = 'DENY')
+            AND acl.permission_type_id = (SELECT id FROM resource_db.permission_types WHERE code = p_permission_type) lookup
+            AND acl.grant_type_id = (SELECT id FROM resource_db.grant_types WHERE code = 'DENY') lookup
             AND acl.is_active = TRUE
             AND (acl.valid_from IS NULL OR acl.valid_from <= NOW())
             AND (acl.valid_until IS NULL OR acl.valid_until >= NOW());
-        
+            
         SET v_has_access = NOT v_has_access;
     END IF;
     
@@ -5275,7 +5264,7 @@ END$$
 -- Apply row-level security filter
 CREATE PROCEDURE sp_apply_row_level_security(
     IN p_table_name VARCHAR(100),
-    IN p_user_id BIGINT UNSIGNED,
+    IN p_user_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_operation VARCHAR(50),
     OUT p_filter_predicate TEXT
 )
@@ -5288,11 +5277,11 @@ BEGIN
         filter_predicate 
         SEPARATOR ' OR '
     ) INTO v_filters
-    FROM row_level_security
+    FROM row_level_securities to plural
     WHERE table_name = p_table_name
         AND user_id = p_user_id
         AND applies_to_id IN (
-            SELECT id FROM resource_db.rls_applies_to 
+            SELECT id FROM resource_db.rls_applies_tos lookup
             WHERE code IN (p_operation, 'ALL')
         )
         AND is_active = TRUE
@@ -5303,13 +5292,13 @@ BEGIN
         rls.filter_predicate 
         SEPARATOR ' OR '
     ) INTO v_role_filters
-    FROM row_level_security rls
-    JOIN user_role ur ON rls.role_id = ur.role_id
+    FROM row_level_securities rls to plural
+    JOIN user_roles ur ON rls.role_id = ur.role_id to plural
     WHERE rls.table_name = p_table_name
         AND ur.user_id = p_user_id
         AND ur.is_active = TRUE
         AND rls.applies_to_id IN (
-            SELECT id FROM resource_db.rls_applies_to 
+            SELECT id FROM resource_db.rls_applies_tos lookup
             WHERE code IN (p_operation, 'ALL')
         )
         AND rls.is_active = TRUE
@@ -5330,7 +5319,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- THREAT DETECTION PROCEDURES
+-- THREAT DETECTION PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -5338,7 +5327,7 @@ DELIMITER $$
 -- Record suspicious activity
 CREATE PROCEDURE sp_record_suspicious_activity(
     IN p_activity_type VARCHAR(50),
-    IN p_user_id BIGINT UNSIGNED,
+    IN p_user_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_ip_address VARCHAR(45),
     IN p_session_id VARCHAR(128),
     IN p_description TEXT,
@@ -5346,18 +5335,19 @@ CREATE PROCEDURE sp_record_suspicious_activity(
     IN p_threat_score INT
 )
 BEGIN
-    DECLARE v_threat_level_id INT;
+    DECLARE v_threat_level_id INT UNSIGNED;
     DECLARE v_user_blocked BOOLEAN DEFAULT FALSE;
     
     -- Determine threat level based on score
     SELECT id INTO v_threat_level_id
-    FROM resource_db.threat_level
+    FROM resource_db.threat_levels lookup
     WHERE p_threat_score >= min_score 
         AND p_threat_score <= max_score
     LIMIT 1;
     
     -- Insert suspicious activity
-    INSERT INTO suspicious_activity (
+    INSERT INTO suspicious_activities ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         activity_type,
         threat_level_id,
         user_id,
@@ -5369,6 +5359,7 @@ BEGIN
         investigation_status_id,
         created_at
     ) VALUES (
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         p_activity_type,
         v_threat_level_id,
         p_user_id,
@@ -5377,7 +5368,7 @@ BEGIN
         p_description,
         p_indicators,
         p_threat_score,
-        (SELECT id FROM resource_db.investigation_status WHERE code = 'NEW'),
+        (SELECT id FROM resource_db.investigation_statuses WHERE code = 'NEW'), lookup
         NOW()
     );
     
@@ -5385,32 +5376,34 @@ BEGIN
     IF p_threat_score >= 80 THEN
         -- Block IP
         IF p_ip_address IS NOT NULL THEN
-            INSERT INTO ip_blacklist (
+            INSERT INTO ip_blacklists ( to plural
+                id, aid, -- id is AUTO_INCREMENT, aid is generated
                 ip_address,
                 block_reason,
-                threat_type,
+                threat_type, -- Assuming threat_type is a direct string; consider FK to resource_db.threat_types
                 severity_id,
                 block_type_id,
                 expires_at,
                 created_by
             ) VALUES (
+                NULL, UNHEX(REPLACE(UUID(), '-', '')),
                 p_ip_address,
                 CONCAT('Auto-blocked: ', p_description),
                 p_activity_type,
-                (SELECT id FROM resource_db.security_severity WHERE code = 'CRITICAL'),
-                (SELECT id FROM resource_db.block_type WHERE code = 'TEMPORARY'),
+                (SELECT id FROM resource_db.security_severities WHERE code = 'CRITICAL'), lookup
+                (SELECT id FROM resource_db.block_types WHERE code = 'TEMPORARY'), lookup
                 DATE_ADD(NOW(), INTERVAL 24 HOUR),
-                1 -- System user
+                1 -- System user ID (assuming users.id = 1 is system)
             );
         END IF;
         
         -- Suspend user
         IF p_user_id IS NOT NULL THEN
-            UPDATE user 
-            SET account_status_id = (SELECT id FROM resource_db.account_status WHERE code = 'SUSPENDED'),
+            UPDATE users to plural
+            SET account_status_id = (SELECT id FROM resource_db.account_statuses WHERE code = 'SUSPENDED'), lookup
                 suspension_reason = CONCAT('Security threat detected: ', p_activity_type),
                 suspended_at = NOW(),
-                suspended_by = 1 -- System user
+                suspended_by = 1 -- System user ID
             WHERE id = p_user_id;
             
             SET v_user_blocked = TRUE;
@@ -5418,7 +5411,7 @@ BEGIN
         
         -- Terminate session
         IF p_session_id IS NOT NULL THEN
-            UPDATE session_security
+            UPDATE session_securities to plural
             SET terminated_at = NOW(),
                 termination_reason = 'Security threat detected'
             WHERE session_id = p_session_id;
@@ -5426,7 +5419,8 @@ BEGIN
     END IF;
     
     -- Log security event
-    INSERT INTO security_audit_log (
+    INSERT INTO security_audit_logs ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         event_type,
         severity_id,
         user_id,
@@ -5438,20 +5432,21 @@ BEGIN
         is_suspicious,
         created_at
     ) VALUES (
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         p_activity_type,
-        (SELECT id FROM resource_db.security_severity WHERE code = 
+        (SELECT id FROM resource_db.security_severities WHERE code = 
             CASE 
                 WHEN p_threat_score >= 80 THEN 'CRITICAL'
                 WHEN p_threat_score >= 60 THEN 'HIGH'
                 WHEN p_threat_score >= 40 THEN 'MEDIUM'
                 ELSE 'LOW'
             END
-        ),
+        ), lookup
         p_user_id,
         p_session_id,
         p_ip_address,
         'THREAT_DETECTED',
-        (SELECT id FROM resource_db.security_result WHERE code = 'BLOCKED'),
+        (SELECT id FROM resource_db.security_results WHERE code = 'BLOCKED'), lookup
         p_threat_score,
         TRUE,
         NOW()
@@ -5474,7 +5469,7 @@ BEGIN
     
     -- Check if whitelisted
     SELECT COUNT(*) > 0 INTO v_whitelist_exists
-    FROM ip_whitelist
+    FROM ip_whitelists to plural
     WHERE ip_address = p_ip_address
         AND is_active = TRUE
         AND (valid_from IS NULL OR valid_from <= NOW())
@@ -5486,7 +5481,7 @@ BEGIN
     
     -- Check if blacklisted
     SELECT COUNT(*) INTO v_blacklist_count
-    FROM ip_blacklist
+    FROM ip_blacklists to plural
     WHERE ip_address = p_ip_address
         AND is_active = TRUE
         AND (expires_at IS NULL OR expires_at > NOW());
@@ -5497,7 +5492,7 @@ BEGIN
     
     -- Check recent suspicious activities
     SELECT COUNT(*) INTO v_recent_threats
-    FROM suspicious_activity
+    FROM suspicious_activities to plural
     WHERE ip_address = p_ip_address
         AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
         AND false_positive = FALSE;
@@ -5507,10 +5502,10 @@ BEGIN
     
     -- Check successful authentications
     SELECT v_reputation_score + (COUNT(*) * 2) INTO v_reputation_score
-    FROM security_audit_log
+    FROM security_audit_logs to plural
     WHERE ip_address = p_ip_address
         AND event_type = 'LOGIN'
-        AND result_id = (SELECT id FROM resource_db.security_result WHERE code = 'SUCCESS')
+        AND result_id = (SELECT id FROM resource_db.security_results WHERE code = 'SUCCESS') lookup
         AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY);
     
     -- Cap at 100
@@ -5520,7 +5515,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- SESSION SECURITY PROCEDURES
+-- SESSION SECURITY PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -5551,7 +5546,7 @@ BEGIN
         v_user_id,
         v_original_ip,
         v_location_changed
-    FROM session_security
+    FROM session_securities to plural
     WHERE session_id = p_session_id
         AND expires_at > NOW()
         AND terminated_at IS NULL;
@@ -5562,7 +5557,7 @@ BEGIN
     END IF;
     
     -- Update last activity
-    UPDATE session_security
+    UPDATE session_securities to plural
     SET last_activity = NOW()
     WHERE session_id = p_session_id;
     
@@ -5578,13 +5573,13 @@ BEGIN
     -- Check for rapid location changes (impossible travel)
     IF EXISTS (
         SELECT 1 
-        FROM session_security
+        FROM session_securities to plural
         WHERE user_id = v_user_id
             AND session_id != p_session_id
             AND terminated_at IS NULL
             AND country_code != (
                 SELECT country_code 
-                FROM session_security 
+                FROM session_securities to plural
                 WHERE session_id = p_session_id
             )
             AND ABS(TIMESTAMPDIFF(MINUTE, last_activity, NOW())) < 30
@@ -5612,7 +5607,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- PRIVACY COMPLIANCE PROCEDURES
+-- PRIVACY COMPLIANCE PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -5620,17 +5615,17 @@ DELIMITER $$
 -- Process GDPR data request
 CREATE PROCEDURE sp_process_privacy_request(
     IN p_request_id BIGINT UNSIGNED,
-    IN p_processor_id BIGINT UNSIGNED
+    IN p_processor_id BIGINT UNSIGNED -- Changed to BIGINT UNSIGNED
 )
 BEGIN
     DECLARE v_user_id BIGINT UNSIGNED;
-    DECLARE v_request_type_id INT;
+    DECLARE v_request_type_id INT UNSIGNED;
     DECLARE v_request_type_code VARCHAR(50);
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
-        UPDATE privacy_shield
-        SET status_id = (SELECT id FROM resource_db.privacy_request_status WHERE code = 'FAILED'),
+        UPDATE privacy_shields to plural
+        SET status_id = (SELECT id FROM resource_db.privacy_request_statuses WHERE code = 'FAILED'), lookup
             updated_by = p_processor_id
         WHERE id = p_request_id;
         RESIGNAL;
@@ -5647,13 +5642,13 @@ BEGIN
         v_user_id,
         v_request_type_id,
         v_request_type_code
-    FROM privacy_shield ps
-    JOIN resource_db.privacy_request_type prt ON ps.request_type_id = prt.id
+    FROM privacy_shields ps to plural
+    JOIN resource_db.privacy_request_types prt ON ps.request_type_id = prt.id lookup
     WHERE ps.id = p_request_id;
     
     -- Update status to in progress
-    UPDATE privacy_shield
-    SET status_id = (SELECT id FROM resource_db.privacy_request_status WHERE code = 'IN_PROGRESS'),
+    UPDATE privacy_shields to plural
+    SET status_id = (SELECT id FROM resource_db.privacy_request_statuses WHERE code = 'IN_PROGRESS'), lookup
         processed_by = p_processor_id,
         updated_by = p_processor_id
     WHERE id = p_request_id;
@@ -5661,21 +5656,21 @@ BEGIN
     -- Process based on request type
     CASE v_request_type_code
         WHEN 'ACCESS' THEN
-            -- Generate data export
+            -- Generate data export (Assuming sp_export_user_data handles BIGINT IDs)
             CALL sp_export_user_data(v_user_id, p_request_id);
             
         WHEN 'ERASURE' THEN
-            -- Anonymize user data
+            -- Anonymize user data (Assuming sp_anonymize_user_data handles BIGINT IDs)
             CALL sp_anonymize_user_data(v_user_id, p_request_id);
             
         WHEN 'RECTIFICATION' THEN
             -- Flag for manual review
-            UPDATE privacy_shield
-            SET status_id = (SELECT id FROM resource_db.privacy_request_status WHERE code = 'PENDING_REVIEW')
+            UPDATE privacy_shields to plural
+            SET status_id = (SELECT id FROM resource_db.privacy_request_statuses WHERE code = 'PENDING_REVIEW') lookup
             WHERE id = p_request_id;
             
         WHEN 'PORTABILITY' THEN
-            -- Generate portable data format
+            -- Generate portable data format (Assuming sp_export_portable_data handles BIGINT IDs)
             CALL sp_export_portable_data(v_user_id, p_request_id);
             
         ELSE
@@ -5688,29 +5683,29 @@ END$$
 
 -- Anonymize user data for GDPR erasure
 CREATE PROCEDURE sp_anonymize_user_data(
-    IN p_user_id BIGINT UNSIGNED,
+    IN p_user_id BIGINT UNSIGNED, -- Changed to BIGINT UNSIGNED
     IN p_request_id BIGINT UNSIGNED
 )
 BEGIN
     DECLARE v_anon_id VARCHAR(50);
     SET v_anon_id = CONCAT('ANON_', UUID());
     
-    -- Anonymize user table
-    UPDATE user
+    -- Anonymize users table
+    UPDATE users to plural
     SET 
         email = CONCAT(v_anon_id, '@anonymized.local'),
         username = v_anon_id,
         first_name = 'Anonymous',
         last_name = 'User',
         phone = NULL,
-        date_of_birth = NULL,
+        date_of_birth = NULL, -- Assuming date_of_birth exists in users table
         is_deleted = TRUE,
         deleted_at = NOW(),
         deleted_by = p_user_id
     WHERE id = p_user_id;
     
-    -- Anonymize related person records
-    UPDATE person
+    -- Anonymize related persons records (assuming persons and user_persons tables exist)
+    UPDATE persons to plural
     SET 
         first_name = 'Anonymous',
         middle_name = NULL,
@@ -5723,12 +5718,12 @@ BEGIN
         deleted_at = NOW()
     WHERE id IN (
         SELECT person_id 
-        FROM user_person 
+        FROM user_persons to plural
         WHERE user_id = p_user_id
     );
     
-    -- Remove sensitive data from audit logs
-    UPDATE security_audit_log
+    -- Remove sensitive data from security audit logs
+    UPDATE security_audit_logs to plural
     SET 
         ip_address = 'XXX.XXX.XXX.XXX',
         user_agent = 'ANONYMIZED',
@@ -5737,9 +5732,9 @@ BEGIN
     WHERE user_id = p_user_id;
     
     -- Update privacy request
-    UPDATE privacy_shield
+    UPDATE privacy_shields to plural
     SET 
-        status_id = (SELECT id FROM resource_db.privacy_request_status WHERE code = 'COMPLETED'),
+        status_id = (SELECT id FROM resource_db.privacy_request_statuses WHERE code = 'COMPLETED'), lookup
         processed_at = NOW(),
         response_data = JSON_OBJECT(
             'anonymization_id', v_anon_id,
@@ -5751,7 +5746,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- SECURITY MONITORING VIEWS
+-- SECURITY MONITORING VIEWS 
 -- =============================================
 
 -- Active threat overview
@@ -5770,13 +5765,13 @@ SELECT
     ist.name AS investigation_status,
     sa.created_at,
     TIMESTAMPDIFF(HOUR, sa.created_at, NOW()) AS hours_since_detection
-FROM suspicious_activity sa
-JOIN resource_db.threat_level tl ON sa.threat_level_id = tl.id
-JOIN resource_db.investigation_status ist ON sa.investigation_status_id = ist.id
-LEFT JOIN user u ON sa.user_id = u.id
+FROM suspicious_activities sa to plural
+JOIN resource_db.threat_levels tl ON sa.threat_level_id = tl.id lookup
+JOIN resource_db.investigation_statuses ist ON sa.investigation_status_id = ist.id lookup
+LEFT JOIN users u ON sa.user_id = u.id to plural
 WHERE sa.false_positive = FALSE
     AND sa.investigation_status_id IN (
-        SELECT id FROM resource_db.investigation_status 
+        SELECT id FROM resource_db.investigation_statuses lookup
         WHERE code IN ('NEW', 'INVESTIGATING', 'ESCALATED')
     )
     AND sa.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -5794,13 +5789,13 @@ SELECT
     u.locked_until,
     -- MFA status
     CASE WHEN EXISTS (
-        SELECT 1 FROM mfa_device 
+        SELECT 1 FROM mfa_devices to plural
         WHERE user_id = u.id AND is_active = TRUE
     ) THEN 'ENABLED' ELSE 'DISABLED' END AS mfa_status,
     -- Recent suspicious activities
     (
         SELECT COUNT(*) 
-        FROM suspicious_activity 
+        FROM suspicious_activities to plural
         WHERE user_id = u.id 
             AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             AND false_positive = FALSE
@@ -5808,7 +5803,7 @@ SELECT
     -- Active sessions
     (
         SELECT COUNT(*) 
-        FROM session_security 
+        FROM session_securities to plural
         WHERE user_id = u.id 
             AND terminated_at IS NULL 
             AND expires_at > NOW()
@@ -5816,7 +5811,7 @@ SELECT
     -- Trusted devices
     (
         SELECT COUNT(*) 
-        FROM device_fingerprint 
+        FROM device_fingerprints to plural
         WHERE user_id = u.id 
             AND is_trusted = TRUE 
             AND is_active = TRUE
@@ -5824,12 +5819,12 @@ SELECT
     -- Risk score
     COALESCE((
         SELECT AVG(score) 
-        FROM suspicious_activity 
+        FROM suspicious_activities to plural
         WHERE user_id = u.id 
             AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     ), 0) AS avg_risk_score
-FROM user u
-JOIN resource_db.account_status ast ON u.account_status_id = ast.id
+FROM users u to plural
+JOIN resource_db.account_statuses ast ON u.account_status_id = ast.id lookup
 WHERE u.is_active = TRUE;
 
 -- IP address reputation summary
@@ -5847,24 +5842,24 @@ SELECT
     COUNT(DISTINCT sa.id) AS suspicious_activities,
     COUNT(DISTINCT sal.id) AS total_events,
     SUM(CASE WHEN sal.result_id = (
-        SELECT id FROM resource_db.security_result WHERE code = 'SUCCESS'
+        SELECT id FROM resource_db.security_results WHERE code = 'SUCCESS' lookup
     ) THEN 1 ELSE 0 END) AS successful_events,
     SUM(CASE WHEN sal.result_id = (
-        SELECT id FROM resource_db.security_result WHERE code = 'FAILURE'
+        SELECT id FROM resource_db.security_results WHERE code = 'FAILURE' lookup
     ) THEN 1 ELSE 0 END) AS failed_events,
     MAX(sal.created_at) AS last_seen,
     fn_check_ip_reputation(ip.ip_address) AS reputation_score
 FROM (
     SELECT DISTINCT ip_address 
-    FROM security_audit_log 
+    FROM security_audit_logs to plural
     WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 ) ip
-LEFT JOIN ip_whitelist wl ON ip.ip_address = wl.ip_address 
+LEFT JOIN ip_whitelists wl ON ip.ip_address = wl.ip_address to plural
     AND wl.is_active = TRUE
-LEFT JOIN ip_blacklist bl ON ip.ip_address = bl.ip_address 
+LEFT JOIN ip_blacklists bl ON ip.ip_address = bl.ip_address to plural
     AND bl.is_active = TRUE
-LEFT JOIN suspicious_activity sa ON ip.ip_address = sa.ip_address
-LEFT JOIN security_audit_log sal ON ip.ip_address = sal.ip_address
+LEFT JOIN suspicious_activities sa ON ip.ip_address = sa.ip_address to plural
+LEFT JOIN security_audit_logs sal ON ip.ip_address = sal.ip_address to plural
 GROUP BY ip.ip_address, wl.id, bl.id;
 
 -- Encryption key status dashboard
@@ -5890,15 +5885,15 @@ SELECT
     -- Usage stats
     (
         SELECT COUNT(*) 
-        FROM field_encryption 
+        FROM field_encryptions to plural
         WHERE encryption_key_id = k.id AND is_active = TRUE
     ) AS encrypted_fields_count,
     k.last_used_date,
     u.username AS created_by_username
-FROM encryption_key k
-JOIN resource_db.encryption_key_type kt ON k.key_type_id = kt.id
-JOIN resource_db.encryption_key_status ks ON k.status_id = ks.id
-JOIN user u ON k.created_by = u.id
+FROM encryption_keys k to plural
+JOIN resource_db.encryption_key_types kt ON k.key_type_id = kt.id lookup
+JOIN resource_db.encryption_key_statuses ks ON k.status_id = ks.id lookup
+JOIN users u ON k.created_by = u.id to plural
 WHERE k.is_active = TRUE
 ORDER BY k.is_primary DESC, k.next_rotation_date ASC;
 
@@ -5925,12 +5920,12 @@ SELECT
         ELSE 'ACTIVE'
     END AS status,
     acl.priority
-FROM access_control_list acl
-JOIN resource_db.principal_type pt ON acl.principal_type_id = pt.id
-JOIN resource_db.permission_type perm ON acl.permission_type_id = perm.id
-JOIN resource_db.grant_type gt ON acl.grant_type_id = gt.id
-LEFT JOIN user u ON pt.code = 'USER' AND acl.principal_id = u.id
-LEFT JOIN role r ON pt.code = 'ROLE' AND acl.principal_id = r.id
+FROM access_control_lists acl to plural
+JOIN resource_db.principal_types pt ON acl.principal_type_id = pt.id lookup
+JOIN resource_db.permission_types perm ON acl.permission_type_id = perm.id lookup
+JOIN resource_db.grant_types gt ON acl.grant_type_id = gt.id lookup
+LEFT JOIN users u ON pt.code = 'USER' AND acl.principal_id = u.id to plural
+LEFT JOIN roles r ON pt.code = 'ROLE' AND acl.principal_id = r.id to plural
 WHERE acl.is_active = TRUE
 ORDER BY acl.resource_type, acl.resource_identifier, acl.priority DESC;
 
@@ -5957,11 +5952,11 @@ SELECT
     ps.processed_by,
     pu.username AS processor_username,
     TIMESTAMPDIFF(HOUR, ps.requested_at, COALESCE(ps.processed_at, NOW())) AS processing_hours
-FROM privacy_shield ps
-JOIN user u ON ps.user_id = u.id
-JOIN resource_db.privacy_request_type prt ON ps.request_type_id = prt.id
-JOIN resource_db.privacy_request_status prs ON ps.status_id = prs.id
-LEFT JOIN user pu ON ps.processed_by = pu.id
+FROM privacy_shields ps to plural
+JOIN users u ON ps.user_id = u.id to plural
+JOIN resource_db.privacy_request_types prt ON ps.request_type_id = prt.id lookup
+JOIN resource_db.privacy_request_statuses prs ON ps.status_id = prs.id lookup
+LEFT JOIN users pu ON ps.processed_by = pu.id to plural
 WHERE ps.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
 ORDER BY 
     CASE WHEN prs.code != 'COMPLETED' THEN 0 ELSE 1 END,
@@ -5979,7 +5974,7 @@ SELECT
     ss.last_activity,
     TIMESTAMPDIFF(MINUTE, ss.last_activity, NOW()) AS minutes_inactive,
     ss.expires_at,
-    ss.auth_method,
+    ss.auth_method, -- Assuming auth_method is a direct string; consider FK to resource_db.auth_methods
     ss.mfa_verified,
     ss.risk_score,
     ss.country_code,
@@ -5989,10 +5984,10 @@ SELECT
     ss.is_suspicious,
     ss.vpn_detected,
     ss.location_mismatch
-FROM session_security ss
-JOIN user u ON ss.user_id = u.id
-LEFT JOIN device_fingerprint df ON ss.device_fingerprint_id = df.id
-LEFT JOIN resource_db.device_type dt ON df.device_type_id = dt.id
+FROM session_securities ss to plural
+JOIN users u ON ss.user_id = u.id to plural
+LEFT JOIN device_fingerprints df ON ss.device_fingerprint_id = df.id to plural
+LEFT JOIN resource_db.device_types dt ON df.device_type_id = dt.id lookup
 WHERE ss.terminated_at IS NULL
     AND ss.expires_at > NOW()
 ORDER BY ss.risk_score DESC, ss.last_activity DESC;
@@ -6010,53 +6005,55 @@ SELECT
     COUNT(DISTINCT dmr.id) AS masking_rules,
     dc.compliance_frameworks,
     dc.is_active
-FROM data_classification dc
-LEFT JOIN field_encryption fe ON fe.sensitivity_level_id = dc.id
-LEFT JOIN data_masking_rule dmr ON dmr.table_name IN (
+FROM data_classifications dc to plural
+LEFT JOIN field_encryptions fe ON fe.sensitivity_level_id = dc.id to plural
+LEFT JOIN data_masking_rules dmr ON dmr.table_name IN ( to plural
     SELECT DISTINCT table_name 
-    FROM field_encryption 
+    FROM field_encryptions to plural
     WHERE sensitivity_level_id = dc.id
 )
 GROUP BY dc.id
 ORDER BY dc.classification_level DESC;
 
 -- =============================================
--- SECURITY AUDIT TRIGGERS
+-- SECURITY AUDIT TRIGGERS 
 -- =============================================
 
 DELIMITER $$
 
 -- Trigger: Log encryption key access
-CREATE TRIGGER tr_encryption_key_access
-AFTER UPDATE ON encryption_key
+CREATE TRIGGER tr_encryption_keys_access trigger
+AFTER UPDATE ON encryption_keys to plural
 FOR EACH ROW
 BEGIN
     IF OLD.last_used_date != NEW.last_used_date THEN
-        INSERT INTO security_audit_log (
+        INSERT INTO security_audit_logs ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             event_type,
             severity_id,
             user_id,
             resource_type,
-            resource_id,
+            resource_id, -- Will be BIGINT UNSIGNED
             action,
             result_id,
             created_at
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             'ENCRYPTION_KEY_ACCESS',
-            (SELECT id FROM resource_db.security_severity WHERE code = 'LOW'),
-            NEW.updated_by,
-            'encryption_key',
-            NEW.id,
+            (SELECT id FROM resource_db.security_severities WHERE code = 'LOW'), lookup
+            NEW.updated_by, -- Assuming updated_by is BIGINT UNSIGNED
+            'encryption_keys', resource type
+            NEW.id, -- This is BIGINT UNSIGNED
             'KEY_ACCESSED',
-            (SELECT id FROM resource_db.security_result WHERE code = 'SUCCESS'),
+            (SELECT id FROM resource_db.security_results WHERE code = 'SUCCESS'), lookup
             NOW()
         );
     END IF;
 END$$
 
 -- Trigger: Monitor failed login attempts
-CREATE TRIGGER tr_monitor_failed_logins
-AFTER UPDATE ON user
+CREATE TRIGGER tr_monitor_failed_logins -- Trigger name remains
+AFTER UPDATE ON users to plural
 FOR EACH ROW
 BEGIN
     IF NEW.failed_login_attempts > OLD.failed_login_attempts THEN
@@ -6064,8 +6061,8 @@ BEGIN
         IF NEW.failed_login_attempts >= 3 THEN
             CALL sp_record_suspicious_activity(
                 'BRUTE_FORCE_ATTEMPT',
-                NEW.id,
-                NEW.last_login_ip,
+                NEW.id, -- user_id is BIGINT UNSIGNED
+                NEW.last_login_ip, -- Assuming last_login_ip exists in users table
                 NULL,
                 CONCAT('Failed login attempts: ', NEW.failed_login_attempts),
                 JSON_OBJECT('failed_attempts', NEW.failed_login_attempts),
@@ -6076,12 +6073,12 @@ BEGIN
 END$$
 
 -- Trigger: Validate IP whitelist/blacklist overlap
-CREATE TRIGGER tr_validate_ip_whitelist
-BEFORE INSERT ON ip_whitelist
+CREATE TRIGGER tr_validate_ip_whitelists trigger
+BEFORE INSERT ON ip_whitelists to plural
 FOR EACH ROW
 BEGIN
     IF EXISTS (
-        SELECT 1 FROM ip_blacklist
+        SELECT 1 FROM ip_blacklists to plural
         WHERE ip_address = NEW.ip_address
             AND is_active = TRUE
             AND (expires_at IS NULL OR expires_at > NOW())
@@ -6094,7 +6091,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- SECURITY MAINTENANCE PROCEDURES
+-- SECURITY MAINTENANCE PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -6104,11 +6101,11 @@ CREATE PROCEDURE sp_cleanup_security_data()
 BEGIN
     DECLARE v_deleted_count INT DEFAULT 0;
     
-    -- Remove expired blacklist entries
-    UPDATE ip_blacklist
+    -- Remove expired blacklists entries
+    UPDATE ip_blacklists to plural
     SET is_active = FALSE,
         updated_at = NOW(),
-        updated_by = 1 -- System user
+        updated_by = 1 -- System user (assuming users.id = 1)
     WHERE is_active = TRUE
         AND expires_at IS NOT NULL
         AND expires_at < NOW()
@@ -6117,30 +6114,30 @@ BEGIN
     SET v_deleted_count = v_deleted_count + ROW_COUNT();
     
     -- Archive old security audit logs
-    INSERT INTO security_audit_log_archive
-    SELECT * FROM security_audit_log
+    INSERT INTO security_audit_logs_archive -- New table name
+    SELECT * FROM security_audit_logs to plural
     WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
     
-    DELETE FROM security_audit_log
+    DELETE FROM security_audit_logs to plural
     WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
     
     SET v_deleted_count = v_deleted_count + ROW_COUNT();
     
     -- Clean up terminated sessions
-    DELETE FROM session_security
+    DELETE FROM session_securities to plural
     WHERE terminated_at IS NOT NULL
         AND terminated_at < DATE_SUB(NOW(), INTERVAL 30 DAY);
     
     SET v_deleted_count = v_deleted_count + ROW_COUNT();
     
     -- Remove old password history (keep last 12)
-    DELETE ph1 FROM password_history ph1
+    DELETE ph1 FROM password_histories ph1 to plural
     INNER JOIN (
         SELECT user_id, set_date
-        FROM password_history ph2
+        FROM password_histories ph2 to plural
         WHERE (
             SELECT COUNT(*)
-            FROM password_history ph3
+            FROM password_histories ph3 to plural
             WHERE ph3.user_id = ph2.user_id
                 AND ph3.set_date > ph2.set_date
         ) >= 12
@@ -6152,48 +6149,70 @@ BEGIN
 END$$
 
 DELIMITER ;
-    
+
+-- Missing table definition: security_audit_logs_archive
+CREATE TABLE security_audit_logs_archive LIKE security_audit_logs;
+-- You might also want to add an 'archived_at' column and related audit fields to this archive table if not already inherited by LIKE.
+-- Example: ALTER TABLE security_audit_logs_archive ADD COLUMN archived_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+
 -- ======================================
--- SECTION 3: IDENTIFIER
+-- SECTION 3: IDENTIFIERS
 -- ======================================
 
 -- ======================================
--- ENTITY CODE DEFINITION
+-- ENTITY CODE DEFINITIONS
 -- Master list of all entity types in the system
 -- ======================================
 
-CREATE TABLE entity_code_definition (
+CREATE TABLE entity_code_definitions (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_code VARCHAR(10) NOT NULL UNIQUE COMMENT 'WOR, REC, REL, etc.',
     entity_name VARCHAR(100) NOT NULL COMMENT 'Work, Recording, Release, etc.',
-    table_name VARCHAR(100) NOT NULL COMMENT 'Actual table name in database',
+    table_name VARCHAR(100) NOT NULL COMMENT 'Actual table name in database (plural, snake_case)',
     external_id_field VARCHAR(100) DEFAULT 'external_id' COMMENT 'Field name for external ID',
     description TEXT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     display_order INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NULL, -- Added audit column
+    updated_by BIGINT UNSIGNED NULL, -- Added audit column
+    
+    -- Security columns
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, entity_code, entity_name, table_name, external_id_field, description, is_active, display_order, created_at, updated_at, created_by, updated_by), 256)) STORED,
+    
+    -- Foreign Keys
+    CONSTRAINT fk_entity_code_defs_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_entity_code_defs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+
     KEY idx_entity_code (entity_code),
     KEY idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Master list of all entity types and their codes for ID generation';
 
 -- ======================================
--- TENANT ID SEQUENCE
+-- TENANT ID SEQUENCES
 -- Manages unique ID generation per tenant
 -- ======================================
 
-CREATE TABLE tenant_id_sequence (
+CREATE TABLE tenant_id_sequences (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id INT NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    tenant_id INT UNSIGNED NOT NULL, -- Changed INT to INT UNSIGNED
     entity_code VARCHAR(10) NOT NULL,
     prefix_letter CHAR(1) NOT NULL COMMENT 'Tenant-specific prefix (A-Z)',
-    last_id INT DEFAULT 0 COMMENT 'Last used sequence number',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_id INT UNSIGNED DEFAULT 0 COMMENT 'Last used sequence number', -- Changed INT to INT UNSIGNED
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
+    created_by BIGINT UNSIGNED NULL, -- Added audit column
+    updated_by BIGINT UNSIGNED NULL, -- Added audit column
+
     UNIQUE KEY uk_tenant_entity (tenant_id, entity_code),
     KEY idx_tenant_prefix (tenant_id, prefix_letter),
-    FOREIGN KEY (entity_code) REFERENCES entity_code_definition(entity_code) ON UPDATE CASCADE,
+    CONSTRAINT fk_tenant_id_sequences_entity_code FOREIGN KEY (entity_code) REFERENCES entity_code_definitions(entity_code) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_tenant_id_sequences_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_tenant_id_sequences_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_prefix_letter CHECK (prefix_letter REGEXP '^[A-Z]$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Manages sequential ID generation for each tenant and entity type';
@@ -6203,99 +6222,99 @@ COMMENT='Manages sequential ID generation for each tenant and entity type';
 -- All entity types that need unique IDs
 -- ======================================
 
-INSERT INTO entity_code_definition (entity_code, entity_name, table_name, display_order) VALUES
+INSERT INTO entity_code_definitions (entity_code, entity_name, table_name, display_order) VALUES
 -- Core Entities
-('PER', 'Person', 'person', 10),
-('ORG', 'Organization', 'organization', 20),
-('WOR', 'Work', 'work', 30),
-('REC', 'Recording', 'recording', 40),
-('REL', 'Release', 'release', 50),
-('TRK', 'Track', 'track', 60),
-('VID', 'Video', 'video', 70),
-('ART', 'Artist', 'artist', 80),
-('WRI', 'Writer', 'writer', 90),
-('PUB', 'Publisher', 'publisher', 100),
-('LAB', 'Label', 'label', 110),
-('RGH', 'Rights Holder', 'rights_holder', 120),
-('LEG', 'Legal Entity', 'legal_entity', 130),
+('PER', 'Person', 'persons', 10),
+('ORG', 'Organization', 'organizations', 20),
+('WOR', 'Work', 'works', 30),
+('REC', 'Recording', 'recordings', 40),
+('REL', 'Release', 'releases', 50),
+('TRK', 'Track', 'tracks', 60),
+('VID', 'Video', 'videos', 70),
+('ART', 'Artist', 'artists', 80),
+('WRI', 'Writer', 'writers', 90),
+('PUB', 'Publisher', 'publishers', 100),
+('LAB', 'Label', 'labels', 110),
+('RGH', 'Rights Holder', 'rights_holders', 120),
+('LEG', 'Legal Entity', 'legal_entities', 130),
 
 -- Agreement & Contract
-('AGR', 'Agreement', 'agreement', 140),
-('SPL', 'Split Sheet', 'split_sheet', 150),
-('SMC', 'Smart Contract', 'smart_contract', 160),
+('AGR', 'Agreement', 'agreements', 140),
+('SPL', 'Split Sheet', 'split_sheets', 150),
+('SMC', 'Smart Contract', 'smart_contracts', 160),
 
 -- NFT & Blockchain
-('NFC', 'NFT Collection', 'nft_collection', 170),
-('NFT', 'NFT Asset', 'nft_asset', 180),
-('WAL', 'Wallet', 'wallet_address', 190),
+('NFC', 'NFT Collection', 'nft_collections', 170),
+('NFT', 'NFT Asset', 'nft_assets', 180),
+('WAL', 'Wallet', 'wallet_addresses', 190),
 
 -- Registration & Society
-('RGB', 'Registration Batch', 'registration_batch', 200),
-('WRG', 'Work Registration', 'work_registration', 210),
-('RRG', 'Recording Registration', 'recording_registration', 220),
+('RGB', 'Registration Batch', 'registration_batches', 200),
+('WRG', 'Work Registration', 'work_registrations', 210),
+('RRG', 'Recording Registration', 'recording_registrations', 220),
 
 -- Financial & Royalty
-('RST', 'Royalty Statement', 'royalty_statement', 230),
-('PAY', 'Payment Batch', 'payment_batch', 240),
-('ADV', 'Advance', 'agreement_advance', 250),
+('RST', 'Royalty Statement', 'royalty_statements', 230),
+('PAY', 'Payment Batch', 'payment_batches', 240),
+('ADV', 'Advance', 'agreement_advances', 250),
 
 -- CWR & DDEX
-('CWT', 'CWR Transmission', 'cwr_transmission', 260),
-('DDX', 'DDEX Message', 'ddex_message', 270),
+('CWT', 'CWR Transmission', 'cwr_transmissions', 260),
+('DDX', 'DDEX Message', 'ddex_messages', 270),
 
 -- DSP & Platform
-('DSP', 'DSP Account', 'dsp_account', 280),
-('DSD', 'DSP Delivery', 'dsp_delivery', 290),
+('DSP', 'DSP Account', 'dsp_accounts', 280),
+('DSD', 'DSP Delivery', 'dsp_deliveries', 290),
 
 -- Sync & Licensing
-('SYN', 'Sync Opportunity', 'sync_opportunity', 300),
-('LIC', 'License Agreement', 'license_agreement', 310),
+('SYN', 'Sync Opportunity', 'sync_opportunities', 300),
+('LIC', 'License Agreement', 'license_agreements', 310),
 
 -- User & Access
-('USR', 'User', 'user', 320),
-('API', 'API Key', 'api_key', 330),
+('USR', 'User', 'users', 320),
+('API', 'API Key', 'api_keys', 330),
 
 -- Content & Files
-('FIL', 'File', 'file', 340),
-('MMA', 'Multimedia Asset', 'multimedia_asset', 350),
+('FIL', 'File', 'files', 340),
+('MMA', 'Multimedia Asset', 'multimedia_assets', 350),
 
 -- Workflow & Tasks
-('WFL', 'Workflow', 'workflow', 360),
-('TSK', 'Task', 'task', 370),
+('WFL', 'Workflow', 'workflows', 360),
+('TSK', 'Task', 'tasks', 370),
 
 -- Reports & Analytics
-('RPT', 'Report', 'report_template', 380),
-('EXP', 'Export Job', 'export_job', 390),
-('IMP', 'Import Job', 'import_job', 400);
+('RPT', 'Report', 'report_templates', 380),
+('EXP', 'Export Job', 'export_jobs', 390),
+('IMP', 'Import Job', 'import_jobs', 400);
 
 -- =============================================
--- SECTION 3: IDENTIFIER TABLES
+-- SECTION 3: IDENTIFIER TABLES 
 -- =============================================
 -- Comprehensive identifier management for music industry
 -- standard codes (ISWC, ISRC, IPI, ISNI, etc.) and 
 -- proprietary platform identifiers
 -- =============================================
 
--- work_identifier - ISWC, society work numbers
-CREATE TABLE work_identifier (
+-- work_identifiers: ISWC, society work numbers
+CREATE TABLE work_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     work_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.work_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.work_identifier_types', -- Changed INT
     identifier_value VARCHAR(50) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    society_id INT NULL COMMENT 'FK to resource_db.society',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    society_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, identifier_type_id, identifier_value, identifier_status_id, society_id, territory_id, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6312,16 +6331,16 @@ CREATE TABLE work_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_identifier_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_work_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.work_identifier_type(id),
-    CONSTRAINT fk_work_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_work_identifier_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_work_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_work_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_work_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_work_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_work_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_work_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_work_identifiers_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.work_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_work_identifier (identifier_type_id, identifier_value, society_id),
@@ -6337,34 +6356,35 @@ CREATE TABLE work_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- work_identifier_history - Identifier changes
-CREATE TABLE work_identifier_history (
+-- work_identifier_histories: Identifier changes
+CREATE TABLE work_identifier_histories (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     work_identifier_id BIGINT UNSIGNED NOT NULL,
     work_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.identifier_change_type',
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_change_types', -- Changed INT
     old_identifier_value VARCHAR(50) NULL,
     new_identifier_value VARCHAR(50) NULL,
-    old_status_id INT NULL,
-    new_status_id INT NULL,
+    old_status_id INT UNSIGNED NULL, -- Changed INT
+    new_status_id INT UNSIGNED NULL, -- Changed INT
     change_reason TEXT NULL,
     changed_by_user_id BIGINT UNSIGNED NULL,
     changed_by_system VARCHAR(100) NULL,
     change_source VARCHAR(100) NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_identifier_id, work_id, change_type_id, old_identifier_value, new_identifier_value, old_status_id, new_status_id, change_reason, changed_by_user_id, changed_by_system, change_source, created_at), 256)) STORED,
     
     -- Audit columns
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
     
     -- Foreign Keys
-    CONSTRAINT fk_work_id_history_identifier FOREIGN KEY (work_identifier_id) REFERENCES work_identifier(id),
-    CONSTRAINT fk_work_id_history_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_work_id_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.identifier_change_type(id),
-    CONSTRAINT fk_work_id_history_old_status FOREIGN KEY (old_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_work_id_history_new_status FOREIGN KEY (new_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_work_id_history_user FOREIGN KEY (changed_by_user_id) REFERENCES user(id),
+    CONSTRAINT fk_work_id_histories_identifier FOREIGN KEY (work_identifier_id) REFERENCES work_identifiers(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_work_id_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_work_id_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.identifier_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_id_histories_old_status FOREIGN KEY (old_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_id_histories_new_status FOREIGN KEY (new_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_work_id_histories_user FOREIGN KEY (changed_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_work_identifier_id (work_identifier_id),
@@ -6374,26 +6394,26 @@ CREATE TABLE work_identifier_history (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- recording_identifier - ISRC, catalog numbers
-CREATE TABLE recording_identifier (
+-- recording_identifiers: ISRC, catalog numbers
+CREATE TABLE recording_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     recording_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.recording_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.recording_identifier_types', -- Changed INT
     identifier_value VARCHAR(50) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
-    issued_by_id BIGINT UNSIGNED NULL COMMENT 'Label/organization that issued',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
+    issued_by_id BIGINT UNSIGNED NULL COMMENT 'Label/organization that issued (FK to organizations.id)',
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, recording_id, identifier_type_id, identifier_value, identifier_status_id, territory_id, issued_by_id, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6410,16 +6430,16 @@ CREATE TABLE recording_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_recording_identifier_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_recording_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.recording_identifier_type(id),
-    CONSTRAINT fk_recording_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_recording_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_recording_identifier_issued_by FOREIGN KEY (issued_by_id) REFERENCES organization(id),
-    CONSTRAINT fk_recording_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_recording_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_recording_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_recording_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_recording_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_recording_identifiers_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.recording_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_issued_by FOREIGN KEY (issued_by_id) REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_recording_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_recording_identifier (identifier_type_id, identifier_value),
@@ -6435,34 +6455,35 @@ CREATE TABLE recording_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- recording_identifier_history - Recording ID changes
-CREATE TABLE recording_identifier_history (
+-- recording_identifier_histories: Recording ID changes
+CREATE TABLE recording_identifier_histories (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     recording_identifier_id BIGINT UNSIGNED NOT NULL,
     recording_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.identifier_change_type',
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_change_types', -- Changed INT
     old_identifier_value VARCHAR(50) NULL,
     new_identifier_value VARCHAR(50) NULL,
-    old_status_id INT NULL,
-    new_status_id INT NULL,
+    old_status_id INT UNSIGNED NULL, -- Changed INT
+    new_status_id INT UNSIGNED NULL, -- Changed INT
     change_reason TEXT NULL,
     changed_by_user_id BIGINT UNSIGNED NULL,
     changed_by_system VARCHAR(100) NULL,
     change_source VARCHAR(100) NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, recording_identifier_id, recording_id, change_type_id, old_identifier_value, new_identifier_value, old_status_id, new_status_id, change_reason, changed_by_user_id, changed_by_system, change_source, created_at), 256)) STORED,
     
     -- Audit columns
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
     
     -- Foreign Keys
-    CONSTRAINT fk_recording_id_history_identifier FOREIGN KEY (recording_identifier_id) REFERENCES recording_identifier(id),
-    CONSTRAINT fk_recording_id_history_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_recording_id_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.identifier_change_type(id),
-    CONSTRAINT fk_recording_id_history_old_status FOREIGN KEY (old_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_recording_id_history_new_status FOREIGN KEY (new_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_recording_id_history_user FOREIGN KEY (changed_by_user_id) REFERENCES user(id),
+    CONSTRAINT fk_recording_id_histories_identifier FOREIGN KEY (recording_identifier_id) REFERENCES recording_identifiers(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_id_histories_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_id_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.identifier_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_id_histories_old_status FOREIGN KEY (old_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_id_histories_new_status FOREIGN KEY (new_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_recording_id_histories_user FOREIGN KEY (changed_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_recording_identifier_id (recording_identifier_id),
@@ -6472,26 +6493,26 @@ CREATE TABLE recording_identifier_history (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- release_identifier - UPC, EAN, catalog numbers
-CREATE TABLE release_identifier (
+-- release_identifiers: UPC, EAN, catalog numbers
+CREATE TABLE release_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     release_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.release_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.release_identifier_types', -- Changed INT
     identifier_value VARCHAR(50) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
-    format_id INT NULL COMMENT 'FK to resource_db.release_format',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
+    format_id INT UNSIGNED NULL COMMENT 'FK to resource_db.release_formats', -- Changed INT, renamed lookup table
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, release_id, identifier_type_id, identifier_value, identifier_status_id, territory_id, format_id, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6508,16 +6529,16 @@ CREATE TABLE release_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_release_identifier_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_release_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.release_identifier_type(id),
-    CONSTRAINT fk_release_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_release_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_release_identifier_format FOREIGN KEY (format_id) REFERENCES resource_db.release_format(id),
-    CONSTRAINT fk_release_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_release_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_release_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_release_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_release_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_release_identifiers_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.release_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_format FOREIGN KEY (format_id) REFERENCES resource_db.release_formats(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_release_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_release_identifier (identifier_type_id, identifier_value, territory_id),
@@ -6533,26 +6554,26 @@ CREATE TABLE release_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- person_identifier - IPI, ISNI
-CREATE TABLE person_identifier (
+-- person_identifiers: IPI, ISNI
+CREATE TABLE person_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     person_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.person_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.person_identifier_types', -- Changed INT
     identifier_value VARCHAR(50) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    society_id INT NULL COMMENT 'FK to resource_db.society',
-    role_code VARCHAR(10) NULL COMMENT 'CA, PA, etc.',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    society_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT
+    role_code VARCHAR(10) NULL COMMENT 'CA, PA, etc.', -- Consider FK to resource_db.role_codes or similar
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, person_id, identifier_type_id, identifier_value, identifier_status_id, society_id, role_code, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
@@ -6570,15 +6591,15 @@ CREATE TABLE person_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_person_identifier_person FOREIGN KEY (person_id) REFERENCES person(id),
-    CONSTRAINT fk_person_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.person_identifier_type(id),
-    CONSTRAINT fk_person_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_person_identifier_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_person_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_person_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_person_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_person_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_person_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_person_identifiers_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.person_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_person_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_person_identifier (identifier_type_id, identifier_value),
@@ -6593,26 +6614,26 @@ CREATE TABLE person_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- organization_identifier - IPI, ISNI, society codes
-CREATE TABLE organization_identifier (
+-- organization_identifiers: IPI, ISNI, society codes
+CREATE TABLE organization_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     organization_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.organization_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.organization_identifier_types', -- Changed INT
     identifier_value VARCHAR(50) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    society_id INT NULL COMMENT 'FK to resource_db.society',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    society_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, organization_id, identifier_type_id, identifier_value, identifier_status_id, society_id, territory_id, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
@@ -6630,16 +6651,16 @@ CREATE TABLE organization_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_organization_identifier_org FOREIGN KEY (organization_id) REFERENCES organization(id),
-    CONSTRAINT fk_organization_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.organization_identifier_type(id),
-    CONSTRAINT fk_organization_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_organization_identifier_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_organization_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_organization_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_organization_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_organization_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_organization_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_organization_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_organization_identifiers_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_organization_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.organization_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_organization_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_organization_identifier (identifier_type_id, identifier_value, society_id),
@@ -6655,26 +6676,26 @@ CREATE TABLE organization_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- video_identifier - ISAN, YouTube IDs
-CREATE TABLE video_identifier (
+-- video_identifiers: ISAN, YouTube IDs
+CREATE TABLE video_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     video_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.video_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.video_identifier_types', -- Changed INT
     identifier_value VARCHAR(100) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    platform_id INT NULL COMMENT 'FK to resource_db.platform',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    platform_id INT UNSIGNED NULL COMMENT 'FK to resource_db.platforms', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     issued_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, video_id, identifier_type_id, identifier_value, identifier_status_id, platform_id, territory_id, issued_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6691,16 +6712,16 @@ CREATE TABLE video_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_video_identifier_video FOREIGN KEY (video_id) REFERENCES video(id),
-    CONSTRAINT fk_video_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.video_identifier_type(id),
-    CONSTRAINT fk_video_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_video_identifier_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platform(id),
-    CONSTRAINT fk_video_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_video_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_video_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_video_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_video_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_video_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_video_identifiers_video FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_video_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.video_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platforms(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_video_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_video_identifier (identifier_type_id, identifier_value, platform_id),
@@ -6716,28 +6737,28 @@ CREATE TABLE video_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- asset_identifier - Generic identifier storage
-CREATE TABLE asset_identifier (
+-- asset_identifiers: Generic identifier storage
+CREATE TABLE asset_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    asset_type VARCHAR(50) NOT NULL COMMENT 'work, recording, release, etc.',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    asset_type VARCHAR(50) NOT NULL COMMENT 'works, recordings, releases, etc.', to plural
     asset_id BIGINT UNSIGNED NOT NULL,
-    identifier_type_id INT NOT NULL COMMENT 'FK to resource_db.asset_identifier_type',
+    identifier_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.asset_identifier_types', -- Changed INT
     identifier_value VARCHAR(100) NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
     issuing_organization VARCHAR(100) NULL,
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     issued_date DATE NULL,
     expires_date DATE NULL,
     verified_date DATE NULL,
-    verified_by VARCHAR(100) NULL,
+    verified_by BIGINT UNSIGNED NULL, -- Changed VARCHAR(100) to BIGINT UNSIGNED
     is_primary BOOLEAN DEFAULT FALSE,
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, asset_type, asset_id, identifier_type_id, identifier_value, identifier_status_id, issuing_organization, territory_id, issued_date, expires_date, verified_date, verified_by, is_primary, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6754,14 +6775,14 @@ CREATE TABLE asset_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_asset_identifier_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.asset_identifier_type(id),
-    CONSTRAINT fk_asset_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_asset_identifier_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_asset_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_asset_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_asset_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_asset_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_asset_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_asset_identifiers_type FOREIGN KEY (identifier_type_id) REFERENCES resource_db.asset_identifier_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_asset_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_asset (asset_type, asset_id),
@@ -6775,24 +6796,24 @@ CREATE TABLE asset_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- society_work_id - Society-specific work IDs
-CREATE TABLE society_work_id (
+-- society_work_ids: Society-specific work IDs
+CREATE TABLE society_work_ids (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     work_id BIGINT UNSIGNED NOT NULL,
-    society_id INT NOT NULL COMMENT 'FK to resource_db.society',
+    society_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.societies', -- Changed INT
     society_work_code VARCHAR(50) NOT NULL,
-    registration_status_id INT NOT NULL COMMENT 'FK to resource_db.registration_status',
+    registration_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.registration_statuses', -- Changed INT
     registration_date DATE NULL,
     acknowledgment_date DATE NULL,
     last_update_date DATE NULL,
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
-    share_percentage DECIMAL(5,2) NULL,
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
+    share_percentage DECIMAL(5,4) NULL, -- Increased precision
     is_origin_society BOOLEAN DEFAULT FALSE,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, society_id, society_work_code, registration_status_id, registration_date, acknowledgment_date, last_update_date, territory_id, share_percentage, is_origin_society, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6809,14 +6830,14 @@ CREATE TABLE society_work_id (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_society_work_id_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_society_work_id_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_society_work_id_status FOREIGN KEY (registration_status_id) REFERENCES resource_db.registration_status(id),
-    CONSTRAINT fk_society_work_id_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_society_work_id_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_society_work_id_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_society_work_id_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_society_work_id_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_society_work_ids_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_society_work_ids_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_status FOREIGN KEY (registration_status_id) REFERENCES resource_db.registration_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_work_ids_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_society_work (society_id, society_work_code),
@@ -6831,22 +6852,22 @@ CREATE TABLE society_work_id (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- society_recording_id - Society-specific recording IDs
-CREATE TABLE society_recording_id (
+-- society_recording_ids: Society-specific recording IDs
+CREATE TABLE society_recording_ids (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     recording_id BIGINT UNSIGNED NOT NULL,
-    society_id INT NOT NULL COMMENT 'FK to resource_db.society',
+    society_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.societies', -- Changed INT
     society_recording_code VARCHAR(50) NOT NULL,
-    registration_status_id INT NOT NULL COMMENT 'FK to resource_db.registration_status',
+    registration_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.registration_statuses', -- Changed INT
     registration_date DATE NULL,
     acknowledgment_date DATE NULL,
     last_update_date DATE NULL,
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, recording_id, society_id, society_recording_code, registration_status_id, registration_date, acknowledgment_date, last_update_date, territory_id, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6863,14 +6884,14 @@ CREATE TABLE society_recording_id (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_society_recording_id_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_society_recording_id_society FOREIGN KEY (society_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_society_recording_id_status FOREIGN KEY (registration_status_id) REFERENCES resource_db.registration_status(id),
-    CONSTRAINT fk_society_recording_id_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_society_recording_id_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_society_recording_id_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_society_recording_id_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_society_recording_id_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_society_recording_ids_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_society_recording_ids_society FOREIGN KEY (society_id) REFERENCES resource_db.societies(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_status FOREIGN KEY (registration_status_id) REFERENCES resource_db.registration_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_society_recording_ids_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_society_recording (society_id, society_recording_code),
@@ -6884,22 +6905,22 @@ CREATE TABLE society_recording_id (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- grid_identifier - GRid (Global Release Identifier)
-CREATE TABLE grid_identifier (
+-- grid_identifiers: GRid (Global Release Identifier)
+CREATE TABLE grid_identifiers (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     release_id BIGINT UNSIGNED NOT NULL,
-    grid_value VARCHAR(18) NOT NULL COMMENT 'A1-2425G-ABC1234567-M',
+    grid_value VARCHAR(18) NOT NULL UNIQUE COMMENT 'A1-2425G-ABC1234567-M', -- Added UNIQUE
     grid_version VARCHAR(10) NULL,
     issuer_code VARCHAR(10) NOT NULL,
     issue_date DATE NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, release_id, grid_value, grid_version, issuer_code, issue_date, identifier_status_id, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6916,13 +6937,13 @@ CREATE TABLE grid_identifier (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_grid_identifier_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_grid_identifier_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_grid_identifier_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_grid_identifier_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_grid_identifier_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_grid_identifier_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_grid_identifier_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_grid_identifiers_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_grid_identifiers_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_grid_identifiers_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_grid_identifiers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_grid_identifiers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_grid_identifiers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_grid_identifiers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_grid_value (grid_value),
@@ -6935,23 +6956,23 @@ CREATE TABLE grid_identifier (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ddex_party_id - DDEX DPID
-CREATE TABLE ddex_party_id (
+-- ddex_party_ids: DDEX DPID
+CREATE TABLE ddex_party_ids (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    entity_type VARCHAR(50) NOT NULL COMMENT 'person, organization, label, publisher',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    entity_type VARCHAR(50) NOT NULL COMMENT 'persons, organizations, labels, publishers', to plural
     entity_id BIGINT UNSIGNED NOT NULL,
-    dpid_value VARCHAR(20) NOT NULL COMMENT 'PADPIDA2014120301A',
+    dpid_value VARCHAR(20) NOT NULL UNIQUE COMMENT 'PADPIDA2014120301A', -- Added UNIQUE
     dpid_version VARCHAR(10) NULL,
-    role_type_id INT NULL COMMENT 'FK to resource_db.ddex_role_type',
+    role_type_id INT UNSIGNED NULL COMMENT 'FK to resource_db.ddex_role_types', -- Changed INT, renamed lookup table
     issued_date DATE NOT NULL,
-    identifier_status_id INT NOT NULL COMMENT 'FK to resource_db.identifier_status',
-    validation_status_id INT NULL COMMENT 'FK to resource_db.validation_status',
+    identifier_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_statuses', -- Changed INT
+    validation_status_id INT UNSIGNED NULL COMMENT 'FK to resource_db.validation_statuses', -- Changed INT
     validation_message TEXT NULL,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, entity_type, entity_id, dpid_value, dpid_version, role_type_id, issued_date, identifier_status_id, validation_status_id, validation_message, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -6968,13 +6989,13 @@ CREATE TABLE ddex_party_id (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_ddex_party_id_role_type FOREIGN KEY (role_type_id) REFERENCES resource_db.ddex_role_type(id),
-    CONSTRAINT fk_ddex_party_id_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_status(id),
-    CONSTRAINT fk_ddex_party_id_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_status(id),
-    CONSTRAINT fk_ddex_party_id_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_ddex_party_id_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_ddex_party_id_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_ddex_party_id_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_ddex_party_ids_role_type FOREIGN KEY (role_type_id) REFERENCES resource_db.ddex_role_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_status FOREIGN KEY (identifier_status_id) REFERENCES resource_db.identifier_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_validation_status FOREIGN KEY (validation_status_id) REFERENCES resource_db.validation_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_ddex_party_ids_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_dpid_value (dpid_value),
@@ -6987,23 +7008,23 @@ CREATE TABLE ddex_party_id (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- proprietary_id - Platform-specific IDs
-CREATE TABLE proprietary_id (
+-- proprietary_ids: Platform-specific IDs
+CREATE TABLE proprietary_ids (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    platform_id INT NOT NULL COMMENT 'FK to resource_db.platform',
+    platform_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.platforms', -- Changed INT, renamed lookup table
     platform_identifier VARCHAR(100) NOT NULL,
-    identifier_type VARCHAR(50) NULL COMMENT 'track_id, artist_id, album_id, etc.',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory',
+    identifier_type VARCHAR(50) NULL COMMENT 'track_id, artist_id, album_id, etc.', -- Consider FK to resource_db.proprietary_identifier_types
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories', -- Changed INT
     issued_date DATE NULL,
     last_verified DATE NULL,
     is_verified BOOLEAN DEFAULT FALSE,
     metadata JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, entity_type, entity_id, platform_id, platform_identifier, identifier_type, territory_id, issued_date, last_verified, is_verified, metadata, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
@@ -7020,12 +7041,12 @@ CREATE TABLE proprietary_id (
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_proprietary_id_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platform(id),
-    CONSTRAINT fk_proprietary_id_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_proprietary_id_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_proprietary_id_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_proprietary_id_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_proprietary_id_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_proprietary_ids_platform FOREIGN KEY (platform_id) REFERENCES resource_db.platforms(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_proprietary_ids_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_proprietary_ids_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_proprietary_ids_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_proprietary_ids_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_proprietary_ids_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     UNIQUE KEY uk_platform_identifier (platform_id, platform_identifier, entity_type, entity_id),
@@ -7038,37 +7059,38 @@ CREATE TABLE proprietary_id (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- identifier_validation_log - Validation history
-CREATE TABLE identifier_validation_log (
+-- identifier_validation_logs: Validation history
+CREATE TABLE identifier_validation_logs (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    identifier_table VARCHAR(50) NOT NULL COMMENT 'Source table name',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    identifier_table VARCHAR(50) NOT NULL COMMENT 'Source table name (plural, snake_case)',
     identifier_id BIGINT UNSIGNED NOT NULL COMMENT 'ID in source table',
-    identifier_type VARCHAR(50) NOT NULL,
+    identifier_type VARCHAR(50) NOT NULL, -- Consider FK to resource_db.identifier_types
     identifier_value VARCHAR(100) NOT NULL,
-    validation_type_id INT NOT NULL COMMENT 'FK to resource_db.identifier_validation_type',
-    validation_result_id INT NOT NULL COMMENT 'FK to resource_db.validation_result',
+    validation_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_validation_types', -- Changed INT
+    validation_result_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.validation_results', -- Changed INT, renamed lookup table
     validation_method VARCHAR(100) NULL,
     validation_service VARCHAR(100) NULL,
     error_code VARCHAR(50) NULL,
     error_message TEXT NULL,
     suggested_value VARCHAR(100) NULL,
-    confidence_score DECIMAL(5,2) NULL,
+    confidence_score DECIMAL(5,4) NULL, -- Increased precision
     response_data JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, identifier_table, identifier_id, identifier_type, identifier_value, validation_type_id, validation_result_id, validation_method, validation_service, error_code, error_message, suggested_value, confidence_score, response_data, created_at, created_by), 256)) STORED,
     
     -- Audit columns
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Changed TIMESTAMP to DATETIME
     created_by BIGINT UNSIGNED NOT NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_id_validation_type FOREIGN KEY (validation_type_id) REFERENCES resource_db.identifier_validation_type(id),
-    CONSTRAINT fk_id_validation_result FOREIGN KEY (validation_result_id) REFERENCES resource_db.validation_result(id),
-    CONSTRAINT fk_id_validation_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_id_validation_types FOREIGN KEY (validation_type_id) REFERENCES resource_db.identifier_validation_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_validation_results FOREIGN KEY (validation_result_id) REFERENCES resource_db.validation_results(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_validation_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     
     -- Indexes
-    INDEX idx_identifier (identifier_table, identifier_id),
+    INDEX idx_identifier_val_log (identifier_table, identifier_id),
     INDEX idx_identifier_value (identifier_value),
     INDEX idx_validation_type (validation_type_id),
     INDEX idx_validation_result (validation_result_id),
@@ -7076,29 +7098,29 @@ CREATE TABLE identifier_validation_log (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- identifier_conflict - Conflicting identifiers
-CREATE TABLE identifier_conflict (
+-- identifier_conflicts: Conflicting identifiers
+CREATE TABLE identifier_conflicts (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    conflict_type_id INT NOT NULL COMMENT 'FK to resource_db.identifier_conflict_type',
-    identifier_type VARCHAR(50) NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    conflict_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_conflict_types', -- Changed INT
+    identifier_type VARCHAR(50) NOT NULL, -- Consider FK to resource_db.identifier_types
     identifier_value VARCHAR(100) NOT NULL,
     entity1_type VARCHAR(50) NOT NULL,
     entity1_id BIGINT UNSIGNED NOT NULL,
     entity2_type VARCHAR(50) NOT NULL,
     entity2_id BIGINT UNSIGNED NOT NULL,
     detection_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    detection_method VARCHAR(100) NULL,
-    conflict_status_id INT NOT NULL COMMENT 'FK to resource_db.conflict_status',
+    detection_method VARCHAR(100) NULL, -- Consider FK to resource_db.detection_methods
+    conflict_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.conflict_statuses', -- Changed INT
     resolution_date DATETIME NULL,
-    resolution_method_id INT NULL COMMENT 'FK to resource_db.resolution_method',
+    resolution_method_id INT UNSIGNED NULL COMMENT 'FK to resource_db.resolution_methods', -- Changed INT
     resolved_by BIGINT UNSIGNED NULL,
     resolution_notes TEXT NULL,
     winning_entity_type VARCHAR(50) NULL,
     winning_entity_id BIGINT UNSIGNED NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, conflict_type_id, identifier_type, identifier_value, entity1_type, entity1_id, entity2_type, entity2_id, detection_date, detection_method, conflict_status_id, resolution_date, resolution_method_id, resolved_by, resolution_notes, winning_entity_type, winning_entity_id, created_at, created_by, updated_at, updated_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -7107,12 +7129,12 @@ CREATE TABLE identifier_conflict (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_id_conflict_type FOREIGN KEY (conflict_type_id) REFERENCES resource_db.identifier_conflict_type(id),
-    CONSTRAINT fk_id_conflict_status FOREIGN KEY (conflict_status_id) REFERENCES resource_db.conflict_status(id),
-    CONSTRAINT fk_id_conflict_resolution_method FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_method(id),
-    CONSTRAINT fk_id_conflict_resolved_by FOREIGN KEY (resolved_by) REFERENCES user(id),
-    CONSTRAINT fk_id_conflict_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_id_conflict_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_id_conflict_types FOREIGN KEY (conflict_type_id) REFERENCES resource_db.identifier_conflict_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_conflict_statuses FOREIGN KEY (conflict_status_id) REFERENCES resource_db.conflict_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_conflict_resolution_methods FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_methods(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_id_conflict_resolved_by FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_id_conflict_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_conflict_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_identifier_value (identifier_value),
@@ -7125,18 +7147,18 @@ CREATE TABLE identifier_conflict (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- identifier_merge - Merged identifiers
-CREATE TABLE identifier_merge (
+-- identifier_merges: Merged identifiers
+CREATE TABLE identifier_merges (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    merge_type_id INT NOT NULL COMMENT 'FK to resource_db.identifier_merge_type',
-    source_identifier_table VARCHAR(50) NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    merge_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.identifier_merge_types', -- Changed INT
+    source_identifier_table VARCHAR(50) NOT NULL COMMENT 'Source table name (plural, snake_case)',
     source_identifier_id BIGINT UNSIGNED NOT NULL,
     source_identifier_value VARCHAR(100) NOT NULL,
-    target_identifier_table VARCHAR(50) NOT NULL,
+    target_identifier_table VARCHAR(50) NOT NULL COMMENT 'Target table name (plural, snake_case)',
     target_identifier_id BIGINT UNSIGNED NOT NULL,
     target_identifier_value VARCHAR(100) NOT NULL,
-    merge_reason_id INT NOT NULL COMMENT 'FK to resource_db.merge_reason',
+    merge_reason_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.merge_reasons', -- Changed INT
     merge_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     merge_metadata JSON NULL,
     reversal_date DATETIME NULL,
@@ -7144,7 +7166,7 @@ CREATE TABLE identifier_merge (
     reversed_by BIGINT UNSIGNED NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, merge_type_id, source_identifier_table, source_identifier_id, source_identifier_value, target_identifier_table, target_identifier_id, target_identifier_value, merge_reason_id, merge_date, merge_metadata, reversal_date, reversal_reason, reversed_by, created_at, created_by, updated_at, updated_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -7153,11 +7175,11 @@ CREATE TABLE identifier_merge (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_id_merge_type FOREIGN KEY (merge_type_id) REFERENCES resource_db.identifier_merge_type(id),
-    CONSTRAINT fk_id_merge_reason FOREIGN KEY (merge_reason_id) REFERENCES resource_db.merge_reason(id),
-    CONSTRAINT fk_id_merge_reversed_by FOREIGN KEY (reversed_by) REFERENCES user(id),
-    CONSTRAINT fk_id_merge_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_id_merge_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_id_merge_types FOREIGN KEY (merge_type_id) REFERENCES resource_db.identifier_merge_types(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_merge_reasons FOREIGN KEY (merge_reason_id) REFERENCES resource_db.merge_reasons(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_merge_reversed_by FOREIGN KEY (reversed_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_id_merge_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_id_merge_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     
     -- Indexes
     INDEX idx_source_identifier (source_identifier_table, source_identifier_id),
@@ -7169,16 +7191,15 @@ CREATE TABLE identifier_merge (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 -- =============================================
--- SECTION 3: IDENTIFIER PROCEDURES & VIEWS
+-- SECTION 3: IDENTIFIER PROCEDURES & VIEWS 
 -- =============================================
 -- Validation and management for music industry identifiers
 -- ISWC, ISRC, IPI, ISNI, UPC, EAN, etc.
 -- =============================================
 
 -- ======================================
--- STORED PROCEDURES
+-- STORED PROCEDURES 
 -- ======================================
 
 DELIMITER $$
@@ -7187,8 +7208,9 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS initialize_tenant_sequences$$
 
 CREATE PROCEDURE initialize_tenant_sequences(
-    IN p_tenant_id INT,
-    IN p_prefix_letter CHAR(1)
+    IN p_tenant_id INT UNSIGNED,
+    IN p_prefix_letter CHAR(1),
+    IN p_created_by BIGINT UNSIGNED
 )
 COMMENT 'Creates sequence entries for all entity types for a new tenant'
 BEGIN
@@ -7202,7 +7224,7 @@ BEGIN
     
     -- Check if sequences already exist for this tenant
     SELECT COUNT(*) INTO v_count
-    FROM tenant_id_sequence
+    FROM tenant_id_sequences
     WHERE tenant_id = p_tenant_id;
     
     IF v_count > 0 THEN
@@ -7211,9 +7233,9 @@ BEGIN
     END IF;
     
     -- Insert all sequences for the tenant
-    INSERT INTO tenant_id_sequence (tenant_id, entity_code, prefix_letter)
-    SELECT p_tenant_id, entity_code, p_prefix_letter
-    FROM entity_code_definition
+    INSERT INTO tenant_id_sequences (tenant_id, entity_code, prefix_letter, created_by)
+    SELECT p_tenant_id, entity_code, p_prefix_letter, p_created_by
+    FROM entity_code_definitions
     WHERE is_active = TRUE;
     
     SELECT CONCAT('Initialized ', ROW_COUNT(), ' sequences for tenant ', p_tenant_id) AS result;
@@ -7223,14 +7245,17 @@ END$$
 DROP PROCEDURE IF EXISTS reset_sequence$$
 
 CREATE PROCEDURE reset_sequence(
-    IN p_tenant_id INT,
+    IN p_tenant_id INT UNSIGNED,
     IN p_entity_code VARCHAR(10),
-    IN p_new_value INT
+    IN p_new_value INT UNSIGNED,
+    IN p_updated_by BIGINT UNSIGNED
 )
 COMMENT 'Resets a sequence to a specific value (use with caution)'
 BEGIN
-    UPDATE tenant_id_sequence
-    SET last_id = p_new_value
+    UPDATE tenant_id_sequences
+    SET last_id = p_new_value,
+        updated_by = p_updated_by,
+        updated_at = NOW()
     WHERE tenant_id = p_tenant_id 
     AND entity_code = p_entity_code;
     
@@ -7245,7 +7270,7 @@ END$$
 DELIMITER ;
 
 -- ======================================
--- ID GENERATION FUNCTION
+-- ID GENERATION FUNCTION 
 -- ======================================
 
 DELIMITER $$
@@ -7253,19 +7278,19 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS generate_external_id$$
 
 CREATE FUNCTION generate_external_id(
-    p_tenant_id INT,
+    p_tenant_id INT UNSIGNED,
     p_entity_code VARCHAR(10)
 ) RETURNS VARCHAR(12)
 DETERMINISTIC
 MODIFIES SQL DATA
 COMMENT 'Generates the next unique external ID for an entity'
 BEGIN
-    DECLARE v_next_id INT;
+    DECLARE v_next_id INT UNSIGNED;
     DECLARE v_prefix CHAR(1);
     DECLARE v_formatted_id VARCHAR(12);
     
     -- Get and increment the sequence atomically
-    UPDATE tenant_id_sequence
+    UPDATE tenant_id_sequences
     SET last_id = last_id + 1
     WHERE tenant_id = p_tenant_id AND entity_code = p_entity_code;
     
@@ -7276,7 +7301,7 @@ BEGIN
     
     -- Get the new values
     SELECT last_id, prefix_letter INTO v_next_id, v_prefix
-    FROM tenant_id_sequence
+    FROM tenant_id_sequences
     WHERE tenant_id = p_tenant_id AND entity_code = p_entity_code;
     
     -- Format the ID: PREFIX + ENTITY_CODE + 6-digit padded number
@@ -7289,19 +7314,19 @@ END$$
 DROP FUNCTION IF EXISTS peek_next_external_id$$
 
 CREATE FUNCTION peek_next_external_id(
-    p_tenant_id INT,
+    p_tenant_id INT UNSIGNED,
     p_entity_code VARCHAR(10)
 ) RETURNS VARCHAR(12)
 READS SQL DATA
 COMMENT 'Shows what the next ID would be without incrementing'
 BEGIN
-    DECLARE v_next_id INT;
+    DECLARE v_next_id INT UNSIGNED;
     DECLARE v_prefix CHAR(1);
     DECLARE v_formatted_id VARCHAR(12);
     
     -- Get current values without incrementing
     SELECT last_id + 1, prefix_letter INTO v_next_id, v_prefix
-    FROM tenant_id_sequence
+    FROM tenant_id_sequences
     WHERE tenant_id = p_tenant_id AND entity_code = p_entity_code;
     
     IF v_next_id IS NULL THEN
@@ -7317,7 +7342,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- IDENTIFIER VALIDATION FUNCTIONS
+-- IDENTIFIER VALIDATION FUNCTIONS 
 -- =============================================
 
 DELIMITER $$
@@ -7572,7 +7597,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- IDENTIFIER MANAGEMENT PROCEDURES
+-- IDENTIFIER MANAGEMENT PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -7582,15 +7607,15 @@ CREATE PROCEDURE sp_upsert_work_identifier(
     IN p_work_id BIGINT UNSIGNED,
     IN p_identifier_type VARCHAR(50),
     IN p_identifier_value VARCHAR(50),
-    IN p_society_id INT,
-    IN p_territory_id INT,
+    IN p_society_id INT UNSIGNED, -- Changed INT
+    IN p_territory_id INT UNSIGNED, -- Changed INT
     IN p_user_id BIGINT UNSIGNED,
     OUT p_identifier_id BIGINT UNSIGNED,
     OUT p_validation_result VARCHAR(50),
     OUT p_validation_message TEXT
 )
 BEGIN
-    DECLARE v_identifier_type_id INT;
+    DECLARE v_identifier_type_id INT UNSIGNED; -- Changed INT
     DECLARE v_is_valid BOOLEAN DEFAULT FALSE;
     DECLARE v_existing_id BIGINT UNSIGNED;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -7605,7 +7630,7 @@ BEGIN
     
     -- Get identifier type
     SELECT id INTO v_identifier_type_id
-    FROM resource_db.work_identifier_type
+    FROM resource_db.work_identifier_types lookup
     WHERE code = p_identifier_type;
     
     -- Validate based on type
@@ -7632,7 +7657,7 @@ BEGIN
     
     -- Check for existing identifier
     SELECT id INTO v_existing_id
-    FROM work_identifier
+    FROM work_identifiers to plural
     WHERE work_id = p_work_id
         AND identifier_type_id = v_identifier_type_id
         AND (society_id = p_society_id OR (society_id IS NULL AND p_society_id IS NULL))
@@ -7641,11 +7666,11 @@ BEGIN
     
     IF v_existing_id IS NOT NULL THEN
         -- Update existing
-        UPDATE work_identifier
+        UPDATE work_identifiers to plural
         SET identifier_value = p_identifier_value,
-            identifier_status_id = (SELECT id FROM resource_db.identifier_status WHERE code = 'ACTIVE'),
+            identifier_status_id = (SELECT id FROM resource_db.identifier_statuses WHERE code = 'ACTIVE'), lookup
             territory_id = p_territory_id,
-            validation_status_id = (SELECT id FROM resource_db.validation_status WHERE code = 'VALID'),
+            validation_status_id = (SELECT id FROM resource_db.validation_statuses WHERE code = 'VALID'), lookup
             validation_message = NULL,
             updated_by = p_user_id,
             version = version + 1
@@ -7654,7 +7679,8 @@ BEGIN
         SET p_identifier_id = v_existing_id;
         
         -- Log history
-        INSERT INTO work_identifier_history (
+        INSERT INTO work_identifier_histories ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             work_identifier_id,
             work_id,
             change_type_id,
@@ -7662,16 +7688,18 @@ BEGIN
             changed_by_user_id,
             change_source
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             v_existing_id,
             p_work_id,
-            (SELECT id FROM resource_db.identifier_change_type WHERE code = 'UPDATE'),
+            (SELECT id FROM resource_db.identifier_change_types WHERE code = 'UPDATE'), lookup
             p_identifier_value,
             p_user_id,
             'MANUAL'
         );
     ELSE
         -- Insert new
-        INSERT INTO work_identifier (
+        INSERT INTO work_identifiers ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             work_id,
             identifier_type_id,
             identifier_value,
@@ -7683,14 +7711,15 @@ BEGIN
             is_primary,
             created_by
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             p_work_id,
             v_identifier_type_id,
             p_identifier_value,
-            (SELECT id FROM resource_db.identifier_status WHERE code = 'ACTIVE'),
+            (SELECT id FROM resource_db.identifier_statuses WHERE code = 'ACTIVE'), lookup
             p_society_id,
             p_territory_id,
             CURDATE(),
-            (SELECT id FROM resource_db.validation_status WHERE code = 'VALID'),
+            (SELECT id FROM resource_db.validation_statuses WHERE code = 'VALID'), lookup
             p_identifier_type = 'ISWC',
             p_user_id
         );
@@ -7698,7 +7727,8 @@ BEGIN
         SET p_identifier_id = LAST_INSERT_ID();
         
         -- Log history
-        INSERT INTO work_identifier_history (
+        INSERT INTO work_identifier_histories ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             work_identifier_id,
             work_id,
             change_type_id,
@@ -7706,9 +7736,10 @@ BEGIN
             changed_by_user_id,
             change_source
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             p_identifier_id,
             p_work_id,
-            (SELECT id FROM resource_db.identifier_change_type WHERE code = 'CREATE'),
+            (SELECT id FROM resource_db.identifier_change_types WHERE code = 'CREATE'), lookup
             p_identifier_value,
             p_user_id,
             'MANUAL'
@@ -7716,7 +7747,8 @@ BEGIN
     END IF;
     
     -- Log validation
-    INSERT INTO identifier_validation_log (
+    INSERT INTO identifier_validation_logs ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         identifier_table,
         identifier_id,
         identifier_type,
@@ -7726,13 +7758,14 @@ BEGIN
         validation_method,
         created_by
     ) VALUES (
-        'work_identifier',
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
+        'work_identifiers', table
         p_identifier_id,
         p_identifier_type,
         p_identifier_value,
-        (SELECT id FROM resource_db.identifier_validation_type WHERE code = 'FORMAT'),
-        (SELECT id FROM resource_db.validation_result WHERE code = 'PASS'),
-        'fn_validate_' || LOWER(p_identifier_type),
+        (SELECT id FROM resource_db.identifier_validation_types WHERE code = 'FORMAT'), lookup
+        (SELECT id FROM resource_db.validation_results WHERE code = 'PASS'), lookup
+        CONCAT('fn_validate_', LOWER(p_identifier_type)),
         p_user_id
     );
     
@@ -7753,15 +7786,16 @@ BEGIN
     -- Check works
     IF p_identifier_type IN ('ISWC', 'SOCIETY_WORK_CODE') THEN
         SELECT COUNT(DISTINCT work_id) INTO v_conflict_count
-        FROM work_identifier wi
-        JOIN resource_db.work_identifier_type wit ON wi.identifier_type_id = wit.id
+        FROM work_identifiers wi to plural
+        JOIN resource_db.work_identifier_types wit ON wi.identifier_type_id = wit.id lookup
         WHERE wit.code = p_identifier_type
             AND wi.identifier_value = p_identifier_value
             AND wi.is_active = TRUE;
         
         IF v_conflict_count > 1 THEN
             -- Log conflict
-            INSERT INTO identifier_conflict (
+            INSERT INTO identifier_conflicts ( to plural
+                id, aid, -- id is AUTO_INCREMENT, aid is generated
                 conflict_type_id,
                 identifier_type,
                 identifier_value,
@@ -7774,7 +7808,7 @@ BEGIN
                 created_by
             )
             SELECT DISTINCT
-                (SELECT id FROM resource_db.identifier_conflict_type WHERE code = 'DUPLICATE'),
+                (SELECT id FROM resource_db.identifier_conflict_types WHERE code = 'DUPLICATE'), lookup
                 p_identifier_type,
                 p_identifier_value,
                 'work',
@@ -7782,12 +7816,12 @@ BEGIN
                 'work',
                 w2.work_id,
                 'SYSTEM_CHECK',
-                (SELECT id FROM resource_db.conflict_status WHERE code = 'UNRESOLVED'),
-                1 -- System user
-            FROM work_identifier w1
-            JOIN work_identifier w2 ON w1.identifier_value = w2.identifier_value
+                (SELECT id FROM resource_db.conflict_statuses WHERE code = 'UNRESOLVED'), lookup
+                1 -- System user (assuming users.id = 1)
+            FROM work_identifiers w1 to plural
+            JOIN work_identifiers w2 ON w1.identifier_value = w2.identifier_value to plural
                 AND w1.work_id < w2.work_id
-            JOIN resource_db.work_identifier_type wit ON w1.identifier_type_id = wit.id
+            JOIN resource_db.work_identifier_types wit ON w1.identifier_type_id = wit.id lookup
             WHERE wit.code = p_identifier_type
                 AND w1.identifier_value = p_identifier_value
                 AND w1.is_active = TRUE
@@ -7798,15 +7832,47 @@ BEGIN
     -- Check recordings
     IF p_identifier_type IN ('ISRC', 'CATALOG_NUMBER') THEN
         SELECT COUNT(DISTINCT recording_id) INTO v_conflict_count
-        FROM recording_identifier ri
-        JOIN resource_db.recording_identifier_type rit ON ri.identifier_type_id = rit.id
+        FROM recording_identifiers ri to plural
+        JOIN resource_db.recording_identifier_types rit ON ri.identifier_type_id = rit.id lookup
         WHERE rit.code = p_identifier_type
             AND ri.identifier_value = p_identifier_value
             AND ri.is_active = TRUE;
         
         IF v_conflict_count > 1 THEN
-            -- Similar conflict logging for recordings
-            -- ... (abbreviated for space)
+            -- Similar conflict logging for recordings (abbreviated for space)
+            -- Insert into identifier_conflicts for recordings as well
+            INSERT INTO identifier_conflicts ( 
+                id, aid, -- id is AUTO_INCREMENT, aid is generated
+                conflict_type_id,
+                identifier_type,
+                identifier_value,
+                entity1_type,
+                entity1_id,
+                entity2_type,
+                entity2_id,
+                detection_method,
+                conflict_status_id,
+                created_by
+            )
+            SELECT DISTINCT
+                (SELECT id FROM resource_db.identifier_conflict_types WHERE code = 'DUPLICATE'),
+                p_identifier_type,
+                p_identifier_value,
+                'recording',
+                r1.recording_id,
+                'recording',
+                r2.recording_id,
+                'SYSTEM_CHECK',
+                (SELECT id FROM resource_db.conflict_statuses WHERE code = 'UNRESOLVED'),
+                1
+            FROM recording_identifiers r1
+            JOIN recording_identifiers r2 ON r1.identifier_value = r2.identifier_value
+                AND r1.recording_id < r2.recording_id
+            JOIN resource_db.recording_identifier_types rit ON r1.identifier_type_id = rit.id
+            WHERE rit.code = p_identifier_type
+                AND r1.identifier_value = p_identifier_value
+                AND r1.is_active = TRUE
+                AND r2.is_active = TRUE;
         END IF;
     END IF;
     
@@ -7815,15 +7881,15 @@ END$$
 
 -- Merge duplicate identifiers
 CREATE PROCEDURE sp_merge_identifiers(
-    IN p_source_table VARCHAR(50),
+    IN p_source_table VARCHAR(50), -- Plural, snake_case
     IN p_source_id BIGINT UNSIGNED,
-    IN p_target_table VARCHAR(50),
+    IN p_target_table VARCHAR(50), -- Plural, snake_case
     IN p_target_id BIGINT UNSIGNED,
-    IN p_merge_reason VARCHAR(50),
+    IN p_merge_reason VARCHAR(50), -- Code for resource_db.merge_reasons
     IN p_user_id BIGINT UNSIGNED
 )
 BEGIN
-    DECLARE v_merge_reason_id INT;
+    DECLARE v_merge_reason_id INT UNSIGNED;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -7834,11 +7900,12 @@ BEGIN
     
     -- Get merge reason
     SELECT id INTO v_merge_reason_id
-    FROM resource_db.merge_reason
+    FROM resource_db.merge_reasons lookup
     WHERE code = p_merge_reason;
     
     -- Log the merge
-    INSERT INTO identifier_merge (
+    INSERT INTO identifier_merges ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         merge_type_id,
         source_identifier_table,
         source_identifier_id,
@@ -7850,55 +7917,118 @@ BEGIN
         created_by
     )
     SELECT
-        (SELECT id FROM resource_db.identifier_merge_type WHERE code = 'DUPLICATE_RESOLUTION'),
+        (SELECT id FROM resource_db.identifier_merge_types WHERE code = 'DUPLICATE_RESOLUTION'), lookup
         p_source_table,
         p_source_id,
-        si.identifier_value,
+        (CASE p_source_table
+            WHEN 'work_identifiers' THEN (SELECT identifier_value FROM work_identifiers WHERE id = p_source_id)
+            WHEN 'recording_identifiers' THEN (SELECT identifier_value FROM recording_identifiers WHERE id = p_source_id)
+            WHEN 'release_identifiers' THEN (SELECT identifier_value FROM release_identifiers WHERE id = p_source_id)
+            WHEN 'person_identifiers' THEN (SELECT identifier_value FROM person_identifiers WHERE id = p_source_id)
+            WHEN 'organization_identifiers' THEN (SELECT identifier_value FROM organization_identifiers WHERE id = p_source_id)
+            WHEN 'video_identifiers' THEN (SELECT identifier_value FROM video_identifiers WHERE id = p_source_id)
+            WHEN 'asset_identifiers' THEN (SELECT identifier_value FROM asset_identifiers WHERE id = p_source_id)
+            WHEN 'society_work_ids' THEN (SELECT society_work_code FROM society_work_ids WHERE id = p_source_id)
+            WHEN 'society_recording_ids' THEN (SELECT society_recording_code FROM society_recording_ids WHERE id = p_source_id)
+            WHEN 'grid_identifiers' THEN (SELECT grid_value FROM grid_identifiers WHERE id = p_source_id)
+            WHEN 'ddex_party_ids' THEN (SELECT dpid_value FROM ddex_party_ids WHERE id = p_source_id)
+            WHEN 'proprietary_ids' THEN (SELECT platform_identifier FROM proprietary_ids WHERE id = p_source_id)
+            ELSE NULL -- Handle other identifier tables
+        END) AS source_value,
         p_target_table,
         p_target_id,
-        ti.identifier_value,
+        (CASE p_target_table
+            WHEN 'work_identifiers' THEN (SELECT identifier_value FROM work_identifiers WHERE id = p_target_id)
+            WHEN 'recording_identifiers' THEN (SELECT identifier_value FROM recording_identifiers WHERE id = p_target_id)
+            WHEN 'release_identifiers' THEN (SELECT identifier_value FROM release_identifiers WHERE id = p_target_id)
+            WHEN 'person_identifiers' THEN (SELECT identifier_value FROM person_identifiers WHERE id = p_target_id)
+            WHEN 'organization_identifiers' THEN (SELECT identifier_value FROM organization_identifiers WHERE id = p_target_id)
+            WHEN 'video_identifiers' THEN (SELECT identifier_value FROM video_identifiers WHERE id = p_target_id)
+            WHEN 'asset_identifiers' THEN (SELECT identifier_value FROM asset_identifiers WHERE id = p_target_id)
+            WHEN 'society_work_ids' THEN (SELECT society_work_code FROM society_work_ids WHERE id = p_target_id)
+            WHEN 'society_recording_ids' THEN (SELECT society_recording_code FROM society_recording_ids WHERE id = p_target_id)
+            WHEN 'grid_identifiers' THEN (SELECT grid_value FROM grid_identifiers WHERE id = p_target_id)
+            WHEN 'ddex_party_ids' THEN (SELECT dpid_value FROM ddex_party_ids WHERE id = p_target_id)
+            WHEN 'proprietary_ids' THEN (SELECT platform_identifier FROM proprietary_ids WHERE id = p_target_id)
+            ELSE NULL
+        END) AS target_value,
         v_merge_reason_id,
-        p_user_id
-    FROM (
-        SELECT identifier_value 
-        FROM work_identifier 
-        WHERE id = p_source_id AND p_source_table = 'work_identifier'
-        UNION
-        SELECT identifier_value 
-        FROM recording_identifier 
-        WHERE id = p_source_id AND p_source_table = 'recording_identifier'
-        -- Add other identifier tables...
-    ) si,
-    (
-        SELECT identifier_value 
-        FROM work_identifier 
-        WHERE id = p_target_id AND p_target_table = 'work_identifier'
-        UNION
-        SELECT identifier_value 
-        FROM recording_identifier 
-        WHERE id = p_target_id AND p_target_table = 'recording_identifier'
-        -- Add other identifier tables...
-    ) ti;
+        p_user_id;
     
     -- Deactivate source identifier
+    -- Note: This part needs to be dynamically generated or expanded for all tables
     CASE p_source_table
-        WHEN 'work_identifier' THEN
-            UPDATE work_identifier
+        WHEN 'work_identifiers' THEN
+            UPDATE work_identifiers to plural
             SET is_active = FALSE,
                 is_deleted = TRUE,
                 deleted_at = NOW(),
-                deleted_by = p_user_id
+                deleted_by = p_user_id,
+                archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
             WHERE id = p_source_id;
             
-        WHEN 'recording_identifier' THEN
-            UPDATE recording_identifier
+        WHEN 'recording_identifiers' THEN
+            UPDATE recording_identifiers to plural
             SET is_active = FALSE,
                 is_deleted = TRUE,
                 deleted_at = NOW(),
-                deleted_by = p_user_id
+                deleted_by = p_user_id,
+                archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
             WHERE id = p_source_id;
             
-        -- Add other tables...
+        WHEN 'release_identifiers' THEN
+            UPDATE release_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'person_identifiers' THEN
+            UPDATE person_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'organization_identifiers' THEN
+            UPDATE organization_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'video_identifiers' THEN
+            UPDATE video_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'asset_identifiers' THEN
+            UPDATE asset_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'society_work_ids' THEN
+            UPDATE society_work_ids
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'society_recording_ids' THEN
+            UPDATE society_recording_ids
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'grid_identifiers' THEN
+            UPDATE grid_identifiers
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'ddex_party_ids' THEN
+            UPDATE ddex_party_ids
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        WHEN 'proprietary_ids' THEN
+            UPDATE proprietary_ids
+            SET is_active = FALSE, is_deleted = TRUE, deleted_at = NOW(), deleted_by = p_user_id, archive_reason = CONCAT('Merged into ', p_target_table, ':', p_target_id)
+            WHERE id = p_source_id;
+        
+        ELSE
+            -- Handle unknown table or log error
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unsupported source table for merge operation';
     END CASE;
     
     COMMIT;
@@ -7907,15 +8037,15 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- IDENTIFIER LOOKUP VIEWS
+-- IDENTIFIER LOOKUP VIEWS 
 -- =============================================
 
 -- Comprehensive work identifier view
-CREATE OR REPLACE VIEW vw_work_identifiers AS
+CREATE OR REPLACE VIEW vw_work_identifiers_summary AS view for clarity
 SELECT 
     w.id AS work_id,
     w.title AS work_title,
-    wit.code AS identifier_type,
+    wit.code AS identifier_type_code, for clarity
     wit.name AS identifier_type_name,
     wi.identifier_value,
     wi.is_primary,
@@ -7930,23 +8060,23 @@ SELECT
     wi.verified_by,
     wi.created_at,
     u.username AS created_by_username
-FROM work_identifier wi
-JOIN work w ON wi.work_id = w.id
-JOIN resource_db.work_identifier_type wit ON wi.identifier_type_id = wit.id
-JOIN resource_db.identifier_status ist ON wi.identifier_status_id = ist.id
-LEFT JOIN resource_db.validation_status vs ON wi.validation_status_id = vs.id
-LEFT JOIN resource_db.society s ON wi.society_id = s.id
-LEFT JOIN resource_db.territory t ON wi.territory_id = t.id
-JOIN user u ON wi.created_by = u.id
+FROM work_identifiers wi to plural
+JOIN works w ON wi.work_id = w.id to plural
+JOIN resource_db.work_identifier_types wit ON wi.identifier_type_id = wit.id lookup
+JOIN resource_db.identifier_statuses ist ON wi.identifier_status_id = ist.id lookup
+LEFT JOIN resource_db.validation_statuses vs ON wi.validation_status_id = vs.id lookup
+LEFT JOIN resource_db.societies s ON wi.society_id = s.id lookup
+LEFT JOIN resource_db.territories t ON wi.territory_id = t.id lookup
+JOIN users u ON wi.created_by = u.id to plural
 WHERE wi.is_active = TRUE
 ORDER BY w.id, wi.is_primary DESC, wit.display_order;
 
 -- Recording identifier summary
-CREATE OR REPLACE VIEW vw_recording_identifiers AS
+CREATE OR REPLACE VIEW vw_recording_identifiers_summary AS view for clarity
 SELECT 
     r.id AS recording_id,
     r.title AS recording_title,
-    rit.code AS identifier_type,
+    rit.code AS identifier_type_code, for clarity
     rit.name AS identifier_type_name,
     ri.identifier_value,
     ri.is_primary,
@@ -7955,20 +8085,20 @@ SELECT
     ist.name AS identifier_status,
     ri.issued_date,
     ri.verified_date
-FROM recording_identifier ri
-JOIN recording r ON ri.recording_id = r.id
-JOIN resource_db.recording_identifier_type rit ON ri.identifier_type_id = rit.id
-JOIN resource_db.identifier_status ist ON ri.identifier_status_id = ist.id
-LEFT JOIN organization o ON ri.issued_by_id = o.id
-LEFT JOIN resource_db.territory t ON ri.territory_id = t.id
+FROM recording_identifiers ri to plural
+JOIN recordings r ON ri.recording_id = r.id to plural
+JOIN resource_db.recording_identifier_types rit ON ri.identifier_type_id = rit.id lookup
+JOIN resource_db.identifier_statuses ist ON ri.identifier_status_id = ist.id lookup
+LEFT JOIN organizations o ON ri.issued_by_id = o.id to plural
+LEFT JOIN resource_db.territories t ON ri.territory_id = t.id lookup
 WHERE ri.is_active = TRUE;
 
 -- Person identifier summary (IPI, ISNI)
-CREATE OR REPLACE VIEW vw_person_identifiers AS
+CREATE OR REPLACE VIEW vw_person_identifiers_summary AS view for clarity
 SELECT 
     p.id AS person_id,
     p.full_name AS person_name,
-    pit.code AS identifier_type,
+    pit.code AS identifier_type_code, for clarity
     pit.name AS identifier_type_name,
     pi.identifier_value,
     pi.role_code,
@@ -7978,16 +8108,16 @@ SELECT
     pi.is_primary,
     pi.issued_date,
     pi.verified_date
-FROM person_identifier pi
-JOIN person p ON pi.person_id = p.id
-JOIN resource_db.person_identifier_type pit ON pi.identifier_type_id = pit.id
-JOIN resource_db.identifier_status ist ON pi.identifier_status_id = ist.id
-LEFT JOIN resource_db.society s ON pi.society_id = s.id
+FROM person_identifiers pi to plural
+JOIN persons p ON pi.person_id = p.id to plural
+JOIN resource_db.person_identifier_types pit ON pi.identifier_type_id = pit.id lookup
+JOIN resource_db.identifier_statuses ist ON pi.identifier_status_id = ist.id lookup
+LEFT JOIN resource_db.societies s ON pi.society_id = s.id lookup
 WHERE pi.is_active = TRUE
     AND p.is_active = TRUE;
 
 -- Identifier conflict dashboard
-CREATE OR REPLACE VIEW vw_identifier_conflicts AS
+CREATE OR REPLACE VIEW vw_identifier_conflicts_dashboard AS view for clarity
 SELECT 
     ic.id AS conflict_id,
     ict.name AS conflict_type,
@@ -7996,17 +8126,19 @@ SELECT
     ic.entity1_type,
     ic.entity1_id,
     CASE ic.entity1_type
-        WHEN 'work' THEN (SELECT title FROM work WHERE id = ic.entity1_id)
-        WHEN 'recording' THEN (SELECT title FROM recording WHERE id = ic.entity1_id)
-        WHEN 'person' THEN (SELECT full_name FROM person WHERE id = ic.entity1_id)
+        WHEN 'work' THEN (SELECT title FROM works WHERE id = ic.entity1_id) table
+        WHEN 'recording' THEN (SELECT title FROM recordings WHERE id = ic.entity1_id) table
+        WHEN 'person' THEN (SELECT full_name FROM persons WHERE id = ic.entity1_id) table
+        WHEN 'organization' THEN (SELECT name FROM organizations WHERE id = ic.entity1_id) -- Added organization, Renamed table
         ELSE 'Unknown'
     END AS entity1_name,
     ic.entity2_type,
     ic.entity2_id,
     CASE ic.entity2_type
-        WHEN 'work' THEN (SELECT title FROM work WHERE id = ic.entity2_id)
-        WHEN 'recording' THEN (SELECT title FROM recording WHERE id = ic.entity2_id)
-        WHEN 'person' THEN (SELECT full_name FROM person WHERE id = ic.entity2_id)
+        WHEN 'work' THEN (SELECT title FROM works WHERE id = ic.entity2_id) table
+        WHEN 'recording' THEN (SELECT title FROM recordings WHERE id = ic.entity2_id) table
+        WHEN 'person' THEN (SELECT full_name FROM persons WHERE id = ic.entity2_id) table
+        WHEN 'organization' THEN (SELECT name FROM organizations WHERE id = ic.entity2_id) -- Added organization, Renamed table
         ELSE 'Unknown'
     END AS entity2_name,
     cs.name AS conflict_status,
@@ -8014,16 +8146,16 @@ SELECT
     ic.resolution_date,
     rm.name AS resolution_method,
     u.username AS resolved_by_username
-FROM identifier_conflict ic
-JOIN resource_db.identifier_conflict_type ict ON ic.conflict_type_id = ict.id
-JOIN resource_db.conflict_status cs ON ic.conflict_status_id = cs.id
-LEFT JOIN resource_db.resolution_method rm ON ic.resolution_method_id = rm.id
-LEFT JOIN user u ON ic.resolved_by = u.id
+FROM identifier_conflicts ic to plural
+JOIN resource_db.identifier_conflict_types ict ON ic.conflict_type_id = ict.id lookup
+JOIN resource_db.conflict_statuses cs ON ic.conflict_status_id = cs.id lookup
+LEFT JOIN resource_db.resolution_methods rm ON ic.resolution_method_id = rm.id lookup
+LEFT JOIN users u ON ic.resolved_by = u.id to plural
 WHERE ic.detection_date >= DATE_SUB(NOW(), INTERVAL 90 DAY)
 ORDER BY ic.detection_date DESC;
 
 -- Identifier validation history
-CREATE OR REPLACE VIEW vw_identifier_validation_history AS
+CREATE OR REPLACE VIEW vw_identifier_validation_histories AS view for clarity
 SELECT 
     ivl.id,
     ivl.identifier_table,
@@ -8039,13 +8171,13 @@ SELECT
     ivl.confidence_score,
     ivl.created_at,
     u.username AS validated_by
-FROM identifier_validation_log ivl
-JOIN resource_db.identifier_validation_type ivt ON ivl.validation_type_id = ivt.id
-JOIN resource_db.validation_result vr ON ivl.validation_result_id = vr.id
-JOIN user u ON ivl.created_by = u.id
+FROM identifier_validation_logs ivl to plural
+JOIN resource_db.identifier_validation_types ivt ON ivl.validation_type_id = ivt.id lookup
+JOIN resource_db.validation_results vr ON ivl.validation_result_id = vr.id lookup
+JOIN users u ON ivl.created_by = u.id to plural
 ORDER BY ivl.created_at DESC;
 
--- Society work identifier mapping
+-- Society work identifier mappings
 CREATE OR REPLACE VIEW vw_society_work_mappings AS
 SELECT 
     w.id AS work_id,
@@ -8061,25 +8193,27 @@ SELECT
     swi.is_origin_society,
     t.code AS territory_code,
     t.name AS territory_name
-FROM society_work_id swi
-JOIN work w ON swi.work_id = w.id
-JOIN resource_db.society s ON swi.society_id = s.id
-JOIN resource_db.registration_status rs ON swi.registration_status_id = rs.id
-LEFT JOIN resource_db.territory t ON swi.territory_id = t.id
+FROM society_work_ids swi to plural
+JOIN works w ON swi.work_id = w.id to plural
+JOIN resource_db.societies s ON swi.society_id = s.id lookup
+JOIN resource_db.registration_statuses rs ON swi.registration_status_id = rs.id lookup
+LEFT JOIN resource_db.territories t ON swi.territory_id = t.id lookup
 WHERE swi.is_active = TRUE
     AND w.is_active = TRUE
 ORDER BY w.id, swi.is_origin_society DESC, s.code;
 
--- Platform-specific identifier mapping
-CREATE OR REPLACE VIEW vw_platform_identifiers AS
+-- Platform-specific identifier mappings
+CREATE OR REPLACE VIEW vw_platform_identifiers_mappings AS view for clarity
 SELECT 
     pi.entity_type,
     pi.entity_id,
     CASE pi.entity_type
-        WHEN 'work' THEN (SELECT title FROM work WHERE id = pi.entity_id)
-        WHEN 'recording' THEN (SELECT title FROM recording WHERE id = pi.entity_id)
-        WHEN 'release' THEN (SELECT title FROM release WHERE id = pi.entity_id)
-        WHEN 'artist' THEN (SELECT name FROM artist WHERE id = pi.entity_id)
+        WHEN 'work' THEN (SELECT title FROM works WHERE id = pi.entity_id) table
+        WHEN 'recording' THEN (SELECT title FROM recordings WHERE id = pi.entity_id) table
+        WHEN 'release' THEN (SELECT title FROM releases WHERE id = pi.entity_id) table
+        WHEN 'artist' THEN (SELECT name FROM artists WHERE id = pi.entity_id) table
+        WHEN 'person' THEN (SELECT display_name FROM persons WHERE id = pi.entity_id) -- Added persons
+        WHEN 'organization' THEN (SELECT name FROM organizations WHERE id = pi.entity_id) -- Added organizations
         ELSE 'Unknown'
     END AS entity_name,
     p.code AS platform_code,
@@ -8090,14 +8224,14 @@ SELECT
     pi.is_verified,
     pi.last_verified,
     pi.created_at
-FROM proprietary_id pi
-JOIN resource_db.platform p ON pi.platform_id = p.id
-LEFT JOIN resource_db.territory t ON pi.territory_id = t.id
+FROM proprietary_ids pi to plural
+JOIN resource_db.platforms p ON pi.platform_id = p.id lookup
+LEFT JOIN resource_db.territories t ON pi.territory_id = t.id lookup
 WHERE pi.is_active = TRUE
 ORDER BY pi.entity_type, pi.entity_id, p.display_order;
 
 -- =============================================
--- IDENTIFIER ANALYTICS PROCEDURES
+-- IDENTIFIER ANALYTICS PROCEDURES 
 -- =============================================
 
 DELIMITER $$
@@ -8114,13 +8248,13 @@ BEGIN
             ROUND(COUNT(DISTINCT wi_iswc.work_id) * 100.0 / COUNT(DISTINCT w.id), 2) AS iswc_coverage_percent,
             COUNT(DISTINCT swi.work_id) AS works_with_society_ids,
             ROUND(COUNT(DISTINCT swi.work_id) * 100.0 / COUNT(DISTINCT w.id), 2) AS society_id_coverage_percent
-        FROM work w
-        LEFT JOIN work_identifier wi_iswc ON w.id = wi_iswc.work_id 
+        FROM works w to plural
+        LEFT JOIN work_identifiers wi_iswc ON w.id = wi_iswc.work_id to plural
             AND wi_iswc.identifier_type_id = (
-                SELECT id FROM resource_db.work_identifier_type WHERE code = 'ISWC'
+                SELECT id FROM resource_db.work_identifier_types WHERE code = 'ISWC' lookup
             )
             AND wi_iswc.is_active = TRUE
-        LEFT JOIN society_work_id swi ON w.id = swi.work_id 
+        LEFT JOIN society_work_ids swi ON w.id = swi.work_id to plural
             AND swi.is_active = TRUE
         WHERE w.is_active = TRUE;
         
@@ -8131,15 +8265,15 @@ BEGIN
             ROUND(COUNT(DISTINCT ri_isrc.recording_id) * 100.0 / COUNT(DISTINCT r.id), 2) AS isrc_coverage_percent,
             COUNT(DISTINCT ri_cat.recording_id) AS recordings_with_catalog,
             ROUND(COUNT(DISTINCT ri_cat.recording_id) * 100.0 / COUNT(DISTINCT r.id), 2) AS catalog_coverage_percent
-        FROM recording r
-        LEFT JOIN recording_identifier ri_isrc ON r.id = ri_isrc.recording_id 
+        FROM recordings r to plural
+        LEFT JOIN recording_identifiers ri_isrc ON r.id = ri_isrc.recording_id to plural
             AND ri_isrc.identifier_type_id = (
-                SELECT id FROM resource_db.recording_identifier_type WHERE code = 'ISRC'
+                SELECT id FROM resource_db.recording_identifier_types WHERE code = 'ISRC' lookup
             )
             AND ri_isrc.is_active = TRUE
-        LEFT JOIN recording_identifier ri_cat ON r.id = ri_cat.recording_id 
+        LEFT JOIN recording_identifiers ri_cat ON r.id = ri_cat.recording_id to plural
             AND ri_cat.identifier_type_id = (
-                SELECT id FROM resource_db.recording_identifier_type WHERE code = 'CATALOG_NUMBER'
+                SELECT id FROM resource_db.recording_identifier_types WHERE code = 'CATALOG_NUMBER' lookup
             )
             AND ri_cat.is_active = TRUE
         WHERE r.is_active = TRUE;
@@ -8149,7 +8283,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- IDENTIFIER MAINTENANCE
+-- IDENTIFIER MAINTENANCE 
 -- =============================================
 
 DELIMITER $$
@@ -8160,14 +8294,14 @@ BEGIN
     DECLARE v_cleaned_count INT DEFAULT 0;
     
     -- Deactivate duplicate ISWCs (keep oldest)
-    UPDATE work_identifier wi1
+    UPDATE work_identifiers wi1 to plural
     JOIN (
         SELECT 
             identifier_value,
             MIN(id) AS keep_id
-        FROM work_identifier
+        FROM work_identifiers to plural
         WHERE identifier_type_id = (
-            SELECT id FROM resource_db.work_identifier_type WHERE code = 'ISWC'
+            SELECT id FROM resource_db.work_identifier_types WHERE code = 'ISWC' lookup
         )
         AND is_active = TRUE
         GROUP BY identifier_value
@@ -8176,17 +8310,40 @@ BEGIN
     SET wi1.is_active = FALSE,
         wi1.is_deleted = TRUE,
         wi1.deleted_at = NOW(),
-        wi1.deleted_by = 1, -- System user
+        wi1.deleted_by = 1, -- System user (assuming users.id = 1)
         wi1.archive_reason = 'Duplicate ISWC cleanup'
     WHERE wi1.id != dups.keep_id
         AND wi1.identifier_type_id = (
-            SELECT id FROM resource_db.work_identifier_type WHERE code = 'ISWC'
+            SELECT id FROM resource_db.work_identifier_types WHERE code = 'ISWC' lookup
         );
     
     SET v_cleaned_count = v_cleaned_count + ROW_COUNT();
     
     -- Similar cleanup for ISRCs
-    -- ... (abbreviated for space)
+    UPDATE recording_identifiers ri1 to plural
+    JOIN (
+        SELECT 
+            identifier_value,
+            MIN(id) AS keep_id
+        FROM recording_identifiers to plural
+        WHERE identifier_type_id = (
+            SELECT id FROM resource_db.recording_identifier_types WHERE code = 'ISRC' lookup
+        )
+        AND is_active = TRUE
+        GROUP BY identifier_value
+        HAVING COUNT(*) > 1
+    ) dups ON ri1.identifier_value = dups.identifier_value
+    SET ri1.is_active = FALSE,
+        ri1.is_deleted = TRUE,
+        ri1.deleted_at = NOW(),
+        ri1.deleted_by = 1, -- System user
+        ri1.archive_reason = 'Duplicate ISRC cleanup'
+    WHERE ri1.id != dups.keep_id
+        AND ri1.identifier_type_id = (
+            SELECT id FROM resource_db.recording_identifier_types WHERE code = 'ISRC' lookup
+        );
+    
+    SET v_cleaned_count = v_cleaned_count + ROW_COUNT();
     
     SELECT v_cleaned_count AS identifiers_cleaned;
 END$$
@@ -8201,22 +8358,22 @@ DELIMITER ;
 -- MASTER RECORDING OWNERSHIP
 -- =============================================
 
--- master_ownership - Current recording ownership
-CREATE TABLE master_ownership (
+-- master_ownerships - Current recording ownership
+CREATE TABLE master_ownerships ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     recording_id BIGINT UNSIGNED NOT NULL,
-    owner_type VARCHAR(50) NOT NULL COMMENT 'person, organization, label, artist',
+    owner_type VARCHAR(50) NOT NULL COMMENT 'persons, organizations, labels, artists', to plural in comment
     owner_id BIGINT UNSIGNED NOT NULL,
-    ownership_type_id INT NOT NULL COMMENT 'FK to resource_db.master_ownership_type',
+    ownership_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.master_ownership_types', -- Changed INT, renamed lookup table
     share_percentage DECIMAL(7,4) NOT NULL COMMENT 'Supports up to 99.9999%',
-    territory_id INT NULL COMMENT 'FK to resource_db.territory - NULL means worldwide',
+    territory_id INT UNSIGNED NULL COMMENT 'FK to resource_db.territories - NULL means worldwide', -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
-    acquisition_type_id INT NOT NULL COMMENT 'FK to resource_db.acquisition_type',
+    acquisition_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.acquisition_types', -- Changed INT, renamed lookup table
     acquisition_date DATE NOT NULL,
-    acquisition_price DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    contract_id BIGINT UNSIGNED NULL,
+    acquisition_price VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    contract_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     
     -- Rights details
     exploitation_rights JSON NULL COMMENT 'Specific rights owned',
@@ -8227,45 +8384,45 @@ CREATE TABLE master_ownership (
     -- Validation
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
     validation_notes TEXT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, recording_id, owner_type, owner_id, ownership_type_id, share_percentage, territory_id, start_date, end_date, acquisition_type_id, acquisition_date, acquisition_price, contract_id, exploitation_rights, excluded_rights, reversion_date, reversion_conditions, is_verified, verification_date, verified_by, validation_notes, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_master_ownership_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_master_ownership_type FOREIGN KEY (ownership_type_id) REFERENCES resource_db.master_ownership_type(id),
-    CONSTRAINT fk_master_ownership_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_master_ownership_acquisition FOREIGN KEY (acquisition_type_id) REFERENCES resource_db.acquisition_type(id),
-    CONSTRAINT fk_master_ownership_contract FOREIGN KEY (contract_id) REFERENCES agreement(id),
-    CONSTRAINT fk_master_ownership_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_master_ownership_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_master_ownership_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_master_ownership_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_master_ownership_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_master_ownerships_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_type FOREIGN KEY (ownership_type_id) REFERENCES resource_db.master_ownership_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_ownerships_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_ownerships_acquisition FOREIGN KEY (acquisition_type_id) REFERENCES resource_db.acquisition_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_ownerships_contract FOREIGN KEY (contract_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_ownerships_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_master_share_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
     CONSTRAINT chk_master_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_master_recording (recording_id),
+    INDEX idx_master_recordings (recording_id),
     INDEX idx_master_owner (owner_type, owner_id),
     INDEX idx_master_territory (territory_id),
     INDEX idx_master_dates (start_date, end_date),
@@ -8276,18 +8433,19 @@ CREATE TABLE master_ownership (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- master_ownership_history - Track all ownership changes
-CREATE TABLE master_ownership_history (
+-- master_ownership_histories - Track all ownership changes
+CREATE TABLE master_ownership_histories ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    master_ownership_id BIGINT UNSIGNED NOT NULL,
-    recording_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.ownership_change_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    master_ownership_id BIGINT UNSIGNED NOT NULL, -- FK to master_ownerships.id
+    recording_id BIGINT UNSIGNED NOT NULL, -- FK to recordings.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
     
     -- Old values
     old_owner_type VARCHAR(50) NULL,
     old_owner_id BIGINT UNSIGNED NULL,
     old_share_percentage DECIMAL(7,4) NULL,
-    old_territory_id INT NULL,
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
     old_start_date DATE NULL,
     old_end_date DATE NULL,
     
@@ -8295,68 +8453,69 @@ CREATE TABLE master_ownership_history (
     new_owner_type VARCHAR(50) NULL,
     new_owner_id BIGINT UNSIGNED NULL,
     new_share_percentage DECIMAL(7,4) NULL,
-    new_territory_id INT NULL,
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
     new_start_date DATE NULL,
     new_end_date DATE NULL,
     
     -- Change details
     change_reason TEXT NULL,
-    change_document_id BIGINT UNSIGNED NULL,
+    change_document_id BIGINT UNSIGNED NULL, -- FK to files.id
     effective_date DATE NOT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, master_ownership_id, recording_id, change_type_id, old_owner_type, old_owner_id, old_share_percentage, old_territory_id, old_start_date, old_end_date, new_owner_type, new_owner_id, new_share_percentage, new_territory_id, new_start_date, new_end_date, change_reason, change_document_id, effective_date, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_master_history_ownership FOREIGN KEY (master_ownership_id) REFERENCES master_ownership(id),
-    CONSTRAINT fk_master_history_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_master_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_type(id),
-    CONSTRAINT fk_master_history_document FOREIGN KEY (change_document_id) REFERENCES file(id),
-    CONSTRAINT fk_master_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_master_histories_ownership FOREIGN KEY (master_ownership_id) REFERENCES master_ownerships(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_histories_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_histories_document FOREIGN KEY (change_document_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
-    INDEX idx_master_history_ownership (master_ownership_id),
-    INDEX idx_master_history_recording (recording_id),
-    INDEX idx_master_history_date (effective_date),
-    INDEX idx_master_history_created (created_at),
+    INDEX idx_master_histories_ownership (master_ownership_id),
+    INDEX idx_master_histories_recording (recording_id),
+    INDEX idx_master_histories_date (effective_date),
+    INDEX idx_master_histories_created (created_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- master_ownership_snapshot - Point-in-time ownership records
-CREATE TABLE master_ownership_snapshot (
+-- master_ownership_snapshots - Point-in-time ownership records
+CREATE TABLE master_ownership_snapshots ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     snapshot_date DATE NOT NULL,
-    recording_id BIGINT UNSIGNED NOT NULL,
+    recording_id BIGINT UNSIGNED NOT NULL, -- FK to recordings.id
     owner_type VARCHAR(50) NOT NULL,
     owner_id BIGINT UNSIGNED NOT NULL,
-    ownership_type_id INT NOT NULL,
+    ownership_type_id INT UNSIGNED NOT NULL, -- Changed INT
     share_percentage DECIMAL(7,4) NOT NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT
     total_territory_percentage DECIMAL(7,4) NOT NULL COMMENT 'Total % for this territory',
     is_complete BOOLEAN DEFAULT FALSE COMMENT 'Does ownership total 100%?',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, snapshot_date, recording_id, owner_type, owner_id, ownership_type_id, share_percentage, territory_id, total_territory_percentage, is_complete, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_master_snapshot_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_master_snapshot_type FOREIGN KEY (ownership_type_id) REFERENCES resource_db.master_ownership_type(id),
-    CONSTRAINT fk_master_snapshot_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_master_snapshot_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_master_snapshots_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_master_snapshots_type FOREIGN KEY (ownership_type_id) REFERENCES resource_db.master_ownership_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_snapshots_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_master_snapshots_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
     UNIQUE KEY uk_master_snapshot (snapshot_date, recording_id, owner_type, owner_id, territory_id),
-    INDEX idx_master_snapshot_date (snapshot_date),
-    INDEX idx_master_snapshot_recording (recording_id),
-    INDEX idx_master_snapshot_complete (is_complete),
+    INDEX idx_master_snapshots_date (snapshot_date),
+    INDEX idx_master_snapshots_recording (recording_id),
+    INDEX idx_master_snapshots_complete (is_complete),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -8364,15 +8523,15 @@ CREATE TABLE master_ownership_snapshot (
 -- PUBLISHING OWNERSHIP
 -- =============================================
 
--- publishing_share - Current publishing ownership
-CREATE TABLE publishing_share (
+-- publishing_shares - Current publishing ownership
+CREATE TABLE publishing_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    work_id BIGINT UNSIGNED NOT NULL,
-    publisher_id BIGINT UNSIGNED NOT NULL,
-    share_type_id INT NOT NULL COMMENT 'FK to resource_db.publishing_share_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    share_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.publishing_share_types', -- Changed INT, renamed lookup table
     share_percentage DECIMAL(7,4) NOT NULL,
-    territory_id INT NULL COMMENT 'NULL means worldwide',
+    territory_id INT UNSIGNED NULL COMMENT 'NULL means worldwide', -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
@@ -8385,45 +8544,45 @@ CREATE TABLE publishing_share (
     print_rights BOOLEAN DEFAULT FALSE,
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
-    advance_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    advance_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     is_recouped BOOLEAN DEFAULT FALSE,
     recoup_date DATE NULL,
     
     -- Validation
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, publisher_id, share_type_id, share_percentage, territory_id, start_date, end_date, administration_rights, collection_rights, synchronization_rights, mechanical_rights, performance_rights, print_rights, advance_amount, is_recouped, recoup_date, is_verified, verified_date, verified_by, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_publishing_share_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_publishing_share_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_publishing_share_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publishing_share_type(id),
-    CONSTRAINT fk_publishing_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_publishing_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_publishing_share_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_publishing_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_publishing_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_publishing_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_publishing_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_publishing_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publishing_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publishing_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publishing_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_publishing_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
@@ -8439,83 +8598,85 @@ CREATE TABLE publishing_share (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- publishing_share_history - Publishing ownership changes
-CREATE TABLE publishing_share_history (
+-- publishing_share_histories - Publishing ownership changes
+CREATE TABLE publishing_share_histories ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    publishing_share_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.ownership_change_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    publishing_share_id BIGINT UNSIGNED NOT NULL, -- FK to publishing_shares.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
     
     -- Old values
     old_publisher_id BIGINT UNSIGNED NULL,
     old_share_percentage DECIMAL(7,4) NULL,
-    old_territory_id INT NULL,
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
     old_start_date DATE NULL,
     old_end_date DATE NULL,
     
     -- New values
     new_publisher_id BIGINT UNSIGNED NULL,
     new_share_percentage DECIMAL(7,4) NULL,
-    new_territory_id INT NULL,
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
     new_start_date DATE NULL,
     new_end_date DATE NULL,
     
     -- Change details
     change_reason TEXT NULL,
-    change_document_id BIGINT UNSIGNED NULL,
+    change_document_id BIGINT UNSIGNED NULL, -- FK to files.id
     effective_date DATE NOT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, publishing_share_id, work_id, change_type_id, old_publisher_id, old_share_percentage, old_territory_id, old_start_date, old_end_date, new_publisher_id, new_share_percentage, new_territory_id, new_start_date, new_end_date, change_reason, change_document_id, effective_date, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_publishing_history_share FOREIGN KEY (publishing_share_id) REFERENCES publishing_share(id),
-    CONSTRAINT fk_publishing_history_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_publishing_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_type(id),
-    CONSTRAINT fk_publishing_history_document FOREIGN KEY (change_document_id) REFERENCES file(id),
-    CONSTRAINT fk_publishing_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_publishing_histories_share FOREIGN KEY (publishing_share_id) REFERENCES publishing_shares(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publishing_histories_document FOREIGN KEY (change_document_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
-    INDEX idx_publishing_history_share (publishing_share_id),
-    INDEX idx_publishing_history_work (work_id),
-    INDEX idx_publishing_history_date (effective_date),
+    INDEX idx_publishing_histories_share (publishing_share_id),
+    INDEX idx_publishing_histories_work (work_id),
+    INDEX idx_publishing_histories_date (effective_date),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- publishing_share_snapshot - Point-in-time publishing
-CREATE TABLE publishing_share_snapshot (
+-- publishing_share_snapshots - Point-in-time publishing
+CREATE TABLE publishing_share_snapshots ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     snapshot_date DATE NOT NULL,
-    work_id BIGINT UNSIGNED NOT NULL,
-    publisher_id BIGINT UNSIGNED NOT NULL,
-    share_type_id INT NOT NULL,
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    share_type_id INT UNSIGNED NOT NULL, -- Changed INT
     share_percentage DECIMAL(7,4) NOT NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT
     total_territory_percentage DECIMAL(7,4) NOT NULL,
     is_complete BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, snapshot_date, work_id, publisher_id, share_type_id, share_percentage, territory_id, total_territory_percentage, is_complete, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_publishing_snapshot_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_publishing_snapshot_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_publishing_snapshot_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publishing_share_type(id),
-    CONSTRAINT fk_publishing_snapshot_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_publishing_snapshot_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_publishing_snapshots_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_snapshots_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publishing_snapshots_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publishing_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publishing_snapshots_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publishing_snapshots_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
     UNIQUE KEY uk_publishing_snapshot (snapshot_date, work_id, publisher_id, territory_id),
-    INDEX idx_publishing_snapshot_date (snapshot_date),
-    INDEX idx_publishing_snapshot_work (work_id),
+    INDEX idx_publishing_snapshots_date (snapshot_date),
+    INDEX idx_publishing_snapshots_work (work_id),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -8523,63 +8684,64 @@ CREATE TABLE publishing_share_snapshot (
 -- WRITER SHARES
 -- =============================================
 
--- writer_share - Current writer shares
-CREATE TABLE writer_share (
+-- writer_shares - Current writer shares
+CREATE TABLE writer_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    work_id BIGINT UNSIGNED NOT NULL,
-    writer_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    writer_id BIGINT UNSIGNED NOT NULL, -- FK to writers.id
     share_percentage DECIMAL(7,4) NOT NULL,
-    role_id INT NOT NULL COMMENT 'FK to resource_db.writer_role',
-    territory_id INT NULL COMMENT 'NULL means worldwide',
+    role_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.writer_roles', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL COMMENT 'NULL means worldwide', -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
     -- Rights details
     is_controlled BOOLEAN DEFAULT FALSE,
-    publisher_id BIGINT UNSIGNED NULL COMMENT 'Controlling publisher',
+    publisher_id BIGINT UNSIGNED NULL COMMENT 'Controlling publisher (FK to publishers.id)',
     collection_share DECIMAL(7,4) NULL COMMENT 'Writer collection %',
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
-    pro_affiliation_id INT NULL COMMENT 'FK to resource_db.society',
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    pro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
     ipi_name_number VARCHAR(11) NULL,
     
     -- Validation
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, writer_id, share_percentage, role_id, territory_id, start_date, end_date, is_controlled, publisher_id, collection_share, agreement_id, pro_affiliation_id, ipi_name_number, is_verified, verified_date, verified_by, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_writer_share_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_writer_share_writer FOREIGN KEY (writer_id) REFERENCES writer(id),
-    CONSTRAINT fk_writer_share_role FOREIGN KEY (role_id) REFERENCES resource_db.writer_role(id),
-    CONSTRAINT fk_writer_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_writer_share_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_writer_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_writer_share_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_writer_share_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_writer_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_writer_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_writer_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_writer_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_writer_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_role FOREIGN KEY (role_id) REFERENCES resource_db.writer_roles(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_writer_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
@@ -8587,56 +8749,57 @@ CREATE TABLE writer_share (
     CONSTRAINT chk_writer_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_writer_share_work (work_id),
-    INDEX idx_writer_share_writer (writer_id),
-    INDEX idx_writer_share_territory (territory_id),
-    INDEX idx_writer_share_publisher (publisher_id),
-    INDEX idx_writer_share_dates (start_date, end_date),
-    INDEX idx_writer_share_active_deleted (is_active, is_deleted),
+    INDEX idx_writer_shares_work (work_id),
+    INDEX idx_writer_shares_writer (writer_id),
+    INDEX idx_writer_shares_territory (territory_id),
+    INDEX idx_writer_shares_publisher (publisher_id),
+    INDEX idx_writer_shares_dates (start_date, end_date),
+    INDEX idx_writer_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- writer_share_history - Writer share changes
-CREATE TABLE writer_share_history (
+-- writer_share_histories - Writer share changes
+CREATE TABLE writer_share_histories ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    writer_share_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.ownership_change_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    writer_share_id BIGINT UNSIGNED NOT NULL, -- FK to writer_shares.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
     
     -- Old values
     old_writer_id BIGINT UNSIGNED NULL,
     old_share_percentage DECIMAL(7,4) NULL,
-    old_role_id INT NULL,
-    old_territory_id INT NULL,
+    old_role_id INT UNSIGNED NULL, -- Changed INT
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
     
     -- New values
     new_writer_id BIGINT UNSIGNED NULL,
     new_share_percentage DECIMAL(7,4) NULL,
-    new_role_id INT NULL,
-    new_territory_id INT NULL,
+    new_role_id INT UNSIGNED NULL, -- Changed INT
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
     
     -- Change details
     change_reason TEXT NULL,
     effective_date DATE NOT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, writer_share_id, work_id, change_type_id, old_writer_id, old_share_percentage, old_role_id, old_territory_id, new_writer_id, new_share_percentage, new_role_id, new_territory_id, change_reason, effective_date, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_writer_history_share FOREIGN KEY (writer_share_id) REFERENCES writer_share(id),
-    CONSTRAINT fk_writer_history_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_writer_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_type(id),
-    CONSTRAINT fk_writer_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_writer_histories_share FOREIGN KEY (writer_share_id) REFERENCES writer_shares(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
-    INDEX idx_writer_history_share (writer_share_id),
-    INDEX idx_writer_history_work (work_id),
-    INDEX idx_writer_history_date (effective_date),
+    INDEX idx_writer_histories_share (writer_share_id),
+    INDEX idx_writer_histories_work (work_id),
+    INDEX idx_writer_histories_date (effective_date),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -8644,66 +8807,67 @@ CREATE TABLE writer_share_history (
 -- PUBLISHER SHARES
 -- =============================================
 
--- publisher_share - Publisher shares in works
-CREATE TABLE publisher_share (
+-- publisher_shares - Publisher shares in works
+CREATE TABLE publisher_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    work_id BIGINT UNSIGNED NOT NULL,
-    publisher_id BIGINT UNSIGNED NOT NULL,
-    writer_id BIGINT UNSIGNED NULL COMMENT 'Linked writer if applicable',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    writer_id BIGINT UNSIGNED NULL COMMENT 'Linked writer (FK to writers.id)',
     share_percentage DECIMAL(7,4) NOT NULL,
-    share_type_id INT NOT NULL COMMENT 'FK to resource_db.publisher_share_type',
-    territory_id INT NULL,
+    share_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.publisher_share_types', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
     -- Rights details
     is_original_publisher BOOLEAN DEFAULT FALSE,
     is_administrator BOOLEAN DEFAULT FALSE,
-    administration_percentage DECIMAL(7,4) NULL,
-    collection_source_id INT NULL COMMENT 'FK to resource_db.collection_source',
+    administration_percentage DECIMAL(5,4) NULL, -- Percentage (0-100)
+    collection_source_id INT UNSIGNED NULL COMMENT 'FK to resource_db.collection_sources', -- Changed INT, renamed lookup table
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
-    mro_affiliation_id INT NULL COMMENT 'FK to resource_db.society',
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    mro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
     ipi_name_number VARCHAR(11) NULL,
     
     -- Validation
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, publisher_id, writer_id, share_percentage, share_type_id, territory_id, start_date, end_date, is_original_publisher, is_administrator, administration_percentage, collection_source_id, agreement_id, mro_affiliation_id, ipi_name_number, is_verified, verified_date, verified_by, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_publisher_share_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_publisher_share_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_publisher_share_writer FOREIGN KEY (writer_id) REFERENCES writer(id),
-    CONSTRAINT fk_publisher_share_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publisher_share_type(id),
-    CONSTRAINT fk_publisher_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_publisher_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_publisher_share_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_publisher_share_collection FOREIGN KEY (collection_source_id) REFERENCES resource_db.collection_source(id),
-    CONSTRAINT fk_publisher_share_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_publisher_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_publisher_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_publisher_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_publisher_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_publisher_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publisher_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_collection FOREIGN KEY (collection_source_id) REFERENCES resource_db.collection_sources(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_publisher_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
@@ -8711,54 +8875,310 @@ CREATE TABLE publisher_share (
     CONSTRAINT chk_publisher_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_publisher_share_work (work_id),
-    INDEX idx_publisher_share_publisher (publisher_id),
-    INDEX idx_publisher_share_writer (writer_id),
-    INDEX idx_publisher_share_territory (territory_id),
-    INDEX idx_publisher_share_dates (start_date, end_date),
-    INDEX idx_publisher_share_active_deleted (is_active, is_deleted),
+    INDEX idx_publisher_shares_work (work_id),
+    INDEX idx_publisher_shares_publisher (publisher_id),
+    INDEX idx_publisher_shares_writer (writer_id),
+    INDEX idx_publisher_shares_territory (territory_id),
+    INDEX idx_publisher_shares_dates (start_date, end_date),
+    INDEX idx_publisher_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- publisher_share_history - Publisher share changes
-CREATE TABLE publisher_share_history (
+-- publisher_share_histories - Publisher share changes
+CREATE TABLE publisher_share_histories ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    publisher_share_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.ownership_change_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    publisher_share_id BIGINT UNSIGNED NOT NULL, -- FK to publishing_shares.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
     
     -- Old values
     old_publisher_id BIGINT UNSIGNED NULL,
     old_share_percentage DECIMAL(7,4) NULL,
-    old_territory_id INT NULL,
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
+    old_start_date DATE NULL,
+    old_end_date DATE NULL,
     
     -- New values
     new_publisher_id BIGINT UNSIGNED NULL,
     new_share_percentage DECIMAL(7,4) NULL,
-    new_territory_id INT NULL,
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
+    new_start_date DATE NULL,
+    new_end_date DATE NULL,
     
     -- Change details
     change_reason TEXT NULL,
     effective_date DATE NOT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, publisher_share_id, work_id, change_type_id, old_publisher_id, old_share_percentage, old_territory_id, old_start_date, old_end_date, new_publisher_id, new_share_percentage, new_territory_id, new_start_date, new_end_date, change_reason, effective_date, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_publisher_history_share FOREIGN KEY (publisher_share_id) REFERENCES publisher_share(id),
-    CONSTRAINT fk_publisher_history_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_publisher_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_type(id),
-    CONSTRAINT fk_publisher_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_publisher_histories_share FOREIGN KEY (publisher_share_id) REFERENCES publishing_shares(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
     
     -- Indexes
-    INDEX idx_publisher_history_share (publisher_share_id),
-    INDEX idx_publisher_history_work (work_id),
-    INDEX idx_publisher_history_date (effective_date),
+    INDEX idx_publisher_histories_share (publisher_share_id),
+    INDEX idx_publisher_histories_work (work_id),
+    INDEX idx_publisher_histories_date (effective_date),
+    INDEX idx_row_hash (row_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- WRITER SHARES
+-- =============================================
+
+-- writer_shares - Current writer shares
+CREATE TABLE writer_shares ( to plural
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    writer_id BIGINT UNSIGNED NOT NULL, -- FK to writers.id
+    share_percentage DECIMAL(7,4) NOT NULL,
+    role_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.writer_roles', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL COMMENT 'NULL means worldwide', -- Changed INT, renamed lookup table
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    
+    -- Rights details
+    is_controlled BOOLEAN DEFAULT FALSE,
+    publisher_id BIGINT UNSIGNED NULL COMMENT 'Controlling publisher (FK to publishers.id)',
+    collection_share DECIMAL(7,4) NULL COMMENT 'Writer collection %',
+    
+    -- Agreement details
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    pro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
+    ipi_name_number VARCHAR(11) NULL,
+    
+    -- Validation
+    is_verified BOOLEAN DEFAULT FALSE,
+    verified_date DATETIME NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
+    
+    -- Security columns
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, writer_id, share_percentage, role_id, territory_id, start_date, end_date, is_controlled, publisher_id, collection_share, agreement_id, pro_affiliation_id, ipi_name_number, is_verified, verified_date, verified_by, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
+    
+    -- Audit columns
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at DATETIME NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
+    archived_at DATETIME NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
+    archive_reason TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
+    version INT DEFAULT 1,
+    
+    -- Foreign Keys
+    CONSTRAINT fk_writer_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_role FOREIGN KEY (role_id) REFERENCES resource_db.writer_roles(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_shares_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    
+    -- Constraints
+    CONSTRAINT chk_writer_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
+    CONSTRAINT chk_writer_collection CHECK (collection_share IS NULL OR (collection_share >= 0 AND collection_share <= share_percentage)),
+    CONSTRAINT chk_writer_dates CHECK (end_date IS NULL OR end_date >= start_date),
+    
+    -- Indexes
+    INDEX idx_writer_shares_work (work_id),
+    INDEX idx_writer_shares_writer (writer_id),
+    INDEX idx_writer_shares_territory (territory_id),
+    INDEX idx_writer_shares_publisher (publisher_id),
+    INDEX idx_writer_shares_dates (start_date, end_date),
+    INDEX idx_writer_shares_active_deleted (is_active, is_deleted),
+    INDEX idx_archived_at (archived_at),
+    INDEX idx_row_hash (row_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- writer_share_histories - Writer share changes
+CREATE TABLE writer_share_histories ( to plural
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    writer_share_id BIGINT UNSIGNED NOT NULL, -- FK to writer_shares.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
+    
+    -- Old values
+    old_writer_id BIGINT UNSIGNED NULL,
+    old_share_percentage DECIMAL(7,4) NULL,
+    old_role_id INT UNSIGNED NULL, -- Changed INT
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
+    
+    -- New values
+    new_writer_id BIGINT UNSIGNED NULL,
+    new_share_percentage DECIMAL(7,4) NULL,
+    new_role_id INT UNSIGNED NULL, -- Changed INT
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
+    
+    -- Change details
+    change_reason TEXT NULL,
+    effective_date DATE NOT NULL,
+    
+    -- Security columns
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, writer_share_id, work_id, change_type_id, old_writer_id, old_share_percentage, old_role_id, old_territory_id, new_writer_id, new_share_percentage, new_role_id, new_territory_id, change_reason, effective_date, created_at, created_by), 256)) STORED,
+    
+    -- Audit columns
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
+    
+    -- Foreign Keys
+    CONSTRAINT fk_writer_histories_share FOREIGN KEY (writer_share_id) REFERENCES writer_shares(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_writer_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_writer_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    
+    -- Indexes
+    INDEX idx_writer_histories_share (writer_share_id),
+    INDEX idx_writer_histories_work (work_id),
+    INDEX idx_writer_histories_date (effective_date),
+    INDEX idx_row_hash (row_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- PUBLISHER SHARES
+-- =============================================
+
+-- publisher_shares - Publisher shares in works
+CREATE TABLE publisher_shares ( to plural
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    writer_id BIGINT UNSIGNED NULL COMMENT 'Linked writer (FK to writers.id)',
+    share_percentage DECIMAL(7,4) NOT NULL,
+    share_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.publisher_share_types', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    
+    -- Rights details
+    is_original_publisher BOOLEAN DEFAULT FALSE,
+    is_administrator BOOLEAN DEFAULT FALSE,
+    administration_percentage DECIMAL(5,4) NULL, -- Percentage (0-100)
+    collection_source_id INT UNSIGNED NULL COMMENT 'FK to resource_db.collection_sources', -- Changed INT, renamed lookup table
+    
+    -- Agreement details
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    mro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
+    ipi_name_number VARCHAR(11) NULL,
+    
+    -- Validation
+    is_verified BOOLEAN DEFAULT FALSE,
+    verified_date DATETIME NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
+    
+    -- Security columns
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, work_id, publisher_id, writer_id, share_percentage, share_type_id, territory_id, start_date, end_date, is_original_publisher, is_administrator, administration_percentage, collection_source_id, agreement_id, mro_affiliation_id, ipi_name_number, is_verified, verified_date, verified_by, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
+    
+    -- Audit columns
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at DATETIME NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
+    archived_at DATETIME NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
+    archive_reason TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
+    version INT DEFAULT 1,
+    
+    -- Foreign Keys
+    CONSTRAINT fk_publisher_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_type FOREIGN KEY (share_type_id) REFERENCES resource_db.publisher_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_collection FOREIGN KEY (collection_source_id) REFERENCES resource_db.collection_sources(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_shares_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    
+    -- Constraints
+    CONSTRAINT chk_publisher_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
+    CONSTRAINT chk_publisher_admin CHECK (administration_percentage IS NULL OR (administration_percentage >= 0 AND administration_percentage <= 100)),
+    CONSTRAINT chk_publisher_dates CHECK (end_date IS NULL OR end_date >= start_date),
+    
+    -- Indexes
+    INDEX idx_publisher_shares_work (work_id),
+    INDEX idx_publisher_shares_publisher (publisher_id),
+    INDEX idx_publisher_shares_writer (writer_id),
+    INDEX idx_publisher_shares_territory (territory_id),
+    INDEX idx_publisher_shares_dates (start_date, end_date),
+    INDEX idx_publisher_shares_active_deleted (is_active, is_deleted),
+    INDEX idx_archived_at (archived_at),
+    INDEX idx_row_hash (row_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- publisher_share_histories - Publisher share changes
+CREATE TABLE publisher_share_histories ( to plural
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    publisher_share_id BIGINT UNSIGNED NOT NULL, -- FK to publishing_shares.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.ownership_change_types', -- Changed INT, renamed lookup table
+    
+    -- Old values
+    old_publisher_id BIGINT UNSIGNED NULL,
+    old_share_percentage DECIMAL(7,4) NULL,
+    old_territory_id INT UNSIGNED NULL, -- Changed INT
+    old_start_date DATE NULL,
+    old_end_date DATE NULL,
+    
+    -- New values
+    new_publisher_id BIGINT UNSIGNED NULL,
+    new_share_percentage DECIMAL(7,4) NULL,
+    new_territory_id INT UNSIGNED NULL, -- Changed INT
+    new_start_date DATE NULL,
+    new_end_date DATE NULL,
+    
+    -- Change details
+    change_reason TEXT NULL,
+    effective_date DATE NOT NULL,
+    
+    -- Security columns
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, publisher_share_id, work_id, change_type_id, old_publisher_id, old_share_percentage, old_territory_id, old_start_date, old_end_date, new_publisher_id, new_share_percentage, new_territory_id, new_start_date, new_end_date, change_reason, effective_date, created_at, created_by), 256)) STORED,
+    
+    -- Audit columns
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
+    
+    -- Foreign Keys
+    CONSTRAINT fk_publisher_histories_share FOREIGN KEY (publisher_share_id) REFERENCES publishing_shares(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_histories_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_publisher_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.ownership_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_publisher_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    
+    -- Indexes
+    INDEX idx_publisher_histories_share (publisher_share_id),
+    INDEX idx_publisher_histories_work (work_id),
+    INDEX idx_publisher_histories_date (effective_date),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -8766,60 +9186,62 @@ CREATE TABLE publisher_share_history (
 -- WORK SPLITS (Traditional tables for backwards compatibility)
 -- =============================================
 
--- work_writer - Writer shares in works
-CREATE TABLE work_writer (
+-- work_writers - Writer shares in works
+CREATE TABLE work_writers ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    work_id BIGINT UNSIGNED NOT NULL,
-    writer_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    writer_id BIGINT UNSIGNED NOT NULL, -- FK to writers.id
     share_percentage DECIMAL(7,4) NOT NULL,
-    role_id INT NOT NULL COMMENT 'FK to resource_db.writer_role',
+    role_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.writer_roles', -- Changed INT, renamed lookup table
     is_controlled BOOLEAN DEFAULT FALSE,
-    publisher_id BIGINT UNSIGNED NULL,
-    pro_affiliation_id INT NULL COMMENT 'FK to resource_db.society',
-    territory_id INT NULL,
+    publisher_id BIGINT UNSIGNED NULL COMMENT 'Controlling publisher (FK to publishers.id)',
+    pro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     sequence_number INT DEFAULT 0,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_work_writer_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_work_writer_writer FOREIGN KEY (writer_id) REFERENCES writer(id),
-    CONSTRAINT fk_work_writer_role FOREIGN KEY (role_id) REFERENCES resource_db.writer_role(id),
-    CONSTRAINT fk_work_writer_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_work_writer_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_work_writer_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_work_writer_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_work_writer_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_work_writers_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_writers_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_writers_role FOREIGN KEY (role_id) REFERENCES resource_db.writer_roles(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_writers_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_writers_pro FOREIGN KEY (pro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_writers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_writers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_writers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_work_writer_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
     
     -- Indexes
-    UNIQUE KEY uk_work_writer (work_id, writer_id, territory_id),
-    INDEX idx_work_writer_work (work_id),
-    INDEX idx_work_writer_writer (writer_id),
-    INDEX idx_work_writer_publisher (publisher_id),
-    INDEX idx_work_writer_territory (territory_id),
-    INDEX idx_work_writer_active (is_active)
+    UNIQUE KEY uk_work_writer (work_id, writer_id, territory_id), to plural
+    INDEX idx_work_writers_work (work_id),
+    INDEX idx_work_writers_writer (writer_id),
+    INDEX idx_work_writers_publisher (publisher_id),
+    INDEX idx_work_writers_territory (territory_id),
+    INDEX idx_work_writers_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- work_publisher - Publisher shares in works
-CREATE TABLE work_publisher (
+-- work_publishers - Publisher shares in works
+CREATE TABLE work_publishers ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    work_id BIGINT UNSIGNED NOT NULL,
-    publisher_id BIGINT UNSIGNED NOT NULL,
-    writer_id BIGINT UNSIGNED NULL COMMENT 'Linked writer',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    writer_id BIGINT UNSIGNED NULL COMMENT 'Linked writer (FK to writers.id)',
     share_percentage DECIMAL(7,4) NOT NULL,
-    role_id INT NOT NULL COMMENT 'FK to resource_db.publisher_role',
+    role_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.publisher_roles', -- Changed INT, renamed lookup table
     is_original BOOLEAN DEFAULT FALSE,
     is_administrator BOOLEAN DEFAULT FALSE,
-    mro_affiliation_id INT NULL COMMENT 'FK to resource_db.society',
-    territory_id INT NULL,
+    mro_affiliation_id INT UNSIGNED NULL COMMENT 'FK to resource_db.societies', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     sequence_number INT DEFAULT 0,
     
     -- Audit columns
@@ -8830,164 +9252,164 @@ CREATE TABLE work_publisher (
     updated_by BIGINT UNSIGNED NULL,
     
     -- Foreign Keys
-    CONSTRAINT fk_work_publisher_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_work_publisher_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_work_publisher_writer FOREIGN KEY (writer_id) REFERENCES writer(id),
-    CONSTRAINT fk_work_publisher_role FOREIGN KEY (role_id) REFERENCES resource_db.publisher_role(id),
-    CONSTRAINT fk_work_publisher_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.society(id),
-    CONSTRAINT fk_work_publisher_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_work_publisher_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_work_publisher_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_work_publishers_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_publishers_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_publishers_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_publishers_role FOREIGN KEY (role_id) REFERENCES resource_db.publisher_roles(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_publishers_mro FOREIGN KEY (mro_affiliation_id) REFERENCES resource_db.societies(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_publishers_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_work_publishers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_work_publishers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_work_publisher_percentage CHECK (share_percentage >= 0 AND share_percentage <= 100),
     
     -- Indexes
-    UNIQUE KEY uk_work_publisher (work_id, publisher_id, territory_id),
-    INDEX idx_work_publisher_work (work_id),
-    INDEX idx_work_publisher_publisher (publisher_id),
-    INDEX idx_work_publisher_writer (writer_id),
-    INDEX idx_work_publisher_territory (territory_id),
-    INDEX idx_work_publisher_active (is_active)
+    UNIQUE KEY uk_work_publisher (work_id, publisher_id, territory_id), to plural
+    INDEX idx_work_publishers_work (work_id),
+    INDEX idx_work_publishers_publisher (publisher_id),
+    INDEX idx_work_publishers_writer (writer_id),
+    INDEX idx_work_publishers_territory (territory_id),
+    INDEX idx_work_publishers_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
 -- ARTIST & PRODUCER ROYALTIES
 -- =============================================
 
--- artist_royalty_share - Artist royalty rates
-CREATE TABLE artist_royalty_share (
+-- artist_royalty_shares - Artist royalty rates
+CREATE TABLE artist_royalty_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    artist_id BIGINT UNSIGNED NOT NULL,
-    recording_id BIGINT UNSIGNED NULL,
-    release_id BIGINT UNSIGNED NULL,
-    royalty_type_id INT NOT NULL COMMENT 'FK to resource_db.artist_royalty_type',
-    rate_type_id INT NOT NULL COMMENT 'FK to resource_db.rate_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    artist_id BIGINT UNSIGNED NOT NULL, -- FK to artists.id
+    recording_id BIGINT UNSIGNED NULL, -- FK to recordings.id
+    release_id BIGINT UNSIGNED NULL, -- FK to releases.id
+    royalty_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.artist_royalty_types', -- Changed INT, renamed lookup table
+    rate_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rate_types', -- Changed INT, renamed lookup table
     rate_value DECIMAL(7,4) NOT NULL COMMENT 'Percentage or fixed amount',
-    currency_id CHAR(3) NULL COMMENT 'For fixed amounts',
-    territory_id INT NULL,
+    currency_id CHAR(3) NULL COMMENT 'For fixed amounts (FK to resource_db.currencies.id)', lookup
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
-    advance_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    recoupable_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    recouped_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    advance_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    recoupable_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    recouped_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     is_recouped BOOLEAN DEFAULT FALSE,
     
     -- Thresholds
     escalation_thresholds JSON NULL COMMENT 'Sales thresholds for rate changes',
-    minimum_guarantee DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    minimum_guarantee VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, artist_id, recording_id, release_id, royalty_type_id, rate_type_id, rate_value, currency_id, territory_id, start_date, end_date, agreement_id, advance_amount, recoupable_amount, recouped_amount, is_recouped, minimum_guarantee, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_artist_royalty_artist FOREIGN KEY (artist_id) REFERENCES artist(id),
-    CONSTRAINT fk_artist_royalty_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_artist_royalty_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_artist_royalty_type FOREIGN KEY (royalty_type_id) REFERENCES resource_db.artist_royalty_type(id),
-    CONSTRAINT fk_artist_royalty_rate_type FOREIGN KEY (rate_type_id) REFERENCES resource_db.rate_type(id),
-    CONSTRAINT fk_artist_royalty_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currency(id),
-    CONSTRAINT fk_artist_royalty_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_artist_royalty_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_artist_royalty_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_artist_royalty_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_artist_royalty_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_artist_royalty_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_artist_royalty_shares_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_type FOREIGN KEY (royalty_type_id) REFERENCES resource_db.artist_royalty_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_artist_royalty_shares_rate_type FOREIGN KEY (rate_type_id) REFERENCES resource_db.rate_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_artist_royalty_shares_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currencies(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_artist_royalty_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_artist_royalty_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_artist_royalty_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_artist_royalty_value CHECK (rate_value >= 0),
     CONSTRAINT chk_artist_royalty_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_artist_royalty_artist (artist_id),
-    INDEX idx_artist_royalty_recording (recording_id),
-    INDEX idx_artist_royalty_release (release_id),
-    INDEX idx_artist_royalty_territory (territory_id),
-    INDEX idx_artist_royalty_dates (start_date, end_date),
-    INDEX idx_artist_royalty_active_deleted (is_active, is_deleted),
+    INDEX idx_artist_royalty_shares_artist (artist_id),
+    INDEX idx_artist_royalty_shares_recording (recording_id),
+    INDEX idx_artist_royalty_shares_release (release_id),
+    INDEX idx_artist_royalty_shares_territory (territory_id),
+    INDEX idx_artist_royalty_shares_dates (start_date, end_date),
+    INDEX idx_artist_royalty_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- producer_share - Producer points and royalties
-CREATE TABLE producer_share (
+-- producer_shares - Producer points and royalties
+CREATE TABLE producer_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    producer_id BIGINT UNSIGNED NOT NULL,
-    recording_id BIGINT UNSIGNED NULL,
-    release_id BIGINT UNSIGNED NULL,
-    share_type_id INT NOT NULL COMMENT 'FK to resource_db.producer_share_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    producer_id BIGINT UNSIGNED NOT NULL, -- FK to persons.id (producers entity links to person)
+    recording_id BIGINT UNSIGNED NULL, -- FK to recordings.id
+    release_id BIGINT UNSIGNED NULL, -- FK to releases.id
+    share_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.producer_share_types', -- Changed INT, renamed lookup table
     points_percentage DECIMAL(7,4) NULL COMMENT 'Producer points',
     royalty_percentage DECIMAL(7,4) NULL COMMENT 'Royalty rate',
-    advance_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    advance_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     is_all_in BOOLEAN DEFAULT FALSE COMMENT 'All-in deal?',
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
-    recoupable_costs DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    recouped_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
+    recoupable_costs VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    recouped_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     is_recouped BOOLEAN DEFAULT FALSE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, producer_id, recording_id, release_id, share_type_id, points_percentage, royalty_percentage, advance_amount, is_all_in, territory_id, agreement_id, recoupable_costs, recouped_amount, is_recouped, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_producer_share_producer FOREIGN KEY (producer_id) REFERENCES person(id),
-    CONSTRAINT fk_producer_share_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_producer_share_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_producer_share_type FOREIGN KEY (share_type_id) REFERENCES resource_db.producer_share_type(id),
-    CONSTRAINT fk_producer_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_producer_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_producer_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_producer_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_producer_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_producer_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_producer_shares_producer FOREIGN KEY (producer_id) REFERENCES persons(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_type FOREIGN KEY (share_type_id) REFERENCES resource_db.producer_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_producer_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_producer_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_producer_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_producer_points CHECK (points_percentage IS NULL OR (points_percentage >= 0 AND points_percentage <= 100)),
     CONSTRAINT chk_producer_royalty CHECK (royalty_percentage IS NULL OR (royalty_percentage >= 0 AND royalty_percentage <= 100)),
     
     -- Indexes
-    INDEX idx_producer_share_producer (producer_id),
-    INDEX idx_producer_share_recording (recording_id),
-    INDEX idx_producer_share_release (release_id),
-    INDEX idx_producer_share_territory (territory_id),
-    INDEX idx_producer_share_active_deleted (is_active, is_deleted),
+    INDEX idx_producer_shares_producer (producer_id),
+    INDEX idx_producer_shares_recording (recording_id),
+    INDEX idx_producer_shares_release (release_id),
+    INDEX idx_producer_shares_territory (territory_id),
+    INDEX idx_producer_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -8996,17 +9418,17 @@ CREATE TABLE producer_share (
 -- LABEL & DISTRIBUTION SHARES
 -- =============================================
 
--- label_share - Label ownership and royalty shares
-CREATE TABLE label_share (
+-- label_shares - Label ownership and royalty shares
+CREATE TABLE label_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    label_id BIGINT UNSIGNED NOT NULL,
-    recording_id BIGINT UNSIGNED NULL,
-    release_id BIGINT UNSIGNED NULL,
-    share_type_id INT NOT NULL COMMENT 'FK to resource_db.label_share_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    label_id BIGINT UNSIGNED NOT NULL, -- FK to labels.id
+    recording_id BIGINT UNSIGNED NULL, -- FK to recordings.id
+    release_id BIGINT UNSIGNED NULL, -- FK to releases.id
+    share_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.label_share_types', -- Changed INT, renamed lookup table
     ownership_percentage DECIMAL(7,4) NULL,
     distribution_percentage DECIMAL(7,4) NULL,
-    territory_id INT NULL,
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
@@ -9014,40 +9436,40 @@ CREATE TABLE label_share (
     is_pd_deal BOOLEAN DEFAULT FALSE,
     distribution_fee DECIMAL(7,4) NULL,
     manufacturing_fee DECIMAL(7,4) NULL,
-    marketing_commitment DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    marketing_commitment VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, label_id, recording_id, release_id, share_type_id, ownership_percentage, distribution_percentage, territory_id, start_date, end_date, is_pd_deal, distribution_fee, manufacturing_fee, marketing_commitment, agreement_id, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_label_share_label FOREIGN KEY (label_id) REFERENCES label(id),
-    CONSTRAINT fk_label_share_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_label_share_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_label_share_type FOREIGN KEY (share_type_id) REFERENCES resource_db.label_share_type(id),
-    CONSTRAINT fk_label_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_label_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_label_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_label_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_label_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_label_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_label_shares_label FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_type FOREIGN KEY (share_type_id) REFERENCES resource_db.label_share_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_label_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_label_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_label_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_label_ownership CHECK (ownership_percentage IS NULL OR (ownership_percentage >= 0 AND ownership_percentage <= 100)),
@@ -9055,80 +9477,80 @@ CREATE TABLE label_share (
     CONSTRAINT chk_label_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_label_share_label (label_id),
-    INDEX idx_label_share_recording (recording_id),
-    INDEX idx_label_share_release (release_id),
-    INDEX idx_label_share_territory (territory_id),
-    INDEX idx_label_share_dates (start_date, end_date),
-    INDEX idx_label_share_active_deleted (is_active, is_deleted),
+    INDEX idx_label_shares_label (label_id),
+    INDEX idx_label_shares_recording (recording_id),
+    INDEX idx_label_shares_release (release_id),
+    INDEX idx_label_shares_territory (territory_id),
+    INDEX idx_label_shares_dates (start_date, end_date),
+    INDEX idx_label_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- distributor_share - Distribution fees and terms
-CREATE TABLE distributor_share (
+-- distributor_shares - Distribution fees and terms
+CREATE TABLE distributor_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    distributor_id BIGINT UNSIGNED NOT NULL,
-    release_id BIGINT UNSIGNED NULL,
-    catalog_id BIGINT UNSIGNED NULL,
-    fee_type_id INT NOT NULL COMMENT 'FK to resource_db.distributor_fee_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    distributor_id BIGINT UNSIGNED NOT NULL, -- FK to organizations.id (distributors)
+    release_id BIGINT UNSIGNED NULL, -- FK to releases.id
+    catalog_id BIGINT UNSIGNED NULL, -- Placeholder, if you have a separate catalog table
+    fee_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.distributor_fee_types', -- Changed INT, renamed lookup table
     fee_percentage DECIMAL(7,4) NULL,
-    flat_fee DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    currency_id CHAR(3) NULL,
-    territory_id INT NULL,
-    channel_id INT NULL COMMENT 'FK to resource_db.distribution_channel',
+    flat_fee VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    currency_id CHAR(3) NULL, -- FK to resource_db.currencies.id
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
+    channel_id INT UNSIGNED NULL COMMENT 'FK to resource_db.distribution_channels', -- Changed INT, renamed lookup table
     
     -- Tier structure
     tier_thresholds JSON NULL COMMENT 'Volume-based fee tiers',
     current_tier INT DEFAULT 1,
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, distributor_id, release_id, catalog_id, fee_type_id, fee_percentage, flat_fee, currency_id, territory_id, channel_id, tier_thresholds, current_tier, agreement_id, start_date, end_date, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_distributor_share_distributor FOREIGN KEY (distributor_id) REFERENCES organization(id),
-    CONSTRAINT fk_distributor_share_release FOREIGN KEY (release_id) REFERENCES release(id),
-    CONSTRAINT fk_distributor_share_fee_type FOREIGN KEY (fee_type_id) REFERENCES resource_db.distributor_fee_type(id),
-    CONSTRAINT fk_distributor_share_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currency(id),
-    CONSTRAINT fk_distributor_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_distributor_share_channel FOREIGN KEY (channel_id) REFERENCES resource_db.distribution_channel(id),
-    CONSTRAINT fk_distributor_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_distributor_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_distributor_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_distributor_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_distributor_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_distributor_shares_distributor FOREIGN KEY (distributor_id) REFERENCES organizations(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_fee_type FOREIGN KEY (fee_type_id) REFERENCES resource_db.distributor_fee_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_distributor_shares_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currencies(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_distributor_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_distributor_shares_channel FOREIGN KEY (channel_id) REFERENCES resource_db.distribution_channels(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_distributor_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_distributor_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_distributor_fee CHECK (fee_percentage IS NULL OR (fee_percentage >= 0 AND fee_percentage <= 100)),
     CONSTRAINT chk_distributor_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_distributor_share_distributor (distributor_id),
-    INDEX idx_distributor_share_release (release_id),
-    INDEX idx_distributor_share_territory (territory_id),
-    INDEX idx_distributor_share_dates (start_date, end_date),
-    INDEX idx_distributor_share_active_deleted (is_active, is_deleted),
+    INDEX idx_distributor_shares_distributor (distributor_id),
+    INDEX idx_distributor_shares_release (release_id),
+    INDEX idx_distributor_shares_territory (territory_id),
+    INDEX idx_distributor_shares_dates (start_date, end_date),
+    INDEX idx_distributor_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -9137,18 +9559,18 @@ CREATE TABLE distributor_share (
 -- ADMINISTRATION & SUB-PUBLISHING
 -- =============================================
 
--- administrator_share - Publishing administration fees
-CREATE TABLE administrator_share (
+-- administrator_shares - Publishing administration fees
+CREATE TABLE administrator_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    administrator_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NULL,
-    catalog_id BIGINT UNSIGNED NULL,
-    writer_id BIGINT UNSIGNED NULL,
-    publisher_id BIGINT UNSIGNED NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    administrator_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id (for admin entity type)
+    work_id BIGINT UNSIGNED NULL, -- FK to works.id
+    catalog_id BIGINT UNSIGNED NULL, -- Placeholder for a catalog entity ID
+    writer_id BIGINT UNSIGNED NULL, -- FK to writers.id
+    publisher_id BIGINT UNSIGNED NULL, -- FK to publishers.id
     administration_percentage DECIMAL(7,4) NOT NULL,
-    collection_percentage DECIMAL(7,4) NULL,
-    territory_id INT NULL,
+    collection_percentage DECIMAL(7,4) NULL COMMENT 'At source collection',
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     
     -- Rights administered
     performance_rights BOOLEAN DEFAULT TRUE,
@@ -9157,39 +9579,40 @@ CREATE TABLE administrator_share (
     print_rights BOOLEAN DEFAULT FALSE,
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     start_date DATE NOT NULL,
     end_date DATE NULL,
     retention_period_months INT NULL COMMENT 'Post-term retention',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, administrator_id, work_id, catalog_id, writer_id, publisher_id, administration_percentage, collection_percentage, territory_id, performance_rights, mechanical_rights, synchronization_rights, print_rights, agreement_id, start_date, end_date, retention_period_months, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_administrator_share_admin FOREIGN KEY (administrator_id) REFERENCES publisher(id),
-    CONSTRAINT fk_administrator_share_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_administrator_share_writer FOREIGN KEY (writer_id) REFERENCES writer(id),
-    CONSTRAINT fk_administrator_share_publisher FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_administrator_share_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_administrator_share_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_administrator_share_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_administrator_share_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_administrator_share_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_administrator_share_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_administrator_shares_admin FOREIGN KEY (administrator_id) REFERENCES publishers(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_writer FOREIGN KEY (writer_id) REFERENCES writers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_administrator_shares_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_administrator_shares_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_admin_percentage CHECK (administration_percentage >= 0 AND administration_percentage <= 100),
@@ -9197,26 +9620,26 @@ CREATE TABLE administrator_share (
     CONSTRAINT chk_admin_dates CHECK (end_date IS NULL OR end_date >= start_date),
     
     -- Indexes
-    INDEX idx_administrator_share_admin (administrator_id),
-    INDEX idx_administrator_share_work (work_id),
-    INDEX idx_administrator_share_territory (territory_id),
-    INDEX idx_administrator_share_dates (start_date, end_date),
-    INDEX idx_administrator_share_active_deleted (is_active, is_deleted),
+    INDEX idx_administrator_shares_admin (administrator_id),
+    INDEX idx_administrator_shares_work (work_id),
+    INDEX idx_administrator_shares_territory (territory_id),
+    INDEX idx_administrator_shares_dates (start_date, end_date),
+    INDEX idx_administrator_shares_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- sub_publisher_share - Sub-publishing agreements
-CREATE TABLE sub_publisher_share (
+-- sub_publisher_shares - Sub-publishing agreements
+CREATE TABLE sub_publisher_shares ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    original_publisher_id BIGINT UNSIGNED NOT NULL,
-    sub_publisher_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NULL,
-    catalog_id BIGINT UNSIGNED NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    original_publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    sub_publisher_id BIGINT UNSIGNED NOT NULL, -- FK to publishers.id
+    work_id BIGINT UNSIGNED NULL, -- FK to works.id
+    catalog_id BIGINT UNSIGNED NULL, -- Placeholder for a catalog entity ID
     share_percentage DECIMAL(7,4) NOT NULL,
     collection_percentage DECIMAL(7,4) NULL COMMENT 'At source collection',
-    territory_id INT NOT NULL COMMENT 'Sub-pub territory',
+    territory_id INT UNSIGNED NOT NULL COMMENT 'Sub-pub territory (FK to resource_db.territories)', -- Changed INT, renamed lookup
     
     -- Rights granted
     performance_rights BOOLEAN DEFAULT TRUE,
@@ -9227,42 +9650,42 @@ CREATE TABLE sub_publisher_share (
     
     -- Performance requirements
     minimum_activity_requirement TEXT NULL,
-    advance_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    minimum_guarantee DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    advance_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
+    minimum_guarantee VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY (for encrypted decimal)
     
     -- Agreement details
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     start_date DATE NOT NULL,
     end_date DATE NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, original_publisher_id, sub_publisher_id, work_id, catalog_id, share_percentage, collection_percentage, territory_id, performance_rights, mechanical_rights, synchronization_rights, print_rights, cover_rights, minimum_activity_requirement, advance_amount, minimum_guarantee, agreement_id, start_date, end_date, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_sub_publisher_original FOREIGN KEY (original_publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_sub_publisher_sub FOREIGN KEY (sub_publisher_id) REFERENCES publisher(id),
-    CONSTRAINT fk_sub_publisher_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_sub_publisher_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_sub_publisher_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_sub_publisher_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_sub_publisher_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_sub_publisher_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_sub_publisher_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_sub_publisher_original FOREIGN KEY (original_publisher_id) REFERENCES publishers(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_sub FOREIGN KEY (sub_publisher_id) REFERENCES publishers(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_sub_publisher_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_sub_publisher_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_sub_pub_share CHECK (share_percentage >= 0 AND share_percentage <= 100),
@@ -9284,55 +9707,56 @@ CREATE TABLE sub_publisher_share (
 -- TERRITORY & SPECIAL OVERRIDES
 -- =============================================
 
--- territory_share_override - Territory-specific share adjustments
-CREATE TABLE territory_share_override (
+-- territory_share_overrides - Territory-specific share adjustments
+CREATE TABLE territory_share_overrides ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    entity_type VARCHAR(50) NOT NULL COMMENT 'work, recording, writer, publisher',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    entity_type VARCHAR(50) NOT NULL COMMENT 'works, recordings, writers, publishers', to plural in comment
     entity_id BIGINT UNSIGNED NOT NULL,
-    share_holder_type VARCHAR(50) NOT NULL,
-    share_holder_id BIGINT UNSIGNED NOT NULL,
-    territory_id INT NOT NULL,
+    share_holder_type VARCHAR(50) NOT NULL, -- e.g., 'writer', 'publisher', 'artist' (polymorphic)
+    share_holder_id BIGINT UNSIGNED NOT NULL, -- Polymorphic ID
+    territory_id INT UNSIGNED NOT NULL, -- Changed INT, renamed lookup table
     base_share_percentage DECIMAL(7,4) NOT NULL,
     adjusted_share_percentage DECIMAL(7,4) NOT NULL,
-    adjustment_reason_id INT NOT NULL COMMENT 'FK to resource_db.share_adjustment_reason',
+    adjustment_reason_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.share_adjustment_reasons', -- Changed INT, renamed lookup table
     
     -- Override details
-    override_type_id INT NOT NULL COMMENT 'FK to resource_db.override_type',
+    override_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.override_types', -- Changed INT, renamed lookup table
     effective_date DATE NOT NULL,
     expiry_date DATE NULL,
     is_permanent BOOLEAN DEFAULT FALSE,
     
     -- Agreement reference
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     clause_reference VARCHAR(100) NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, entity_type, entity_id, share_holder_type, share_holder_id, territory_id, base_share_percentage, adjusted_share_percentage, adjustment_reason_id, override_type_id, effective_date, expiry_date, is_permanent, agreement_id, clause_reference, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_territory_override_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_territory_override_reason FOREIGN KEY (adjustment_reason_id) REFERENCES resource_db.share_adjustment_reason(id),
-    CONSTRAINT fk_territory_override_type FOREIGN KEY (override_type_id) REFERENCES resource_db.override_type(id),
-    CONSTRAINT fk_territory_override_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_territory_override_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_override_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_override_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_override_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_territory_overrides_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_territory_overrides_reason FOREIGN KEY (adjustment_reason_id) REFERENCES resource_db.share_adjustment_reasons(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_territory_overrides_type FOREIGN KEY (override_type_id) REFERENCES resource_db.override_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_territory_overrides_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_territory_overrides_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_territory_overrides_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_territory_overrides_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_territory_overrides_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_territory_base_share CHECK (base_share_percentage >= 0 AND base_share_percentage <= 100),
@@ -9340,77 +9764,78 @@ CREATE TABLE territory_share_override (
     CONSTRAINT chk_territory_dates CHECK (expiry_date IS NULL OR expiry_date >= effective_date),
     
     -- Indexes
-    INDEX idx_territory_override_entity (entity_type, entity_id),
-    INDEX idx_territory_override_holder (share_holder_type, share_holder_id),
-    INDEX idx_territory_override_territory (territory_id),
-    INDEX idx_territory_override_dates (effective_date, expiry_date),
-    INDEX idx_territory_override_active_deleted (is_active, is_deleted),
+    INDEX idx_territory_overrides_entity (entity_type, entity_id),
+    INDEX idx_territory_overrides_holder (share_holder_type, share_holder_id),
+    INDEX idx_territory_overrides_territory (territory_id),
+    INDEX idx_territory_overrides_dates (effective_date, expiry_date),
+    INDEX idx_territory_overrides_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- controlled_composition - Controlled composition rates
-CREATE TABLE controlled_composition (
+-- controlled_compositions - Controlled composition rates
+CREATE TABLE controlled_compositions ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    recording_id BIGINT UNSIGNED NOT NULL,
-    work_id BIGINT UNSIGNED NOT NULL,
-    artist_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    recording_id BIGINT UNSIGNED NOT NULL, -- FK to recordings.id
+    work_id BIGINT UNSIGNED NOT NULL, -- FK to works.id
+    artist_id BIGINT UNSIGNED NOT NULL, -- FK to artists.id
     controlled_rate DECIMAL(7,4) NOT NULL COMMENT 'Percentage of statutory',
     statutory_rate DECIMAL(10,4) NOT NULL COMMENT 'Current statutory rate',
     effective_rate DECIMAL(10,4) NOT NULL COMMENT 'Actual rate paid',
-    currency_id CHAR(3) NOT NULL,
-    territory_id INT NOT NULL,
+    currency_id CHAR(3) NOT NULL, -- FK to resource_db.currencies.id
+    territory_id INT UNSIGNED NOT NULL, -- Changed INT, renamed lookup table
     
     -- Cap details
-    cap_type_id INT NOT NULL COMMENT 'FK to resource_db.controlled_comp_cap_type',
+    cap_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.controlled_comp_cap_types', -- Changed INT, renamed lookup table
     cap_amount DECIMAL(10,4) NULL,
     songs_cap INT NULL COMMENT 'Max songs per album',
     minutes_cap INT NULL COMMENT 'Max minutes',
     
     -- Agreement reference
-    agreement_id BIGINT UNSIGNED NOT NULL,
+    agreement_id BIGINT UNSIGNED NOT NULL, -- FK to agreements.id
     clause_reference VARCHAR(100) NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, recording_id, work_id, artist_id, controlled_rate, statutory_rate, effective_rate, currency_id, territory_id, cap_type_id, cap_amount, songs_cap, minutes_cap, agreement_id, clause_reference, is_active, is_deleted), 256)) STORED,
+    encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_controlled_comp_recording FOREIGN KEY (recording_id) REFERENCES recording(id),
-    CONSTRAINT fk_controlled_comp_work FOREIGN KEY (work_id) REFERENCES work(id),
-    CONSTRAINT fk_controlled_comp_artist FOREIGN KEY (artist_id) REFERENCES artist(id),
-    CONSTRAINT fk_controlled_comp_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currency(id),
-    CONSTRAINT fk_controlled_comp_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_controlled_comp_cap_type FOREIGN KEY (cap_type_id) REFERENCES resource_db.controlled_comp_cap_type(id),
-    CONSTRAINT fk_controlled_comp_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_controlled_comp_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_controlled_comp_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_controlled_comp_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_controlled_comp_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_controlled_comps_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_work FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_artist FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_currency FOREIGN KEY (currency_id) REFERENCES resource_db.currencies(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_controlled_comps_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_controlled_comps_cap_type FOREIGN KEY (cap_type_id) REFERENCES resource_db.controlled_comp_cap_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_controlled_comps_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_controlled_comps_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Constraints
     CONSTRAINT chk_controlled_rate CHECK (controlled_rate >= 0 AND controlled_rate <= 100),
     
     -- Indexes
-    INDEX idx_controlled_comp_recording (recording_id),
-    INDEX idx_controlled_comp_work (work_id),
-    INDEX idx_controlled_comp_artist (artist_id),
-    INDEX idx_controlled_comp_territory (territory_id),
-    INDEX idx_controlled_comp_active_deleted (is_active, is_deleted),
+    INDEX idx_controlled_comps_recording (recording_id),
+    INDEX idx_controlled_comps_work (work_id),
+    INDEX idx_controlled_comps_artist (artist_id),
+    INDEX idx_controlled_comps_territory (territory_id),
+    INDEX idx_controlled_comps_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -9419,13 +9844,14 @@ CREATE TABLE controlled_composition (
 -- SHARE VALIDATION & CONFLICTS
 -- =============================================
 
--- share_validation - Share validation rules
-CREATE TABLE share_validation (
+-- share_validations - Share validation rules
+CREATE TABLE share_validations ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    entity_type VARCHAR(50) NOT NULL COMMENT 'work, recording',
-    share_type VARCHAR(50) NOT NULL COMMENT 'writer, publisher, master',
-    territory_id INT NULL,
-    validation_rule_id INT NOT NULL COMMENT 'FK to resource_db.share_validation_rule',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    entity_type VARCHAR(50) NOT NULL COMMENT 'works, recordings', to plural in comment
+    share_type VARCHAR(50) NOT NULL COMMENT 'writer, publisher, master', -- Consider FK to resource_db.share_types
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
+    validation_rule_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.share_validation_rules', -- Changed INT, renamed lookup table
     
     -- Rule parameters
     min_total_percentage DECIMAL(7,4) DEFAULT 100.0000,
@@ -9437,37 +9863,37 @@ CREATE TABLE share_validation (
     -- Additional rules
     custom_validation_sql TEXT NULL,
     error_message VARCHAR(500) NOT NULL,
-    severity_id INT NOT NULL COMMENT 'FK to resource_db.validation_severity',
+    severity_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.validation_severities', -- Changed INT, renamed lookup table
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_share_validation_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_share_validation_rule FOREIGN KEY (validation_rule_id) REFERENCES resource_db.share_validation_rule(id),
-    CONSTRAINT fk_share_validation_severity FOREIGN KEY (severity_id) REFERENCES resource_db.validation_severity(id),
-    CONSTRAINT fk_share_validation_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_share_validation_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_share_validations_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_validations_rule FOREIGN KEY (validation_rule_id) REFERENCES resource_db.share_validation_rules(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_validations_severity FOREIGN KEY (severity_id) REFERENCES resource_db.validation_severities(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_validations_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_share_validations_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Indexes
     UNIQUE KEY uk_share_validation (entity_type, share_type, territory_id, validation_rule_id),
-    INDEX idx_share_validation_territory (territory_id),
-    INDEX idx_share_validation_active (is_active)
+    INDEX idx_share_validations_territory (territory_id),
+    INDEX idx_share_validations_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- share_conflict - Detected share conflicts
-CREATE TABLE share_conflict (
+-- share_conflicts - Detected share conflicts
+CREATE TABLE share_conflicts ( to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
-    share_type VARCHAR(50) NOT NULL,
-    territory_id INT NULL,
-    conflict_type_id INT NOT NULL COMMENT 'FK to resource_db.share_conflict_type',
+    share_type VARCHAR(50) NOT NULL, -- Consider FK to resource_db.share_types
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
+    conflict_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.share_conflict_types', -- Changed INT, renamed lookup table
     
     -- Conflict details
     total_percentage DECIMAL(10,4) NOT NULL,
@@ -9476,43 +9902,43 @@ CREATE TABLE share_conflict (
     conflicting_parties JSON NOT NULL,
     
     -- Resolution
-    resolution_status_id INT NOT NULL COMMENT 'FK to resource_db.resolution_status',
+    resolution_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.resolution_statuses', -- Changed INT, renamed lookup table
     resolution_date DATETIME NULL,
-    resolved_by BIGINT UNSIGNED NULL,
-    resolution_method_id INT NULL COMMENT 'FK to resource_db.resolution_method',
+    resolved_by BIGINT UNSIGNED NULL, -- FK to users.id
+    resolution_method_id INT UNSIGNED NULL COMMENT 'FK to resource_db.resolution_methods', -- Changed INT, renamed lookup table
     resolution_notes TEXT NULL,
     adjusted_shares JSON NULL,
     
     -- Detection
     detection_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    detection_source VARCHAR(100) NULL,
-    severity_id INT NOT NULL COMMENT 'FK to resource_db.conflict_severity',
+    detection_source VARCHAR(100) NULL, -- Consider FK to resource_db.detection_sources
+    severity_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.conflict_severities', -- Changed INT, renamed lookup table
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, entity_type, entity_id, share_type, territory_id, conflict_type_id, total_percentage, expected_percentage, difference_percentage, conflicting_parties, resolution_status_id, resolution_date, resolved_by, resolution_method_id, resolution_notes, adjusted_shares, detection_date, detection_source, severity_id, created_at, created_by, updated_at, updated_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_share_conflict_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_share_conflict_type FOREIGN KEY (conflict_type_id) REFERENCES resource_db.share_conflict_type(id),
-    CONSTRAINT fk_share_conflict_resolution_status FOREIGN KEY (resolution_status_id) REFERENCES resource_db.resolution_status(id),
-    CONSTRAINT fk_share_conflict_resolution_method FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_method(id),
-    CONSTRAINT fk_share_conflict_severity FOREIGN KEY (severity_id) REFERENCES resource_db.conflict_severity(id),
-    CONSTRAINT fk_share_conflict_resolved_by FOREIGN KEY (resolved_by) REFERENCES user(id),
-    CONSTRAINT fk_share_conflict_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_share_conflict_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_share_conflicts_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_conflicts_type FOREIGN KEY (conflict_type_id) REFERENCES resource_db.share_conflict_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_conflicts_resolution_status FOREIGN KEY (resolution_status_id) REFERENCES resource_db.resolution_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_conflicts_resolution_method FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_methods(id) ON DELETE SET NULL ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_conflicts_severity FOREIGN KEY (severity_id) REFERENCES resource_db.conflict_severities(id) ON DELETE RESTRICT ON UPDATE CASCADE, lookup
+    CONSTRAINT fk_share_conflicts_resolved_by FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_share_conflicts_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, to plural
+    CONSTRAINT fk_share_conflicts_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, to plural
     
     -- Indexes
-    INDEX idx_share_conflict_entity (entity_type, entity_id),
-    INDEX idx_share_conflict_territory (territory_id),
-    INDEX idx_share_conflict_status (resolution_status_id),
-    INDEX idx_share_conflict_detection (detection_date),
-    INDEX idx_share_conflict_severity (severity_id),
+    INDEX idx_share_conflicts_entity (entity_type, entity_id),
+    INDEX idx_share_conflicts_territory (territory_id),
+    INDEX idx_share_conflicts_status (resolution_status_id),
+    INDEX idx_share_conflicts_detection (detection_date),
+    INDEX idx_share_conflicts_severity (severity_id),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -9525,7 +9951,7 @@ DELIMITER $$
 -- Validate work shares for a specific territory
 CREATE PROCEDURE sp_validate_work_shares(
     IN p_work_id BIGINT UNSIGNED,
-    IN p_territory_id INT,
+    IN p_territory_id INT UNSIGNED, -- Changed INT
     OUT p_is_valid BOOLEAN,
     OUT p_validation_message TEXT
 )
@@ -9536,7 +9962,7 @@ BEGIN
     
     -- Calculate writer shares
     SELECT COALESCE(SUM(share_percentage), 0) INTO v_writer_total
-    FROM writer_share
+    FROM writer_shares to plural
     WHERE work_id = p_work_id
         AND (territory_id = p_territory_id OR (territory_id IS NULL AND p_territory_id IS NULL))
         AND is_active = TRUE
@@ -9544,7 +9970,7 @@ BEGIN
     
     -- Calculate publisher shares
     SELECT COALESCE(SUM(share_percentage), 0) INTO v_publisher_total
-    FROM publisher_share
+    FROM publisher_shares to plural
     WHERE work_id = p_work_id
         AND (territory_id = p_territory_id OR (territory_id IS NULL AND p_territory_id IS NULL))
         AND is_active = TRUE
@@ -9574,7 +10000,8 @@ BEGIN
     
     -- Log conflict if invalid
     IF NOT p_is_valid THEN
-        INSERT INTO share_conflict (
+        INSERT INTO share_conflicts ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             entity_type,
             entity_id,
             share_type,
@@ -9589,25 +10016,26 @@ BEGIN
             severity_id,
             created_by
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             'work',
             p_work_id,
             'writer_publisher',
             p_territory_id,
-            (SELECT id FROM resource_db.share_conflict_type WHERE code = 'TOTAL_MISMATCH'),
+            (SELECT id FROM resource_db.share_conflict_types WHERE code = 'TOTAL_MISMATCH'), lookup
             v_writer_total,
             100.0000,
             ABS(v_writer_total - 100),
             JSON_OBJECT('writer_total', v_writer_total, 'publisher_total', v_publisher_total),
-            (SELECT id FROM resource_db.resolution_status WHERE code = 'UNRESOLVED'),
+            (SELECT id FROM resource_db.resolution_statuses WHERE code = 'UNRESOLVED'), lookup
             'sp_validate_work_shares',
-            (SELECT id FROM resource_db.conflict_severity WHERE code = 
+            (SELECT id FROM resource_db.conflict_severities WHERE code = lookup
                 CASE 
                     WHEN ABS(v_writer_total - 100) > 10 THEN 'HIGH'
                     WHEN ABS(v_writer_total - 100) > 1 THEN 'MEDIUM'
                     ELSE 'LOW'
                 END
             ),
-            1 -- System user
+            1 -- System user (assuming users.id = 1)
         );
     END IF;
 END$$
@@ -9615,7 +10043,7 @@ END$$
 -- Calculate effective shares for a work at a point in time
 CREATE PROCEDURE sp_calculate_work_shares(
     IN p_work_id BIGINT UNSIGNED,
-    IN p_territory_id INT,
+    IN p_territory_id INT UNSIGNED, -- Changed INT
     IN p_as_of_date DATE
 )
 BEGIN
@@ -9640,18 +10068,18 @@ BEGIN
         'writer' AS share_type,
         'writer' AS party_type,
         ws.writer_id,
-        CONCAT(p.first_name, ' ', p.last_name) AS party_name,
+        CONVERT(p.first_name USING utf8mb4) AS party_name, -- Added CONVERT for VARBINARY
         ws.share_percentage AS base_share,
         COALESCE(tso.adjusted_share_percentage, ws.share_percentage) AS adjusted_share,
         ws.is_controlled,
         ws.publisher_id,
         pub_org.name AS controller_name
-    FROM writer_share ws
-    JOIN writer w ON ws.writer_id = w.id
-    JOIN person p ON w.person_id = p.id
-    LEFT JOIN publisher pub ON ws.publisher_id = pub.id
-    LEFT JOIN organization pub_org ON pub.organization_id = pub_org.id
-    LEFT JOIN territory_share_override tso ON 
+    FROM writer_shares ws to plural
+    JOIN writers w ON ws.writer_id = w.id to plural
+    JOIN persons p ON w.person_id = p.id to plural
+    LEFT JOIN publishers pub ON ws.publisher_id = pub.id to plural
+    LEFT JOIN organizations pub_org ON pub.organization_id = pub_org.id to plural
+    LEFT JOIN territory_share_overrides tso ON to plural
         tso.entity_type = 'writer' 
         AND tso.entity_id = ws.writer_id
         AND tso.territory_id = p_territory_id
@@ -9676,10 +10104,10 @@ BEGIN
         FALSE AS is_controlled,
         NULL AS controller_id,
         NULL AS controller_name
-    FROM publisher_share ps
-    JOIN publisher p ON ps.publisher_id = p.id
-    JOIN organization o ON p.organization_id = o.id
-    LEFT JOIN territory_share_override tso ON 
+    FROM publisher_shares ps to plural
+    JOIN publishers p ON ps.publisher_id = p.id to plural
+    JOIN organizations o ON p.organization_id = o.id to plural
+    LEFT JOIN territory_share_overrides tso ON to plural
         tso.entity_type = 'publisher' 
         AND tso.entity_id = ps.publisher_id
         AND tso.territory_id = p_territory_id
@@ -9718,7 +10146,8 @@ BEGIN
     DECLARE v_processed_count INT DEFAULT 0;
     
     -- Master ownership snapshots
-    INSERT INTO master_ownership_snapshot (
+    INSERT INTO master_ownership_snapshots ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         snapshot_date,
         recording_id,
         owner_type,
@@ -9731,6 +10160,7 @@ BEGIN
         created_by
     )
     SELECT 
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         p_snapshot_date,
         mo.recording_id,
         mo.owner_type,
@@ -9744,13 +10174,13 @@ BEGIN
                 BETWEEN 99.99 AND 100.01 THEN TRUE 
             ELSE FALSE 
         END,
-        1 -- System user
-    FROM master_ownership mo
+        1 -- System user (assuming users.id = 1)
+    FROM master_ownerships mo to plural
     WHERE mo.start_date <= p_snapshot_date
         AND (mo.end_date IS NULL OR mo.end_date >= p_snapshot_date)
         AND mo.is_active = TRUE
         AND NOT EXISTS (
-            SELECT 1 FROM master_ownership_snapshot mos
+            SELECT 1 FROM master_ownership_snapshots mos to plural
             WHERE mos.snapshot_date = p_snapshot_date
                 AND mos.recording_id = mo.recording_id
                 AND mos.owner_type = mo.owner_type
@@ -9761,7 +10191,8 @@ BEGIN
     SET v_processed_count = v_processed_count + ROW_COUNT();
     
     -- Publishing share snapshots
-    INSERT INTO publishing_share_snapshot (
+    INSERT INTO publishing_share_snapshots ( to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         snapshot_date,
         work_id,
         publisher_id,
@@ -9773,6 +10204,7 @@ BEGIN
         created_by
     )
     SELECT 
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
         p_snapshot_date,
         ps.work_id,
         ps.publisher_id,
@@ -9786,12 +10218,12 @@ BEGIN
             ELSE FALSE 
         END,
         1 -- System user
-    FROM publishing_share ps
+    FROM publishing_shares ps to plural
     WHERE ps.start_date <= p_snapshot_date
         AND (ps.end_date IS NULL OR ps.end_date >= p_snapshot_date)
         AND ps.is_active = TRUE
         AND NOT EXISTS (
-            SELECT 1 FROM publishing_share_snapshot pss
+            SELECT 1 FROM publishing_share_snapshots pss to plural
             WHERE pss.snapshot_date = p_snapshot_date
                 AND pss.work_id = ps.work_id
                 AND pss.publisher_id = ps.publisher_id
@@ -9816,7 +10248,9 @@ WITH writer_chain AS (
         ws.work_id,
         ws.writer_id,
         w.person_id,
-        p.full_name AS writer_name,
+        CONVERT(p.first_name USING utf8mb4) AS writer_first_name, -- Converted VARBINARY
+        CONVERT(p.last_name USING utf8mb4) AS writer_last_name, -- Converted VARBINARY
+        CONCAT_WS(' ', CONVERT(p.first_name USING utf8mb4), CONVERT(p.last_name USING utf8mb4)) AS writer_name, -- Full name with VARBINARY conversion
         ws.share_percentage AS writer_share,
         ws.is_controlled,
         ws.publisher_id,
@@ -9826,17 +10260,17 @@ WITH writer_chain AS (
         t.name AS territory_name,
         ws.start_date,
         ws.end_date
-    FROM writer_share ws
-    JOIN writer w ON ws.writer_id = w.id
-    JOIN person p ON w.person_id = p.id
-    LEFT JOIN publisher_share ps ON 
+    FROM writer_shares ws to plural
+    JOIN writers w ON ws.writer_id = w.id to plural
+    JOIN persons p ON w.person_id = p.id to plural
+    LEFT JOIN publishing_shares ps ON to plural
         ws.work_id = ps.work_id 
-        AND ws.publisher_id = ps.publisher_id
+        AND ws.publisher_id = ps.publisher_id -- Assuming ws.publisher_id links to publisher for this view's purpose
         AND COALESCE(ws.territory_id, 0) = COALESCE(ps.territory_id, 0)
         AND ps.is_active = TRUE
-    LEFT JOIN publisher pub ON ws.publisher_id = pub.id
-    LEFT JOIN organization pub_org ON pub.organization_id = pub_org.id
-    LEFT JOIN resource_db.territory t ON ws.territory_id = t.id
+    LEFT JOIN publishers pub ON ws.publisher_id = pub.id to plural
+    LEFT JOIN organizations pub_org ON pub.organization_id = pub_org.id to plural
+    LEFT JOIN resource_db.territories t ON ws.territory_id = t.id lookup
     WHERE ws.is_active = TRUE
 )
 SELECT 
@@ -9863,7 +10297,7 @@ SELECT
         ELSE 0 
     END AS publisher_collection_share
 FROM writer_chain wc
-JOIN work w ON wc.work_id = w.id;
+JOIN works w ON wc.work_id = w.id; to plural
 
 -- Master recording ownership chain
 CREATE OR REPLACE VIEW vw_master_ownership_chain AS
@@ -9889,16 +10323,16 @@ SELECT
     mo.reversion_date,
     mo.is_verified,
     mo.verified_date
-FROM master_ownership mo
-JOIN recording r ON mo.recording_id = r.id
-JOIN resource_db.master_ownership_type mot ON mo.ownership_type_id = mot.id
-JOIN resource_db.acquisition_type at ON mo.acquisition_type_id = at.id
-LEFT JOIN resource_db.territory t ON mo.territory_id = t.id
-LEFT JOIN person p ON mo.owner_type = 'person' AND mo.owner_id = p.id
-LEFT JOIN organization o ON mo.owner_type = 'organization' AND mo.owner_id = o.id
-LEFT JOIN label l ON mo.owner_type = 'label' AND mo.owner_id = l.id
-LEFT JOIN organization l_org ON l.organization_id = l_org.id
-LEFT JOIN artist a ON mo.owner_type = 'artist' AND mo.owner_id = a.id
+FROM master_ownerships mo to plural
+JOIN recordings r ON mo.recording_id = r.id to plural
+JOIN resource_db.master_ownership_types mot ON mo.ownership_type_id = mot.id lookup
+JOIN resource_db.acquisition_types at ON mo.acquisition_type_id = at.id lookup
+LEFT JOIN resource_db.territories t ON mo.territory_id = t.id lookup
+LEFT JOIN persons p ON mo.owner_type = 'person' AND mo.owner_id = p.id to plural
+LEFT JOIN organizations o ON mo.owner_type = 'organization' AND mo.owner_id = o.id to plural
+LEFT JOIN labels l ON mo.owner_type = 'label' AND mo.owner_id = l.id to plural
+LEFT JOIN organizations l_org ON l.organization_id = l_org.id to plural (for label's organization)
+LEFT JOIN artists a ON mo.owner_type = 'artist' AND mo.owner_id = a.id to plural
 WHERE mo.is_active = TRUE;
 
 -- =============================================
@@ -9908,15 +10342,15 @@ WHERE mo.is_active = TRUE;
 DELIMITER $$
 
 -- Trigger to validate writer shares on insert/update
-CREATE TRIGGER tr_validate_writer_share_insert
-BEFORE INSERT ON writer_share
+CREATE TRIGGER tr_validate_writer_shares_insert trigger
+BEFORE INSERT ON writer_shares to plural
 FOR EACH ROW
 BEGIN
     DECLARE v_current_total DECIMAL(10,4);
     
     -- Calculate current total for the territory
     SELECT COALESCE(SUM(share_percentage), 0) INTO v_current_total
-    FROM writer_share
+    FROM writer_shares to plural
     WHERE work_id = NEW.work_id
         AND COALESCE(territory_id, 0) = COALESCE(NEW.territory_id, 0)
         AND is_active = TRUE
@@ -9929,8 +10363,8 @@ BEGIN
     END IF;
 END$$
 
-CREATE TRIGGER tr_validate_writer_share_update
-BEFORE UPDATE ON writer_share
+CREATE TRIGGER tr_validate_writer_shares_update trigger
+BEFORE UPDATE ON writer_shares to plural
 FOR EACH ROW
 BEGIN
     DECLARE v_current_total DECIMAL(10,4);
@@ -9941,7 +10375,7 @@ BEGIN
         
         -- Calculate current total excluding this record
         SELECT COALESCE(SUM(share_percentage), 0) INTO v_current_total
-        FROM writer_share
+        FROM writer_shares to plural
         WHERE work_id = NEW.work_id
             AND id != NEW.id
             AND COALESCE(territory_id, 0) = COALESCE(NEW.territory_id, 0)
@@ -9956,9 +10390,9 @@ BEGIN
     END IF;
 END$$
 
--- Trigger to log ownership changes
-CREATE TRIGGER tr_log_master_ownership_change
-AFTER UPDATE ON master_ownership
+-- Trigger to log master ownership changes
+CREATE TRIGGER tr_log_master_ownerships_change trigger
+AFTER UPDATE ON master_ownerships to plural
 FOR EACH ROW
 BEGIN
     IF NEW.share_percentage != OLD.share_percentage OR
@@ -9968,7 +10402,8 @@ BEGIN
        NEW.start_date != OLD.start_date OR
        COALESCE(NEW.end_date, '9999-12-31') != COALESCE(OLD.end_date, '9999-12-31') THEN
         
-        INSERT INTO master_ownership_history (
+        INSERT INTO master_ownership_histories ( to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             master_ownership_id,
             recording_id,
             change_type_id,
@@ -9987,9 +10422,10 @@ BEGIN
             effective_date,
             created_by
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             NEW.id,
             NEW.recording_id,
-            (SELECT id FROM resource_db.ownership_change_type WHERE code = 'MODIFY'),
+            (SELECT id FROM resource_db.ownership_change_types WHERE code = 'MODIFY'), lookup
             OLD.owner_type,
             OLD.owner_id,
             OLD.share_percentage,
@@ -10003,7 +10439,7 @@ BEGIN
             NEW.start_date,
             NEW.end_date,
             CURDATE(),
-            COALESCE(NEW.updated_by, NEW.created_by)
+            COALESCE(NEW.updated_by, NEW.created_by) -- Assuming updated_by is not NULL if updated
         );
     END IF;
 END$$
@@ -10020,7 +10456,7 @@ DELIMITER $$
 CREATE FUNCTION fn_get_writer_net_publisher_share(
     p_work_id BIGINT UNSIGNED,
     p_writer_id BIGINT UNSIGNED,
-    p_territory_id INT
+    p_territory_id INT UNSIGNED -- Changed INT
 ) RETURNS DECIMAL(7,4)
 READS SQL DATA
 DETERMINISTIC
@@ -10028,7 +10464,7 @@ BEGIN
     DECLARE v_publisher_share DECIMAL(7,4) DEFAULT 0;
     
     SELECT COALESCE(SUM(ps.share_percentage), 0) INTO v_publisher_share
-    FROM publisher_share ps
+    FROM publisher_shares ps to plural
     WHERE ps.work_id = p_work_id
         AND ps.writer_id = p_writer_id
         AND COALESCE(ps.territory_id, 0) = COALESCE(p_territory_id, 0)
@@ -10042,7 +10478,7 @@ END$$
 CREATE FUNCTION fn_check_ownership_complete(
     p_entity_type VARCHAR(50),
     p_entity_id BIGINT UNSIGNED,
-    p_territory_id INT
+    p_territory_id INT UNSIGNED -- Changed INT
 ) RETURNS BOOLEAN
 READS SQL DATA
 DETERMINISTIC
@@ -10051,7 +10487,7 @@ BEGIN
     
     IF p_entity_type = 'work' THEN
         SELECT COALESCE(SUM(share_percentage), 0) INTO v_total
-        FROM writer_share
+        FROM writer_shares to plural
         WHERE work_id = p_entity_id
             AND COALESCE(territory_id, 0) = COALESCE(p_territory_id, 0)
             AND is_active = TRUE
@@ -10059,7 +10495,7 @@ BEGIN
             
     ELSEIF p_entity_type = 'recording' THEN
         SELECT COALESCE(SUM(share_percentage), 0) INTO v_total
-        FROM master_ownership
+        FROM master_ownerships to plural
         WHERE recording_id = p_entity_id
             AND COALESCE(territory_id, 0) = COALESCE(p_territory_id, 0)
             AND is_active = TRUE
@@ -10076,40 +10512,41 @@ DELIMITER ;
 -- =============================================
 
 -- Additional composite indexes for common queries
-CREATE INDEX idx_writer_share_lookup ON writer_share(work_id, territory_id, is_active, end_date);
-CREATE INDEX idx_publisher_share_lookup ON publisher_share(work_id, territory_id, is_active, end_date);
-CREATE INDEX idx_master_ownership_lookup ON master_ownership(recording_id, territory_id, is_active, end_date);
-CREATE INDEX idx_territory_override_lookup ON territory_share_override(entity_type, entity_id, territory_id, effective_date, expiry_date);
+CREATE INDEX idx_writer_shares_lookup ON writer_shares(work_id, territory_id, is_active, end_date);
+CREATE INDEX idx_publisher_shares_lookup ON publisher_shares(work_id, territory_id, is_active, end_date);
+CREATE INDEX idx_master_ownerships_lookup ON master_ownerships(recording_id, territory_id, is_active, end_date);
+CREATE INDEX idx_territory_share_overrides_lookup ON territory_share_overrides(entity_type, entity_id, territory_id, effective_date, expiry_date);
 
 -- Indexes for share validation
-CREATE INDEX idx_share_conflict_resolution ON share_conflict(resolution_status_id, detection_date);
-CREATE INDEX idx_share_validation_lookup ON share_validation(entity_type, share_type, territory_id, is_active);
+CREATE INDEX idx_share_conflicts_resolution ON share_conflicts(resolution_status_id, detection_date);
+CREATE INDEX idx_share_validations_lookup ON share_validations(entity_type, share_type, territory_id, is_active);
 
 -- =============================================
--- SECTION 5: RIGHTS MANAGEMENT
+-- SECTION 5: RIGHTS MANAGEMENT (UPDATED)
 -- =============================================
 
 -- =============================================
 -- CORE RIGHTS GRANT TABLES
 -- =============================================
 
--- rights_grant - Specific rights granted to parties
-CREATE TABLE rights_grant (
+-- rights_grants - Specific rights granted to parties
+CREATE TABLE rights_grants ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    grant_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_grant_type',
-    grantor_type VARCHAR(50) NOT NULL COMMENT 'person, organization, etc.',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    custom_id VARCHAR(10) UNIQUE NULL COMMENT 'Custom catalog ID for rights grants', -- Added custom_id
+    grant_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_grant_types', -- Changed INT, renamed lookup table
+    grantor_type VARCHAR(50) NOT NULL COMMENT 'persons, organizations, etc.', -- Renamed to plural in comment
     grantor_id BIGINT UNSIGNED NOT NULL,
     grantee_type VARCHAR(50) NOT NULL,
     grantee_id BIGINT UNSIGNED NOT NULL,
     
     -- Asset being granted rights to
-    asset_type VARCHAR(50) NOT NULL COMMENT 'work, recording, release',
+    asset_type VARCHAR(50) NOT NULL COMMENT 'works, recordings, releases', -- Renamed to plural in comment
     asset_id BIGINT UNSIGNED NOT NULL,
     
     -- Rights details
-    rights_category_id INT NOT NULL COMMENT 'FK to resource_db.rights_category',
-    rights_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_type',
+    rights_category_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_categories', -- Changed INT, renamed lookup table
+    rights_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_types', -- Changed INT, renamed lookup table
     exclusive_rights BOOLEAN DEFAULT FALSE,
     sublicense_rights BOOLEAN DEFAULT FALSE,
     transfer_rights BOOLEAN DEFAULT FALSE,
@@ -10121,17 +10558,17 @@ CREATE TABLE rights_grant (
     in_perpetuity BOOLEAN DEFAULT FALSE,
     
     -- Financial terms
-    advance_amount DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    advance_amount VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     royalty_percentage DECIMAL(7,4) NULL,
-    flat_fee DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
-    minimum_guarantee DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    flat_fee VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
+    minimum_guarantee VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     
     -- Agreement reference
-    agreement_id BIGINT UNSIGNED NULL,
+    agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     clause_reference VARCHAR(100) NULL,
     
     -- Status
-    status_id INT NOT NULL COMMENT 'FK to resource_db.rights_status',
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_statuses', -- Changed INT, renamed lookup table
     activation_date DATETIME NULL,
     suspension_date DATETIME NULL,
     suspension_reason TEXT NULL,
@@ -10139,46 +10576,47 @@ CREATE TABLE rights_grant (
     -- Validation
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
+    validation_notes TEXT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, custom_id, grant_type_id, grantor_type, grantor_id, grantee_type, grantee_id, asset_type, asset_id, rights_category_id, rights_type_id, exclusive_rights, sublicense_rights, transfer_rights, grant_date, effective_date, expiry_date, in_perpetuity, acquisition_price, royalty_percentage, flat_fee, minimum_guarantee, agreement_id, clause_reference, status_id, activation_date, suspension_date, suspension_reason, is_verified, verified_date, verified_by, validation_notes, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_grant_type FOREIGN KEY (grant_type_id) REFERENCES resource_db.rights_grant_type(id),
-    CONSTRAINT fk_rights_grant_category FOREIGN KEY (rights_category_id) REFERENCES resource_db.rights_category(id),
-    CONSTRAINT fk_rights_grant_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_type(id),
-    CONSTRAINT fk_rights_grant_status FOREIGN KEY (status_id) REFERENCES resource_db.rights_status(id),
-    CONSTRAINT fk_rights_grant_agreement FOREIGN KEY (agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_rights_grant_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_grant_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_grant_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_grant_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_grant_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_grants_type FOREIGN KEY (grant_type_id) REFERENCES resource_db.rights_grant_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_grants_category FOREIGN KEY (rights_category_id) REFERENCES resource_db.rights_categories(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_grants_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_grants_status FOREIGN KEY (status_id) REFERENCES resource_db.rights_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_grants_agreement FOREIGN KEY (agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_grants_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_grants_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_grants_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_grants_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_grants_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_rights_grant_dates CHECK (expiry_date IS NULL OR expiry_date >= effective_date),
-    CONSTRAINT chk_rights_grant_perpetuity CHECK (in_perpetuity = FALSE OR expiry_date IS NULL),
+    CONSTRAINT chk_rights_grants_dates CHECK (expiry_date IS NULL OR expiry_date >= effective_date), -- Renamed constraint
+    CONSTRAINT chk_rights_grants_perpetuity CHECK (in_perpetuity = FALSE OR expiry_date IS NULL), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_rights_grantor (grantor_type, grantor_id),
-    INDEX idx_rights_grantee (grantee_type, grantee_id),
-    INDEX idx_rights_asset (asset_type, asset_id),
+    INDEX idx_rights_grantors (grantor_type, grantor_id), -- Renamed
+    INDEX idx_rights_grantees (grantee_type, grantee_id), -- Renamed
+    INDEX idx_rights_assets (asset_type, asset_id), -- Renamed
     INDEX idx_rights_category (rights_category_id),
     INDEX idx_rights_type (rights_type_id),
     INDEX idx_rights_dates (effective_date, expiry_date),
@@ -10189,11 +10627,12 @@ CREATE TABLE rights_grant (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_grant_history - Track all rights grant changes
-CREATE TABLE rights_grant_history (
+-- rights_grant_histories - Track all rights grant changes
+CREATE TABLE rights_grant_histories ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    rights_grant_id BIGINT UNSIGNED NOT NULL,
-    change_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_change_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_grant_id BIGINT UNSIGNED NOT NULL, -- FK to rights_grants.id
+    change_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_change_types', -- Changed INT, renamed lookup table
     
     -- What changed
     field_name VARCHAR(100) NULL,
@@ -10202,32 +10641,32 @@ CREATE TABLE rights_grant_history (
     
     -- Change details
     change_reason TEXT NULL,
-    change_document_id BIGINT UNSIGNED NULL,
+    change_document_id BIGINT UNSIGNED NULL, -- FK to files.id
     effective_date DATE NOT NULL,
     
     -- Who approved (if required)
     requires_approval BOOLEAN DEFAULT FALSE,
-    approved_by BIGINT UNSIGNED NULL,
+    approved_by BIGINT UNSIGNED NULL, -- FK to users.id
     approved_date DATETIME NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rights_grant_id, change_type_id, field_name, old_value, new_value, change_reason, change_document_id, effective_date, requires_approval, approved_by, approved_date, created_at, created_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_history_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_history_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.rights_change_type(id),
-    CONSTRAINT fk_rights_history_document FOREIGN KEY (change_document_id) REFERENCES file(id),
-    CONSTRAINT fk_rights_history_approved_by FOREIGN KEY (approved_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_history_created_by FOREIGN KEY (created_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_histories_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grants(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_histories_change_type FOREIGN KEY (change_type_id) REFERENCES resource_db.rights_change_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_histories_document FOREIGN KEY (change_document_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_histories_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_histories_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    INDEX idx_rights_history_grant (rights_grant_id),
-    INDEX idx_rights_history_date (effective_date),
-    INDEX idx_rights_history_created (created_at),
+    INDEX idx_rights_histories_grant (rights_grant_id), -- Renamed
+    INDEX idx_rights_histories_date (effective_date), -- Renamed
+    INDEX idx_rights_histories_created (created_at), -- Renamed
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -10235,16 +10674,16 @@ CREATE TABLE rights_grant_history (
 -- TERRITORIAL RIGHTS TABLES
 -- =============================================
 
--- territory_rights - Base territorial rights configuration
-CREATE TABLE territory_rights (
+-- territory_rights_sets - Base territorial rights configuration
+CREATE TABLE territory_rights_sets ( -- Renamed to plural for clarity of 'sets'
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    rights_grant_id BIGINT UNSIGNED NOT NULL,
-    territory_set_type_id INT NOT NULL COMMENT 'FK to resource_db.territory_set_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_grant_id BIGINT UNSIGNED NOT NULL UNIQUE, -- Unique per grant
+    territory_set_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.territory_set_types', -- Changed INT, renamed lookup table
     is_worldwide BOOLEAN DEFAULT FALSE,
     
     -- Language restrictions
-    language_restriction_type_id INT NULL COMMENT 'FK to resource_db.language_restriction_type',
+    language_restriction_type_id INT UNSIGNED NULL COMMENT 'FK to resource_db.language_restriction_types', -- Changed INT, renamed lookup table
     included_languages JSON NULL,
     excluded_languages JSON NULL,
     
@@ -10255,33 +10694,33 @@ CREATE TABLE territory_rights (
     broadcast_rights BOOLEAN DEFAULT TRUE,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rights_grant_id, territory_set_type_id, is_worldwide, language_restriction_type_id, included_languages, excluded_languages, online_rights, offline_rights, mobile_rights, broadcast_rights, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_territory_rights_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_territory_rights_set_type FOREIGN KEY (territory_set_type_id) REFERENCES resource_db.territory_set_type(id),
-    CONSTRAINT fk_territory_rights_language FOREIGN KEY (language_restriction_type_id) REFERENCES resource_db.language_restriction_type(id),
-    CONSTRAINT fk_territory_rights_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_rights_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_rights_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_rights_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_territory_rights_sets_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grants(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_rights_sets_type FOREIGN KEY (territory_set_type_id) REFERENCES resource_db.territory_set_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_rights_sets_language FOREIGN KEY (language_restriction_type_id) REFERENCES resource_db.language_restriction_types(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_rights_sets_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_rights_sets_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_rights_sets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_rights_sets_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    UNIQUE KEY uk_territory_rights_grant (rights_grant_id),
+    UNIQUE KEY uk_territory_rights_grant (rights_grant_id), -- Renamed
     INDEX idx_territory_set_type (territory_set_type_id),
     INDEX idx_worldwide (is_worldwide),
     INDEX idx_active_deleted (is_active, is_deleted),
@@ -10289,12 +10728,13 @@ CREATE TABLE territory_rights (
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- territory_inclusion - Specific territories included
-CREATE TABLE territory_inclusion (
+-- territory_inclusions - Specific territories included
+CREATE TABLE territory_inclusions ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    territory_rights_id BIGINT UNSIGNED NOT NULL,
-    territory_id INT NOT NULL COMMENT 'FK to resource_db.territory',
-    inclusion_type_id INT NOT NULL COMMENT 'FK to resource_db.inclusion_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    territory_rights_id BIGINT UNSIGNED NOT NULL, -- FK to territory_rights_sets.id
+    territory_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.territories', -- Changed INT, renamed lookup table
+    inclusion_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.inclusion_types', -- Changed INT, renamed lookup table
     
     -- Special terms for this territory
     special_terms TEXT NULL,
@@ -10302,29 +10742,30 @@ CREATE TABLE territory_inclusion (
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_territory_inclusion_rights FOREIGN KEY (territory_rights_id) REFERENCES territory_rights(id),
-    CONSTRAINT fk_territory_inclusion_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_territory_inclusion_type FOREIGN KEY (inclusion_type_id) REFERENCES resource_db.inclusion_type(id),
-    CONSTRAINT fk_territory_inclusion_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_inclusion_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_territory_inclusions_rights FOREIGN KEY (territory_rights_id) REFERENCES territory_rights_sets(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed table
+    CONSTRAINT fk_territory_inclusions_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_inclusions_type FOREIGN KEY (inclusion_type_id) REFERENCES resource_db.inclusion_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_inclusions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_inclusions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    UNIQUE KEY uk_territory_inclusion (territory_rights_id, territory_id),
+    UNIQUE KEY uk_territory_inclusion (territory_rights_id, territory_id), -- Renamed
     INDEX idx_territory_id (territory_id),
     INDEX idx_inclusion_type (inclusion_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- territory_exclusion - Specific territories excluded
-CREATE TABLE territory_exclusion (
+-- territory_exclusions - Specific territories excluded
+CREATE TABLE territory_exclusions ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    territory_rights_id BIGINT UNSIGNED NOT NULL,
-    territory_id INT NOT NULL COMMENT 'FK to resource_db.territory',
-    exclusion_type_id INT NOT NULL COMMENT 'FK to resource_db.exclusion_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    territory_rights_id BIGINT UNSIGNED NOT NULL, -- FK to territory_rights_sets.id
+    territory_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.territories', -- Changed INT, renamed lookup table
+    exclusion_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.exclusion_types', -- Changed INT, renamed lookup table
     exclusion_reason TEXT NULL,
     
     -- Holdback period
@@ -10333,22 +10774,22 @@ CREATE TABLE territory_exclusion (
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_territory_exclusion_rights FOREIGN KEY (territory_rights_id) REFERENCES territory_rights(id),
-    CONSTRAINT fk_territory_exclusion_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_territory_exclusion_type FOREIGN KEY (exclusion_type_id) REFERENCES resource_db.exclusion_type(id),
-    CONSTRAINT fk_territory_exclusion_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_territory_exclusion_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_territory_exclusions_rights FOREIGN KEY (territory_rights_id) REFERENCES territory_rights_sets(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed table
+    CONSTRAINT fk_territory_exclusions_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_exclusions_type FOREIGN KEY (exclusion_type_id) REFERENCES resource_db.exclusion_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_territory_exclusions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_territory_exclusions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
     CONSTRAINT chk_holdback_dates CHECK (holdback_end_date IS NULL OR holdback_end_date >= holdback_start_date),
     
     -- Indexes
-    UNIQUE KEY uk_territory_exclusion (territory_rights_id, territory_id),
+    UNIQUE KEY uk_territory_exclusion (territory_rights_id, territory_id), -- Renamed
     INDEX idx_territory_id (territory_id),
     INDEX idx_exclusion_type (exclusion_type_id),
     INDEX idx_holdback_dates (holdback_start_date, holdback_end_date)
@@ -10358,13 +10799,13 @@ CREATE TABLE territory_exclusion (
 -- RIGHTS RESTRICTIONS & TRANSFERS
 -- =============================================
 
--- rights_restriction - Usage restrictions on rights
-CREATE TABLE rights_restriction (
+-- rights_restrictions - Usage restrictions on rights
+CREATE TABLE rights_restrictions ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    rights_grant_id BIGINT UNSIGNED NOT NULL,
-    restriction_type_id INT NOT NULL COMMENT 'FK to resource_db.restriction_type',
-    restriction_scope_id INT NOT NULL COMMENT 'FK to resource_db.restriction_scope',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_grant_id BIGINT UNSIGNED NOT NULL, -- FK to rights_grants.id
+    restriction_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.restriction_types', -- Changed INT, renamed lookup table
+    restriction_scope_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.restriction_scopes', -- Changed INT, renamed lookup table
     
     -- Restriction details
     restriction_description TEXT NOT NULL,
@@ -10387,49 +10828,49 @@ CREATE TABLE rights_restriction (
     max_duration_seconds INT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rights_grant_id, restriction_type_id, restriction_scope_id, restriction_description, applies_to_sublicenses, restricted_media_types, restricted_channels, restricted_platforms, restriction_start_date, restriction_end_date, blackout_periods, max_uses, uses_remaining, max_copies, max_duration_seconds, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_restriction_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_restriction_type FOREIGN KEY (restriction_type_id) REFERENCES resource_db.restriction_type(id),
-    CONSTRAINT fk_rights_restriction_scope FOREIGN KEY (restriction_scope_id) REFERENCES resource_db.restriction_scope(id),
-    CONSTRAINT fk_rights_restriction_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_restriction_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_restriction_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_restriction_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_restrictions_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grants(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_restrictions_type FOREIGN KEY (restriction_type_id) REFERENCES resource_db.restriction_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_restrictions_scope FOREIGN KEY (restriction_scope_id) REFERENCES resource_db.restriction_scopes(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_restrictions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_restrictions_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_restrictions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_restrictions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_restriction_dates CHECK (restriction_end_date IS NULL OR restriction_end_date >= restriction_start_date),
+    CONSTRAINT chk_restrictions_dates CHECK (restriction_end_date IS NULL OR restriction_end_date >= restriction_start_date), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_restriction_grant (rights_grant_id),
-    INDEX idx_restriction_type (restriction_type_id),
-    INDEX idx_restriction_dates (restriction_start_date, restriction_end_date),
+    INDEX idx_restrictions_grant (rights_grant_id), -- Renamed
+    INDEX idx_restrictions_type (restriction_type_id), -- Renamed
+    INDEX idx_restrictions_dates (restriction_start_date, restriction_end_date), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_transfer - Transfer of rights between parties
-CREATE TABLE rights_transfer (
+-- rights_transfers - Transfer of rights between parties
+CREATE TABLE rights_transfers ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    original_grant_id BIGINT UNSIGNED NOT NULL,
-    transfer_type_id INT NOT NULL COMMENT 'FK to resource_db.transfer_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    original_grant_id BIGINT UNSIGNED NOT NULL, -- FK to rights_grants.id
+    transfer_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.transfer_types', -- Changed INT, renamed lookup table
     
     -- Transfer parties
     transferor_type VARCHAR(50) NOT NULL,
@@ -10443,73 +10884,74 @@ CREATE TABLE rights_transfer (
     effective_date DATE NOT NULL,
     
     -- Financial terms
-    transfer_price DECIMAL(15,2) NULL COMMENT 'ENCRYPTED',
+    transfer_price VARBINARY(50) NULL COMMENT 'ENCRYPTED', -- Changed to VARBINARY
     payment_terms TEXT NULL,
-    consideration_type_id INT NOT NULL COMMENT 'FK to resource_db.consideration_type',
+    consideration_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.consideration_types', -- Changed INT, renamed lookup table
     
     -- New grant creation
-    new_grant_id BIGINT UNSIGNED NULL COMMENT 'New rights_grant record created',
+    new_grant_id BIGINT UNSIGNED NULL COMMENT 'New rights_grants record created (FK to rights_grants.id)', -- Renamed to plural
     
     -- Approval workflow
     requires_approval BOOLEAN DEFAULT TRUE,
-    approval_status_id INT NOT NULL COMMENT 'FK to resource_db.approval_status',
+    approval_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.approval_statuses', -- Changed INT, renamed lookup table
     submitted_date DATETIME NULL,
     
     -- Legal documentation
-    transfer_agreement_id BIGINT UNSIGNED NULL,
+    transfer_agreement_id BIGINT UNSIGNED NULL, -- FK to agreements.id
     recording_reference VARCHAR(200) NULL COMMENT 'Legal recording info',
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, original_grant_id, transfer_type_id, transferor_type, transferor_id, transferee_type, transferee_id, transfer_percentage, transfer_date, effective_date, transfer_price, payment_terms, consideration_type_id, new_grant_id, requires_approval, approval_status_id, submitted_date, transfer_agreement_id, recording_reference, is_active, is_deleted), 256)) STORED,
     encryption_version INT NULL,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_transfer_original FOREIGN KEY (original_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_transfer_type FOREIGN KEY (transfer_type_id) REFERENCES resource_db.transfer_type(id),
-    CONSTRAINT fk_rights_transfer_consideration FOREIGN KEY (consideration_type_id) REFERENCES resource_db.consideration_type(id),
-    CONSTRAINT fk_rights_transfer_approval_status FOREIGN KEY (approval_status_id) REFERENCES resource_db.approval_status(id),
-    CONSTRAINT fk_rights_transfer_new_grant FOREIGN KEY (new_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_transfer_agreement FOREIGN KEY (transfer_agreement_id) REFERENCES agreement(id),
-    CONSTRAINT fk_rights_transfer_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_transfer_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_transfer_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_transfer_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_transfers_original FOREIGN KEY (original_grant_id) REFERENCES rights_grants(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_type FOREIGN KEY (transfer_type_id) REFERENCES resource_db.transfer_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_transfers_consideration FOREIGN KEY (consideration_type_id) REFERENCES resource_db.consideration_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_transfers_approval_status FOREIGN KEY (approval_status_id) REFERENCES resource_db.approval_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_transfers_new_grant FOREIGN KEY (new_grant_id) REFERENCES rights_grants(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_agreement FOREIGN KEY (transfer_agreement_id) REFERENCES agreements(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_transfers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_transfer_percentage CHECK (transfer_percentage > 0 AND transfer_percentage <= 100),
-    CONSTRAINT chk_transfer_dates CHECK (effective_date >= transfer_date),
+    CONSTRAINT chk_transfers_percentage CHECK (transfer_percentage > 0 AND transfer_percentage <= 100), -- Renamed constraint
+    CONSTRAINT chk_transfers_dates CHECK (effective_date >= transfer_date), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_transfer_original (original_grant_id),
-    INDEX idx_transfer_parties (transferor_type, transferor_id, transferee_type, transferee_id),
-    INDEX idx_transfer_dates (transfer_date, effective_date),
-    INDEX idx_transfer_approval (approval_status_id),
+    INDEX idx_transfers_original (original_grant_id), -- Renamed
+    INDEX idx_transfers_parties (transferor_type, transferor_id, transferee_type, transferee_id), -- Renamed
+    INDEX idx_transfers_dates (transfer_date, effective_date), -- Renamed
+    INDEX idx_transfers_approval (approval_status_id), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_transfer_approval - Approval workflow for transfers
-CREATE TABLE rights_transfer_approval (
+-- rights_transfer_approvals - Approval workflow for transfers
+CREATE TABLE rights_transfer_approvals ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    rights_transfer_id BIGINT UNSIGNED NOT NULL,
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_transfer_id BIGINT UNSIGNED NOT NULL, -- FK to rights_transfers.id
     approval_level INT NOT NULL DEFAULT 1,
-    approver_id BIGINT UNSIGNED NOT NULL,
-    approval_status_id INT NOT NULL COMMENT 'FK to resource_db.approval_status',
+    approver_id BIGINT UNSIGNED NOT NULL, -- FK to users.id
+    approval_status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.approval_statuses', -- Changed INT, renamed lookup table
     approval_date DATETIME NULL,
     
     -- Approval details
@@ -10517,25 +10959,25 @@ CREATE TABLE rights_transfer_approval (
     conditions TEXT NULL,
     
     -- Delegation
-    delegated_to BIGINT UNSIGNED NULL,
+    delegated_to BIGINT UNSIGNED NULL, -- FK to users.id
     delegated_date DATETIME NULL,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_transfer_approval_transfer FOREIGN KEY (rights_transfer_id) REFERENCES rights_transfer(id),
-    CONSTRAINT fk_transfer_approval_approver FOREIGN KEY (approver_id) REFERENCES user(id),
-    CONSTRAINT fk_transfer_approval_status FOREIGN KEY (approval_status_id) REFERENCES resource_db.approval_status(id),
-    CONSTRAINT fk_transfer_approval_delegated FOREIGN KEY (delegated_to) REFERENCES user(id),
-    CONSTRAINT fk_transfer_approval_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_transfer_approval_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_transfer_approvals_transfer FOREIGN KEY (rights_transfer_id) REFERENCES rights_transfers(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_transfer_approvals_approver FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_transfer_approvals_status FOREIGN KEY (approval_status_id) REFERENCES resource_db.approval_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_transfer_approvals_delegated FOREIGN KEY (delegated_to) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_transfer_approvals_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_transfer_approvals_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    UNIQUE KEY uk_transfer_approval (rights_transfer_id, approval_level),
+    UNIQUE KEY uk_transfer_approval (rights_transfer_id, approval_level), -- Renamed
     INDEX idx_approver (approver_id),
     INDEX idx_approval_status (approval_status_id),
     INDEX idx_approval_date (approval_date)
@@ -10545,15 +10987,15 @@ CREATE TABLE rights_transfer_approval (
 -- REVERSIONS & CLAIMS
 -- =============================================
 
--- rights_reversion - Automatic reversion schedules
-CREATE TABLE rights_reversion (
+-- rights_reversions - Automatic reversion schedules
+CREATE TABLE rights_reversions ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    rights_grant_id BIGINT UNSIGNED NOT NULL,
-    reversion_type_id INT NOT NULL COMMENT 'FK to resource_db.reversion_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_grant_id BIGINT UNSIGNED NOT NULL, -- FK to rights_grants.id
+    reversion_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.reversion_types', -- Changed INT, renamed lookup table
     
     -- Reversion trigger
-    trigger_type_id INT NOT NULL COMMENT 'FK to resource_db.reversion_trigger_type',
+    trigger_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.reversion_trigger_types', -- Changed INT, renamed lookup table
     trigger_date DATE NULL,
     trigger_event VARCHAR(200) NULL,
     years_after_grant INT NULL,
@@ -10567,65 +11009,65 @@ CREATE TABLE rights_reversion (
     notice_period_days INT DEFAULT 180,
     notice_deadline DATE NULL,
     notice_sent_date DATE NULL,
-    notice_sent_by BIGINT UNSIGNED NULL,
+    notice_sent_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Post-reversion
     reverts_to_type VARCHAR(50) NOT NULL,
     reverts_to_id BIGINT UNSIGNED NOT NULL,
     
     -- Status
-    status_id INT NOT NULL COMMENT 'FK to resource_db.reversion_status',
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.reversion_statuses', -- Changed INT, renamed lookup table
     executed_date DATETIME NULL,
-    executed_by BIGINT UNSIGNED NULL,
+    executed_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rights_grant_id, reversion_type_id, trigger_type_id, trigger_date, trigger_event, years_after_grant, reversion_date, reversion_percentage, notice_required, notice_period_days, notice_deadline, notice_sent_date, notice_sent_by, reverts_to_type, reverts_to_id, status_id, executed_date, executed_by, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_reversion_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_reversion_type FOREIGN KEY (reversion_type_id) REFERENCES resource_db.reversion_type(id),
-    CONSTRAINT fk_rights_reversion_trigger FOREIGN KEY (trigger_type_id) REFERENCES resource_db.reversion_trigger_type(id),
-    CONSTRAINT fk_rights_reversion_status FOREIGN KEY (status_id) REFERENCES resource_db.reversion_status(id),
-    CONSTRAINT fk_rights_reversion_notice_by FOREIGN KEY (notice_sent_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_reversion_executed_by FOREIGN KEY (executed_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_reversion_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_reversion_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_reversion_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_reversion_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_reversions_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grants(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_type FOREIGN KEY (reversion_type_id) REFERENCES resource_db.reversion_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_reversions_trigger FOREIGN KEY (trigger_type_id) REFERENCES resource_db.reversion_trigger_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_reversions_status FOREIGN KEY (status_id) REFERENCES resource_db.reversion_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_reversions_notice_by FOREIGN KEY (notice_sent_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_executed_by FOREIGN KEY (executed_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_reversions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_reversion_percentage CHECK (reversion_percentage > 0 AND reversion_percentage <= 100),
+    CONSTRAINT chk_reversions_percentage CHECK (reversion_percentage > 0 AND reversion_percentage <= 100), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_reversion_grant (rights_grant_id),
-    INDEX idx_reversion_type (reversion_type_id),
-    INDEX idx_reversion_date (reversion_date),
-    INDEX idx_reversion_notice (notice_deadline),
-    INDEX idx_reversion_status (status_id),
+    INDEX idx_reversions_grant (rights_grant_id), -- Renamed
+    INDEX idx_reversions_type (reversion_type_id), -- Renamed
+    INDEX idx_reversions_date (reversion_date), -- Renamed
+    INDEX idx_reversions_notice (notice_deadline), -- Renamed
+    INDEX idx_reversions_status (status_id), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_claim - Claims on rights
-CREATE TABLE rights_claim (
+-- rights_claims - Claims on rights
+CREATE TABLE rights_claims ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    claim_type_id INT NOT NULL COMMENT 'FK to resource_db.claim_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    claim_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.claim_types', -- Changed INT, renamed lookup table
     
     -- Claimant
     claimant_type VARCHAR(50) NOT NULL,
@@ -10636,12 +11078,12 @@ CREATE TABLE rights_claim (
     asset_id BIGINT UNSIGNED NOT NULL,
     
     -- Claim details
-    rights_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_type',
-    territory_id INT NULL COMMENT 'NULL = worldwide',
+    rights_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_types', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL COMMENT 'NULL = worldwide (FK to resource_db.territories)', -- Changed INT, renamed lookup table
     ownership_percentage DECIMAL(7,4) NULL,
     
     -- Basis for claim
-    claim_basis_id INT NOT NULL COMMENT 'FK to resource_db.claim_basis',
+    claim_basis_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.claim_bases', -- Changed INT, renamed lookup table
     claim_description TEXT NOT NULL,
     supporting_documents JSON NULL,
     
@@ -10650,135 +11092,135 @@ CREATE TABLE rights_claim (
     priority_date DATE NULL COMMENT 'Date rights were acquired',
     
     -- Status
-    status_id INT NOT NULL COMMENT 'FK to resource_db.claim_status',
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.claim_statuses', -- Changed INT, renamed lookup table
     resolution_date DATETIME NULL,
-    resolution_type_id INT NULL COMMENT 'FK to resource_db.resolution_type',
+    resolution_type_id INT UNSIGNED NULL COMMENT 'FK to resource_db.resolution_types', -- Changed INT, renamed lookup table
     resolution_notes TEXT NULL,
     
     -- Investigation
-    assigned_to BIGINT UNSIGNED NULL,
+    assigned_to BIGINT UNSIGNED NULL, -- FK to users.id
     due_date DATE NULL,
-    priority_level_id INT NOT NULL COMMENT 'FK to resource_db.priority_level',
+    priority_level_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.priority_levels', -- Changed INT, renamed lookup table
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, claim_type_id, claimant_type, claimant_id, asset_type, asset_id, rights_type_id, territory_id, ownership_percentage, claim_basis_id, claim_description, supporting_documents, claim_date, priority_date, status_id, resolution_date, resolution_type_id, resolution_notes, assigned_to, due_date, priority_level_id, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_claim_type FOREIGN KEY (claim_type_id) REFERENCES resource_db.claim_type(id),
-    CONSTRAINT fk_rights_claim_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_type(id),
-    CONSTRAINT fk_rights_claim_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_rights_claim_basis FOREIGN KEY (claim_basis_id) REFERENCES resource_db.claim_basis(id),
-    CONSTRAINT fk_rights_claim_status FOREIGN KEY (status_id) REFERENCES resource_db.claim_status(id),
-    CONSTRAINT fk_rights_claim_resolution FOREIGN KEY (resolution_type_id) REFERENCES resource_db.resolution_type(id),
-    CONSTRAINT fk_rights_claim_assigned FOREIGN KEY (assigned_to) REFERENCES user(id),
-    CONSTRAINT fk_rights_claim_priority FOREIGN KEY (priority_level_id) REFERENCES resource_db.priority_level(id),
-    CONSTRAINT fk_rights_claim_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_claim_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_claim_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_claim_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_claims_type FOREIGN KEY (claim_type_id) REFERENCES resource_db.claim_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_basis FOREIGN KEY (claim_basis_id) REFERENCES resource_db.claim_bases(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_status FOREIGN KEY (status_id) REFERENCES resource_db.claim_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_resolution FOREIGN KEY (resolution_type_id) REFERENCES resource_db.resolution_types(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_claims_priority FOREIGN KEY (priority_level_id) REFERENCES resource_db.priority_levels(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_claims_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_claims_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_claims_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_claims_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_claim_percentage CHECK (ownership_percentage IS NULL OR (ownership_percentage > 0 AND ownership_percentage <= 100)),
+    CONSTRAINT chk_claims_percentage CHECK (ownership_percentage IS NULL OR (ownership_percentage > 0 AND ownership_percentage <= 100)), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_claim_claimant (claimant_type, claimant_id),
-    INDEX idx_claim_asset (asset_type, asset_id),
-    INDEX idx_claim_type (claim_type_id),
-    INDEX idx_claim_status (status_id),
-    INDEX idx_claim_date (claim_date),
-    INDEX idx_claim_priority (priority_level_id),
-    INDEX idx_claim_due_date (due_date),
+    INDEX idx_claims_claimant (claimant_type, claimant_id), -- Renamed
+    INDEX idx_claims_asset (asset_type, asset_id), -- Renamed
+    INDEX idx_claims_type (claim_type_id), -- Renamed
+    INDEX idx_claims_status (status_id), -- Renamed
+    INDEX idx_claims_date (claim_date), -- Renamed
+    INDEX idx_claims_priority (priority_level_id), -- Renamed
+    INDEX idx_claims_due_date (due_date), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_conflict - Conflicting rights claims
-CREATE TABLE rights_conflict (
+-- rights_conflicts - Conflicting rights claims
+CREATE TABLE rights_conflicts ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    conflict_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_conflict_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    conflict_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_conflict_types', -- Changed INT, renamed lookup table
     
     -- Asset in conflict
     asset_type VARCHAR(50) NOT NULL,
     asset_id BIGINT UNSIGNED NOT NULL,
     
     -- Rights in conflict
-    rights_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_type',
-    territory_id INT NULL,
+    rights_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_types', -- Changed INT, renamed lookup table
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
     
     -- Conflicting parties
     party1_type VARCHAR(50) NOT NULL,
     party1_id BIGINT UNSIGNED NOT NULL,
-    party1_grant_id BIGINT UNSIGNED NULL,
-    party1_claim_id BIGINT UNSIGNED NULL,
+    party1_grant_id BIGINT UNSIGNED NULL, -- FK to rights_grants.id
+    party1_claim_id BIGINT UNSIGNED NULL, -- FK to rights_claims.id
     party1_percentage DECIMAL(7,4) NULL,
     
     party2_type VARCHAR(50) NOT NULL,
     party2_id BIGINT UNSIGNED NOT NULL,
-    party2_grant_id BIGINT UNSIGNED NULL,
-    party2_claim_id BIGINT UNSIGNED NULL,
+    party2_grant_id BIGINT UNSIGNED NULL, -- FK to rights_grants.id
+    party2_claim_id BIGINT UNSIGNED NULL, -- FK to rights_claims.id
     party2_percentage DECIMAL(7,4) NULL,
     
     -- Conflict details
     total_percentage DECIMAL(10,4) NULL COMMENT 'Total claimed percentage',
     overlap_percentage DECIMAL(7,4) NULL,
     detection_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    detection_source VARCHAR(100) NULL,
+    detection_source VARCHAR(100) NULL, -- Consider FK to resource_db.detection_sources
     
     -- Resolution
-    status_id INT NOT NULL COMMENT 'FK to resource_db.conflict_status',
-    severity_id INT NOT NULL COMMENT 'FK to resource_db.severity_level',
-    assigned_to BIGINT UNSIGNED NULL,
+    status_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.conflict_statuses', -- Changed INT, renamed lookup table
+    severity_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.severity_levels', -- Changed INT, renamed lookup table
+    assigned_to BIGINT UNSIGNED NULL, -- FK to users.id
     resolution_date DATETIME NULL,
-    resolution_method_id INT NULL COMMENT 'FK to resource_db.resolution_method',
+    resolution_method_id INT UNSIGNED NULL COMMENT 'FK to resource_db.resolution_methods', -- Changed INT, renamed lookup table
     resolution_details TEXT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, conflict_type_id, asset_type, asset_id, rights_type_id, territory_id, party1_type, party1_id, party1_grant_id, party1_claim_id, party1_percentage, party2_type, party2_id, party2_grant_id, party2_claim_id, party2_percentage, total_percentage, overlap_percentage, detection_date, detection_source, status_id, severity_id, assigned_to, resolution_date, resolution_method_id, resolution_details, created_at, created_by, updated_at, updated_by), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_conflict_type FOREIGN KEY (conflict_type_id) REFERENCES resource_db.rights_conflict_type(id),
-    CONSTRAINT fk_rights_conflict_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_type(id),
-    CONSTRAINT fk_rights_conflict_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_rights_conflict_grant1 FOREIGN KEY (party1_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_conflict_claim1 FOREIGN KEY (party1_claim_id) REFERENCES rights_claim(id),
-    CONSTRAINT fk_rights_conflict_grant2 FOREIGN KEY (party2_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_conflict_claim2 FOREIGN KEY (party2_claim_id) REFERENCES rights_claim(id),
-    CONSTRAINT fk_rights_conflict_status FOREIGN KEY (status_id) REFERENCES resource_db.conflict_status(id),
-    CONSTRAINT fk_rights_conflict_severity FOREIGN KEY (severity_id) REFERENCES resource_db.severity_level(id),
-    CONSTRAINT fk_rights_conflict_assigned FOREIGN KEY (assigned_to) REFERENCES user(id),
-    CONSTRAINT fk_rights_conflict_resolution FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_method(id),
-    CONSTRAINT fk_rights_conflict_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_conflict_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_conflicts_type FOREIGN KEY (conflict_type_id) REFERENCES resource_db.rights_conflict_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_grant1 FOREIGN KEY (party1_grant_id) REFERENCES rights_grants(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_claim1 FOREIGN KEY (party1_claim_id) REFERENCES rights_claims(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_grant2 FOREIGN KEY (party2_grant_id) REFERENCES rights_grants(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_claim2 FOREIGN KEY (party2_claim_id) REFERENCES rights_claims(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_status FOREIGN KEY (status_id) REFERENCES resource_db.conflict_statuses(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_severity FOREIGN KEY (severity_id) REFERENCES resource_db.severity_levels(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_resolution FOREIGN KEY (resolution_method_id) REFERENCES resource_db.resolution_methods(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_conflicts_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_conflicts_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    INDEX idx_conflict_asset (asset_type, asset_id),
-    INDEX idx_conflict_type (conflict_type_id),
-    INDEX idx_conflict_parties (party1_type, party1_id, party2_type, party2_id),
-    INDEX idx_conflict_status (status_id),
-    INDEX idx_conflict_severity (severity_id),
-    INDEX idx_conflict_detection (detection_date),
+    INDEX idx_conflicts_asset (asset_type, asset_id), -- Renamed
+    INDEX idx_conflicts_type (conflict_type_id), -- Renamed
+    INDEX idx_conflicts_parties (party1_type, party1_id, party2_type, party2_id), -- Renamed
+    INDEX idx_conflicts_status (status_id), -- Renamed
+    INDEX idx_conflicts_severity (severity_id), -- Renamed
+    INDEX idx_conflicts_detection (detection_date), -- Renamed
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -10786,12 +11228,12 @@ CREATE TABLE rights_conflict (
 -- TIME-BASED RIGHTS & CHAIN OF TITLE
 -- =============================================
 
--- rights_period - Time-based rights windows
-CREATE TABLE rights_period (
+-- rights_periods - Time-based rights windows
+CREATE TABLE rights_periods ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
-    rights_grant_id BIGINT UNSIGNED NOT NULL,
-    period_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_period_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    rights_grant_id BIGINT UNSIGNED NOT NULL, -- FK to rights_grants.id
+    period_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_period_types', -- Changed INT, renamed lookup table
     
     -- Period definition
     period_name VARCHAR(200) NOT NULL,
@@ -10811,48 +11253,48 @@ CREATE TABLE rights_period (
     blackout_dates JSON NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, rights_grant_id, period_type_id, period_name, start_date, end_date, rights_percentage, royalty_rate, exclusive_period, holdback_period, max_uses_in_period, blackout_dates, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_period_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_period_type FOREIGN KEY (period_type_id) REFERENCES resource_db.rights_period_type(id),
-    CONSTRAINT fk_rights_period_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_period_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_period_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_rights_period_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_rights_periods_grant FOREIGN KEY (rights_grant_id) REFERENCES rights_grants(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_periods_type FOREIGN KEY (period_type_id) REFERENCES resource_db.rights_period_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_periods_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_periods_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_periods_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_periods_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_period_dates CHECK (end_date IS NULL OR end_date >= start_date),
-    CONSTRAINT chk_period_percentage CHECK (rights_percentage > 0 AND rights_percentage <= 100),
+    CONSTRAINT chk_periods_dates CHECK (end_date IS NULL OR end_date >= start_date), -- Renamed constraint
+    CONSTRAINT chk_periods_percentage CHECK (rights_percentage > 0 AND rights_percentage <= 100), -- Renamed constraint
     
     -- Indexes
-    INDEX idx_period_grant (rights_grant_id),
-    INDEX idx_period_type (period_type_id),
-    INDEX idx_period_dates (start_date, end_date),
-    INDEX idx_period_exclusive (exclusive_period),
+    INDEX idx_periods_grant (rights_grant_id), -- Renamed
+    INDEX idx_periods_type (period_type_id), -- Renamed
+    INDEX idx_periods_dates (start_date, end_date), -- Renamed
+    INDEX idx_periods_exclusive (exclusive_period), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_chain_of_title - Complete ownership history
-CREATE TABLE rights_chain_of_title (
+-- rights_chains_of_title - Complete ownership history
+CREATE TABLE rights_chains_of_title ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
     asset_type VARCHAR(50) NOT NULL,
     asset_id BIGINT UNSIGNED NOT NULL,
     
@@ -10864,7 +11306,7 @@ CREATE TABLE rights_chain_of_title (
     title_holder_id BIGINT UNSIGNED NOT NULL,
     
     -- How title was acquired
-    acquisition_type_id INT NOT NULL COMMENT 'FK to resource_db.title_acquisition_type',
+    acquisition_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.title_acquisition_types', -- Changed INT, renamed lookup table
     acquisition_date DATE NOT NULL,
     
     -- From whom
@@ -10872,20 +11314,20 @@ CREATE TABLE rights_chain_of_title (
     prior_holder_id BIGINT UNSIGNED NULL,
     
     -- Supporting documentation
-    document_type_id INT NOT NULL COMMENT 'FK to resource_db.chain_document_type',
+    document_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.chain_document_types', -- Changed INT, renamed lookup table
     document_reference VARCHAR(500) NULL,
     document_date DATE NULL,
-    document_file_id BIGINT UNSIGNED NULL,
+    document_file_id BIGINT UNSIGNED NULL, -- FK to files.id
     
     -- Rights scope
     rights_percentage DECIMAL(7,4) NOT NULL,
-    territory_id INT NULL,
-    rights_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_type',
+    territory_id INT UNSIGNED NULL, -- Changed INT, renamed lookup table
+    rights_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_types', -- Changed INT, renamed lookup table
     
     -- Verification
     is_verified BOOLEAN DEFAULT FALSE,
     verified_date DATETIME NULL,
-    verified_by BIGINT UNSIGNED NULL,
+    verified_by BIGINT UNSIGNED NULL, -- FK to users.id
     verification_notes TEXT NULL,
     
     -- Gaps or issues
@@ -10893,60 +11335,61 @@ CREATE TABLE rights_chain_of_title (
     gap_description TEXT NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, asset_type, asset_id, sequence_number, title_holder_type, title_holder_id, acquisition_type_id, acquisition_date, prior_holder_type, prior_holder_id, document_type_id, document_reference, document_date, document_file_id, rights_percentage, territory_id, rights_type_id, is_verified, verified_date, verified_by, verification_notes, has_gap, gap_description, is_active, is_deleted), 256)) STORED,
     
     -- Audit columns
     is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at DATETIME NULL,
-    deleted_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL, -- FK to users.id
     archived_at DATETIME NULL,
-    archived_by BIGINT UNSIGNED NULL,
+    archived_by BIGINT UNSIGNED NULL, -- FK to users.id
     archive_reason TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL, -- FK to users.id
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL, -- FK to users.id
     version INT DEFAULT 1,
     
     -- Foreign Keys
-    CONSTRAINT fk_chain_acquisition_type FOREIGN KEY (acquisition_type_id) REFERENCES resource_db.title_acquisition_type(id),
-    CONSTRAINT fk_chain_document_type FOREIGN KEY (document_type_id) REFERENCES resource_db.chain_document_type(id),
-    CONSTRAINT fk_chain_document_file FOREIGN KEY (document_file_id) REFERENCES file(id),
-    CONSTRAINT fk_chain_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territory(id),
-    CONSTRAINT fk_chain_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_type(id),
-    CONSTRAINT fk_chain_verified_by FOREIGN KEY (verified_by) REFERENCES user(id),
-    CONSTRAINT fk_chain_deleted_by FOREIGN KEY (deleted_by) REFERENCES user(id),
-    CONSTRAINT fk_chain_archived_by FOREIGN KEY (archived_by) REFERENCES user(id),
-    CONSTRAINT fk_chain_created_by FOREIGN KEY (created_by) REFERENCES user(id),
-    CONSTRAINT fk_chain_updated_by FOREIGN KEY (updated_by) REFERENCES user(id),
+    CONSTRAINT fk_chains_acquisition_type FOREIGN KEY (acquisition_type_id) REFERENCES resource_db.title_acquisition_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_chains_document_type FOREIGN KEY (document_type_id) REFERENCES resource_db.chain_document_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_chains_document_file FOREIGN KEY (document_file_id) REFERENCES files(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_chains_territory FOREIGN KEY (territory_id) REFERENCES resource_db.territories(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_chains_rights_type FOREIGN KEY (rights_type_id) REFERENCES resource_db.rights_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_chains_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_chains_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_chains_archived_by FOREIGN KEY (archived_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_chains_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_chains_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
     
     -- Constraints
-    CONSTRAINT chk_chain_percentage CHECK (rights_percentage > 0 AND rights_percentage <= 100),
+    CONSTRAINT chk_chains_percentage CHECK (rights_percentage > 0 AND rights_percentage <= 100), -- Renamed constraint
     
     -- Indexes
-    UNIQUE KEY uk_chain_sequence (asset_type, asset_id, sequence_number),
-    INDEX idx_chain_asset (asset_type, asset_id),
-    INDEX idx_chain_holder (title_holder_type, title_holder_id),
-    INDEX idx_chain_acquisition (acquisition_date),
-    INDEX idx_chain_verified (is_verified),
-    INDEX idx_chain_gap (has_gap),
+    UNIQUE KEY uk_chains_sequence (asset_type, asset_id, sequence_number), -- Renamed
+    INDEX idx_chains_asset (asset_type, asset_id), -- Renamed
+    INDEX idx_chains_holder (title_holder_type, title_holder_id), -- Renamed
+    INDEX idx_chains_acquisition (acquisition_date), -- Renamed
+    INDEX idx_chains_verified (is_verified), -- Renamed
+    INDEX idx_chains_gap (has_gap), -- Renamed
     INDEX idx_active_deleted (is_active, is_deleted),
     INDEX idx_archived_at (archived_at),
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- rights_audit - Complete audit trail for rights
-CREATE TABLE rights_audit (
+-- rights_audits - Complete audit trail for rights
+CREATE TABLE rights_audits ( -- Renamed to plural
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    audit_type_id INT NOT NULL COMMENT 'FK to resource_db.rights_audit_type',
+    aid BINARY(16) NOT NULL UNIQUE DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
+    audit_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.rights_audit_types', -- Changed INT, renamed lookup table
     
     -- What was audited
     entity_type VARCHAR(50) NOT NULL,
     entity_id BIGINT UNSIGNED NOT NULL,
     
     -- Action taken
-    action_type_id INT NOT NULL COMMENT 'FK to resource_db.audit_action_type',
+    action_type_id INT UNSIGNED NOT NULL COMMENT 'FK to resource_db.audit_action_types', -- Changed INT, renamed lookup table
     action_description TEXT NOT NULL,
     
     -- Before/after states
@@ -10955,42 +11398,42 @@ CREATE TABLE rights_audit (
     changed_fields JSON NULL,
     
     -- Context
-    related_grant_id BIGINT UNSIGNED NULL,
-    related_transfer_id BIGINT UNSIGNED NULL,
-    related_claim_id BIGINT UNSIGNED NULL,
+    related_grant_id BIGINT UNSIGNED NULL, -- FK to rights_grants.id
+    related_transfer_id BIGINT UNSIGNED NULL, -- FK to rights_transfers.id
+    related_claim_id BIGINT UNSIGNED NULL, -- FK to rights_claims.id
     
     -- User and system info
-    user_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL, -- FK to users.id
     ip_address VARCHAR(45) NULL,
     user_agent VARCHAR(500) NULL,
     session_id VARCHAR(128) NULL,
     
     -- Security columns
-    row_hash VARCHAR(64) NULL,
+    row_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(CONCAT_WS('|', id, aid, audit_type_id, entity_type, entity_id, action_type_id, action_description, previous_state, new_state, changed_fields, related_grant_id, related_transfer_id, related_claim_id, user_id, ip_address, user_agent, session_id, created_at), 256)) STORED,
     
     -- Audit columns
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys
-    CONSTRAINT fk_rights_audit_type FOREIGN KEY (audit_type_id) REFERENCES resource_db.rights_audit_type(id),
-    CONSTRAINT fk_rights_audit_action FOREIGN KEY (action_type_id) REFERENCES resource_db.audit_action_type(id),
-    CONSTRAINT fk_rights_audit_grant FOREIGN KEY (related_grant_id) REFERENCES rights_grant(id),
-    CONSTRAINT fk_rights_audit_transfer FOREIGN KEY (related_transfer_id) REFERENCES rights_transfer(id),
-    CONSTRAINT fk_rights_audit_claim FOREIGN KEY (related_claim_id) REFERENCES rights_claim(id),
-    CONSTRAINT fk_rights_audit_user FOREIGN KEY (user_id) REFERENCES user(id),
+    CONSTRAINT fk_rights_audits_type FOREIGN KEY (audit_type_id) REFERENCES resource_db.rights_audit_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_audits_action FOREIGN KEY (action_type_id) REFERENCES resource_db.audit_action_types(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed lookup
+    CONSTRAINT fk_rights_audits_grant FOREIGN KEY (related_grant_id) REFERENCES rights_grants(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_audits_transfer FOREIGN KEY (related_transfer_id) REFERENCES rights_transfers(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_audits_claim FOREIGN KEY (related_claim_id) REFERENCES rights_claims(id) ON DELETE SET NULL ON UPDATE CASCADE, -- Renamed to plural
+    CONSTRAINT fk_rights_audits_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE, -- Renamed to plural
     
     -- Indexes
-    INDEX idx_audit_entity (entity_type, entity_id),
-    INDEX idx_audit_type (audit_type_id),
-    INDEX idx_audit_action (action_type_id),
-    INDEX idx_audit_user (user_id),
-    INDEX idx_audit_created (created_at),
-    INDEX idx_audit_grant (related_grant_id),
+    INDEX idx_audits_entity (entity_type, entity_id), -- Renamed
+    INDEX idx_audits_type (audit_type_id), -- Renamed
+    INDEX idx_audits_action (action_type_id), -- Renamed
+    INDEX idx_audits_user (user_id), -- Renamed
+    INDEX idx_audits_created (created_at), -- Renamed
+    INDEX idx_audits_grant (related_grant_id), -- Renamed
     INDEX idx_row_hash (row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
--- RIGHTS CALCULATION PROCEDURES
+-- RIGHTS CALCULATION PROCEDURES (UPDATED)
 -- =============================================
 
 DELIMITER $$
@@ -10999,7 +11442,7 @@ DELIMITER $$
 CREATE PROCEDURE sp_calculate_effective_rights(
     IN p_asset_type VARCHAR(50),
     IN p_asset_id BIGINT UNSIGNED,
-    IN p_territory_id INT,
+    IN p_territory_id INT UNSIGNED, -- Changed INT
     IN p_as_of_date DATE
 )
 BEGIN
@@ -11033,10 +11476,11 @@ BEGIN
             WHEN 'organization' THEN o.name
             WHEN 'publisher' THEN pub_org.name
             WHEN 'label' THEN l_org.name
+            WHEN 'artist' THEN a.name -- Added artist
         END AS rights_holder_name,
         rt.name AS rights_type,
         CASE 
-            WHEN rp.rights_percentage IS NOT NULL THEN rp.rights_percentage
+            WHEN rper.rights_percentage IS NOT NULL THEN rper.rights_percentage -- Renamed alias
             ELSE 100.0000
         END AS rights_percentage,
         rg.exclusive_rights,
@@ -11045,30 +11489,31 @@ BEGIN
         rg.id AS grant_id,
         rg.effective_date,
         rg.expiry_date,
-        EXISTS(SELECT 1 FROM rights_restriction WHERE rights_grant_id = rg.id AND is_active = TRUE),
-        EXISTS(SELECT 1 FROM rights_reversion WHERE rights_grant_id = rg.id AND is_active = TRUE),
-        (SELECT MIN(reversion_date) FROM rights_reversion 
-         WHERE rights_grant_id = rg.id AND is_active = TRUE AND status_id = 1)
-    FROM rights_grant rg
-    JOIN resource_db.rights_type rt ON rg.rights_type_id = rt.id
-    LEFT JOIN rights_period rp ON rg.id = rp.rights_grant_id 
-        AND p_as_of_date BETWEEN rp.start_date AND COALESCE(rp.end_date, '9999-12-31')
-        AND rp.is_active = TRUE
-    LEFT JOIN territory_rights tr ON rg.id = tr.rights_grant_id
-    LEFT JOIN territory_inclusion ti ON tr.id = ti.territory_rights_id AND ti.territory_id = p_territory_id
-    LEFT JOIN territory_exclusion te ON tr.id = te.territory_rights_id AND te.territory_id = p_territory_id
+        EXISTS(SELECT 1 FROM rights_restrictions WHERE rights_grant_id = rg.id AND is_active = TRUE), -- Renamed to plural
+        EXISTS(SELECT 1 FROM rights_reversions WHERE rights_grant_id = rg.id AND is_active = TRUE), -- Renamed to plural
+        (SELECT MIN(reversion_date) FROM rights_reversions -- Renamed to plural
+         WHERE rights_grant_id = rg.id AND is_active = TRUE AND status_id = (SELECT id FROM resource_db.reversion_statuses WHERE code = 'PENDING')) -- Renamed lookup
+    FROM rights_grants rg -- Renamed to plural
+    JOIN resource_db.rights_types rt ON rg.rights_type_id = rt.id -- Renamed lookup
+    LEFT JOIN rights_periods rper ON rg.id = rper.rights_grant_id -- Renamed to plural
+        AND p_as_of_date BETWEEN rper.start_date AND COALESCE(rper.end_date, '9999-12-31')
+        AND rper.is_active = TRUE
+    LEFT JOIN territory_rights_sets tr ON rg.id = tr.rights_grant_id -- Renamed to plural
+    LEFT JOIN territory_inclusions ti ON tr.id = ti.territory_rights_id AND ti.territory_id = p_territory_id -- Renamed to plural
+    LEFT JOIN territory_exclusions te ON tr.id = te.territory_rights_id AND te.territory_id = p_territory_id -- Renamed to plural
     -- Join for names
-    LEFT JOIN person p ON rg.grantee_type = 'person' AND rg.grantee_id = p.id
-    LEFT JOIN organization o ON rg.grantee_type = 'organization' AND rg.grantee_id = o.id
-    LEFT JOIN publisher pub ON rg.grantee_type = 'publisher' AND rg.grantee_id = pub.id
-    LEFT JOIN organization pub_org ON pub.organization_id = pub_org.id
-    LEFT JOIN label l ON rg.grantee_type = 'label' AND rg.grantee_id = l.id
-    LEFT JOIN organization l_org ON l.organization_id = l_org.id
+    LEFT JOIN persons p ON rg.grantee_type = 'person' AND rg.grantee_id = p.id -- Renamed to plural
+    LEFT JOIN organizations o ON rg.grantee_type = 'organization' AND rg.grantee_id = o.id -- Renamed to plural
+    LEFT JOIN publishers pub ON rg.grantee_type = 'publisher' AND rg.grantee_id = pub.id -- Renamed to plural
+    LEFT JOIN organizations pub_org ON pub.organization_id = pub_org.id -- Renamed to plural
+    LEFT JOIN labels l ON rg.grantee_type = 'label' AND rg.grantee_id = l.id -- Renamed to plural
+    LEFT JOIN organizations l_org ON l.organization_id = l_org.id -- Renamed to plural
+    LEFT JOIN artists a ON rg.grantee_type = 'artist' AND rg.grantee_id = a.id -- Added artist, renamed to plural
     WHERE rg.asset_type = p_asset_type
         AND rg.asset_id = p_asset_id
         AND rg.effective_date <= p_as_of_date
         AND (rg.expiry_date IS NULL OR rg.expiry_date >= p_as_of_date)
-        AND rg.status_id = (SELECT id FROM resource_db.rights_status WHERE code = 'ACTIVE')
+        AND rg.status_id = (SELECT id FROM resource_db.rights_statuses WHERE code = 'ACTIVE') -- Renamed lookup
         AND rg.is_active = TRUE
         AND (
             -- Worldwide rights
@@ -11083,13 +11528,13 @@ BEGIN
     UPDATE temp_effective_rights ter
     SET rights_percentage = rights_percentage - COALESCE(
         (SELECT SUM(transfer_percentage) 
-         FROM rights_transfer rt
+         FROM rights_transfers rt -- Renamed to plural
          WHERE rt.original_grant_id = ter.grant_id
             AND rt.effective_date <= p_as_of_date
-            AND rt.approval_status_id = (SELECT id FROM resource_db.approval_status WHERE code = 'APPROVED')
+            AND rt.approval_status_id = (SELECT id FROM resource_db.approval_statuses WHERE code = 'APPROVED') -- Renamed lookup
             AND rt.is_active = TRUE), 0)
     WHERE EXISTS (
-        SELECT 1 FROM rights_transfer rt
+        SELECT 1 FROM rights_transfers rt -- Renamed to plural
         WHERE rt.original_grant_id = ter.grant_id
             AND rt.effective_date <= p_as_of_date
     );
@@ -11106,14 +11551,15 @@ END$$
 CREATE PROCEDURE sp_check_rights_conflicts(
     IN p_asset_type VARCHAR(50),
     IN p_asset_id BIGINT UNSIGNED,
-    IN p_territory_id INT
+    IN p_territory_id INT UNSIGNED -- Changed INT
 )
 BEGIN
     DECLARE v_conflict_found BOOLEAN DEFAULT FALSE;
     DECLARE v_total_percentage DECIMAL(10,4);
     
     -- Check each rights type for over-allocation
-    INSERT INTO rights_conflict (
+    INSERT INTO rights_conflicts ( -- Renamed to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         conflict_type_id,
         asset_type,
         asset_id,
@@ -11135,7 +11581,8 @@ BEGIN
         created_by
     )
     SELECT 
-        (SELECT id FROM resource_db.rights_conflict_type WHERE code = 'OVER_ALLOCATION'),
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
+        (SELECT id FROM resource_db.rights_conflict_types WHERE code = 'OVER_ALLOCATION'), -- Renamed lookup
         p_asset_type,
         p_asset_id,
         rg1.rights_type_id,
@@ -11151,11 +11598,11 @@ BEGIN
         200.0000, -- Placeholder total
         100.0000, -- Overlap
         'sp_check_rights_conflicts',
-        (SELECT id FROM resource_db.conflict_status WHERE code = 'UNRESOLVED'),
-        (SELECT id FROM resource_db.severity_level WHERE code = 'HIGH'),
-        1 -- System user
-    FROM rights_grant rg1
-    JOIN rights_grant rg2 ON rg1.asset_type = rg2.asset_type 
+        (SELECT id FROM resource_db.conflict_statuses WHERE code = 'UNRESOLVED'), -- Renamed lookup
+        (SELECT id FROM resource_db.severity_levels WHERE code = 'HIGH'), -- Renamed lookup
+        1 -- System user (assuming users.id = 1)
+    FROM rights_grants rg1 -- Renamed to plural
+    JOIN rights_grants rg2 ON rg1.asset_type = rg2.asset_type -- Renamed to plural
         AND rg1.asset_id = rg2.asset_id
         AND rg1.rights_type_id = rg2.rights_type_id
         AND rg1.id < rg2.id
@@ -11163,17 +11610,17 @@ BEGIN
         AND rg1.asset_id = p_asset_id
         AND rg1.exclusive_rights = TRUE
         AND rg2.exclusive_rights = TRUE
-        AND rg1.status_id = (SELECT id FROM resource_db.rights_status WHERE code = 'ACTIVE')
-        AND rg2.status_id = (SELECT id FROM resource_db.rights_status WHERE code = 'ACTIVE')
+        AND rg1.status_id = (SELECT id FROM resource_db.rights_statuses WHERE code = 'ACTIVE') -- Renamed lookup
+        AND rg2.status_id = (SELECT id FROM resource_db.rights_statuses WHERE code = 'ACTIVE') -- Renamed lookup
         AND rg1.is_active = TRUE
         AND rg2.is_active = TRUE
         AND NOT EXISTS (
-            SELECT 1 FROM rights_conflict rc
+            SELECT 1 FROM rights_conflicts rc -- Renamed to plural
             WHERE rc.asset_type = p_asset_type
                 AND rc.asset_id = p_asset_id
                 AND rc.party1_grant_id = rg1.id
                 AND rc.party2_grant_id = rg2.id
-                AND rc.status_id != (SELECT id FROM resource_db.conflict_status WHERE code = 'RESOLVED')
+                AND rc.status_id != (SELECT id FROM resource_db.conflict_statuses WHERE code = 'RESOLVED') -- Renamed lookup
         );
     
     SELECT ROW_COUNT() > 0 INTO v_conflict_found;
@@ -11211,19 +11658,20 @@ BEGIN
         v_reverts_to_type,
         v_reverts_to_id,
         v_reversion_percentage
-    FROM rights_reversion
+    FROM rights_reversions -- Renamed to plural
     WHERE id = p_reversion_id
-        AND status_id = (SELECT id FROM resource_db.reversion_status WHERE code = 'PENDING');
+        AND status_id = (SELECT id FROM resource_db.reversion_statuses WHERE code = 'PENDING'); -- Renamed lookup
     
     IF v_grant_id IS NOT NULL THEN
         -- Update original grant
-        UPDATE rights_grant
-        SET status_id = (SELECT id FROM resource_db.rights_status WHERE code = 'REVERTED'),
+        UPDATE rights_grants -- Renamed to plural
+        SET status_id = (SELECT id FROM resource_db.rights_statuses WHERE code = 'REVERTED'), -- Renamed lookup
             updated_by = p_user_id
         WHERE id = v_grant_id;
         
         -- Create new grant for reverted rights
-        INSERT INTO rights_grant (
+        INSERT INTO rights_grants ( -- Renamed to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             grant_type_id,
             grantor_type,
             grantor_id,
@@ -11240,7 +11688,8 @@ BEGIN
             created_by
         )
         SELECT 
-            (SELECT id FROM resource_db.rights_grant_type WHERE code = 'REVERSION'),
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
+            (SELECT id FROM resource_db.rights_grant_types WHERE code = 'REVERSION'), -- Renamed lookup
             grantee_type, -- Old grantee becomes grantor
             grantee_id,
             v_reverts_to_type,
@@ -11252,21 +11701,22 @@ BEGIN
             exclusive_rights,
             CURDATE(),
             CURDATE(),
-            (SELECT id FROM resource_db.rights_status WHERE code = 'ACTIVE'),
+            (SELECT id FROM resource_db.rights_statuses WHERE code = 'ACTIVE'), -- Renamed lookup
             p_user_id
-        FROM rights_grant
+        FROM rights_grants -- Renamed to plural
         WHERE id = v_grant_id;
         
         -- Update reversion status
-        UPDATE rights_reversion
-        SET status_id = (SELECT id FROM resource_db.reversion_status WHERE code = 'EXECUTED'),
+        UPDATE rights_reversions -- Renamed to plural
+        SET status_id = (SELECT id FROM resource_db.reversion_statuses WHERE code = 'EXECUTED'), -- Renamed lookup
             executed_date = NOW(),
             executed_by = p_user_id,
             updated_by = p_user_id
         WHERE id = p_reversion_id;
         
         -- Log in audit
-        INSERT INTO rights_audit (
+        INSERT INTO rights_audits ( -- Renamed to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             audit_type_id,
             entity_type,
             entity_id,
@@ -11275,10 +11725,11 @@ BEGIN
             related_grant_id,
             user_id
         ) VALUES (
-            (SELECT id FROM resource_db.rights_audit_type WHERE code = 'REVERSION'),
-            'rights_grant',
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
+            (SELECT id FROM resource_db.rights_audit_types WHERE code = 'REVERSION'), -- Renamed lookup
+            'rights_grants', -- Renamed entity type
             v_grant_id,
-            (SELECT id FROM resource_db.audit_action_type WHERE code = 'EXECUTE_REVERSION'),
+            (SELECT id FROM resource_db.audit_action_types WHERE code = 'EXECUTE_REVERSION'), -- Renamed lookup
             CONCAT('Executed reversion of rights grant ', v_grant_id),
             v_grant_id,
             p_user_id
@@ -11291,7 +11742,7 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- RIGHTS VIEWS
+-- RIGHTS VIEWS (UPDATED)
 -- =============================================
 
 -- Active rights summary view
@@ -11312,6 +11763,7 @@ SELECT
         WHEN 'organization' THEN o.name
         WHEN 'publisher' THEN pub_org.name
         WHEN 'label' THEN l_org.name
+        WHEN 'artist' THEN a.name
     END AS rights_holder,
     rc.name AS rights_category,
     rt.name AS rights_type,
@@ -11327,21 +11779,22 @@ SELECT
     END AS term_status,
     rs.name AS status,
     rg.is_verified
-FROM rights_grant rg
-JOIN resource_db.rights_category rc ON rg.rights_category_id = rc.id
-JOIN resource_db.rights_type rt ON rg.rights_type_id = rt.id
-JOIN resource_db.rights_status rs ON rg.status_id = rs.id
+FROM rights_grants rg -- Renamed to plural
+JOIN resource_db.rights_categories rc ON rg.rights_category_id = rc.id -- Renamed lookup
+JOIN resource_db.rights_types rt ON rg.rights_type_id = rt.id -- Renamed lookup
+JOIN resource_db.rights_statuses rs ON rg.status_id = rs.id -- Renamed lookup
 -- Asset joins
-LEFT JOIN work w ON rg.asset_type = 'work' AND rg.asset_id = w.id
-LEFT JOIN recording r ON rg.asset_type = 'recording' AND rg.asset_id = r.id
-LEFT JOIN release rel ON rg.asset_type = 'release' AND rg.asset_id = rel.id
+LEFT JOIN works w ON rg.asset_type = 'work' AND rg.asset_id = w.id -- Renamed to plural
+LEFT JOIN recordings r ON rg.asset_type = 'recording' AND rg.asset_id = r.id -- Renamed to plural
+LEFT JOIN releases rel ON rg.asset_type = 'release' AND rg.asset_id = rel.id -- Renamed to plural
 -- Rights holder joins
-LEFT JOIN person p ON rg.grantee_type = 'person' AND rg.grantee_id = p.id
-LEFT JOIN organization o ON rg.grantee_type = 'organization' AND rg.grantee_id = o.id
-LEFT JOIN publisher pub ON rg.grantee_type = 'publisher' AND rg.grantee_id = pub.id
-LEFT JOIN organization pub_org ON pub.organization_id = pub_org.id
-LEFT JOIN label l ON rg.grantee_type = 'label' AND rg.grantee_id = l.id
-LEFT JOIN organization l_org ON l.organization_id = l_org.id
+LEFT JOIN persons p ON rg.grantee_type = 'person' AND rg.grantee_id = p.id -- Renamed to plural
+LEFT JOIN organizations o ON rg.grantee_type = 'organization' AND rg.grantee_id = o.id -- Renamed to plural
+LEFT JOIN publishers pub ON rg.grantee_type = 'publisher' AND rg.grantee_id = pub.id -- Renamed to plural
+LEFT JOIN organizations pub_org ON pub.organization_id = pub_org.id -- Renamed to plural
+LEFT JOIN labels l ON rg.grantee_type = 'label' AND rg.grantee_id = l.id -- Renamed to plural
+LEFT JOIN organizations l_org ON l.organization_id = l_org.id -- Renamed to plural (for label's organization)
+LEFT JOIN artists a ON rg.grantee_type = 'artist' AND rg.grantee_id = a.id -- Added artist, renamed to plural
 WHERE rg.is_active = TRUE
     AND rs.code = 'ACTIVE';
 
@@ -11361,9 +11814,11 @@ SELECT
     DATEDIFF(rr.reversion_date, CURDATE()) AS days_until_reversion,
     rr.reversion_percentage,
     rr.notice_required,
+    rr.notice_period_days,
     rr.notice_deadline,
     CASE 
-        WHEN rr.notice_required AND rr.notice_sent_date IS NULL THEN 'Notice Required'
+        WHEN rr.notice_required = TRUE AND 
+             rr.notice_sent_date IS NULL THEN 'Notice Required'
         WHEN rr.notice_sent_date IS NOT NULL THEN 'Notice Sent'
         ELSE 'No Notice Required'
     END AS notice_status,
@@ -11372,19 +11827,19 @@ SELECT
         WHEN 'organization' THEN o.name
     END AS reverts_to,
     rs.name AS status
-FROM rights_reversion rr
-JOIN rights_grant rg ON rr.rights_grant_id = rg.id
-JOIN resource_db.reversion_type rt ON rr.reversion_type_id = rt.id
-JOIN resource_db.reversion_status rs ON rr.status_id = rs.id
+FROM rights_reversions rr -- Renamed to plural
+JOIN rights_grants rg ON rr.rights_grant_id = rg.id -- Renamed to plural
+JOIN resource_db.reversion_types rt ON rr.reversion_type_id = rt.id -- Renamed lookup
+JOIN resource_db.reversion_statuses rs ON rr.status_id = rs.id -- Renamed lookup
 -- Asset joins
-LEFT JOIN work w ON rg.asset_type = 'work' AND rg.asset_id = w.id
-LEFT JOIN recording r ON rg.asset_type = 'recording' AND rg.asset_id = r.id
-LEFT JOIN release rel ON rg.asset_type = 'release' AND rg.asset_id = rel.id
+LEFT JOIN works w ON rg.asset_type = 'work' AND rg.asset_id = w.id -- Renamed to plural
+LEFT JOIN recordings r ON rg.asset_type = 'recording' AND rg.asset_id = r.id -- Renamed to plural
+LEFT JOIN releases rel ON rg.asset_type = 'release' AND rg.asset_id = rel.id -- Renamed to plural
 -- Reverts to joins
-LEFT JOIN person p ON rr.reverts_to_type = 'person' AND rr.reverts_to_id = p.id
-LEFT JOIN organization o ON rr.reverts_to_type = 'organization' AND rr.reverts_to_id = o.id
+LEFT JOIN persons p ON rr.reverts_to_type = 'person' AND rr.reverts_to_id = p.id -- Renamed to plural
+LEFT JOIN organizations o ON rr.reverts_to_type = 'organization' AND rr.reverts_to_id = o.id -- Renamed to plural
 WHERE rr.is_active = TRUE
-    AND rs.code IN ('PENDING', 'NOTICE_SENT')
+    AND rs.code IN ('PENDING', 'NOTICE_SENT') -- Using lookup code
     AND rr.reversion_date >= CURDATE()
 ORDER BY rr.reversion_date ASC;
 
@@ -11409,29 +11864,29 @@ SELECT
     rc.detection_date,
     TIMESTAMPDIFF(DAY, rc.detection_date, NOW()) AS days_open,
     u.username AS assigned_to_username
-FROM rights_conflict rc
-JOIN resource_db.rights_conflict_type rct ON rc.conflict_type_id = rct.id
-JOIN resource_db.rights_type rt ON rc.rights_type_id = rt.id
-JOIN resource_db.conflict_status cs ON rc.status_id = cs.id
-JOIN resource_db.severity_level sl ON rc.severity_id = sl.id
-LEFT JOIN resource_db.territory t ON rc.territory_id = t.id
-LEFT JOIN user u ON rc.assigned_to = u.id
+FROM rights_conflicts rc -- Renamed to plural
+JOIN resource_db.rights_conflict_types rct ON rc.conflict_type_id = rct.id -- Renamed lookup
+JOIN resource_db.rights_types rt ON rc.rights_type_id = rt.id -- Renamed lookup
+JOIN resource_db.conflict_statuses cs ON rc.status_id = cs.id -- Renamed lookup
+JOIN resource_db.severity_levels sl ON rc.severity_id = sl.id -- Renamed lookup
+LEFT JOIN resource_db.territories t ON rc.territory_id = t.id -- Renamed lookup
+LEFT JOIN users u ON rc.assigned_to = u.id -- Renamed to plural
 -- Asset joins
-LEFT JOIN work w ON rc.asset_type = 'work' AND rc.asset_id = w.id
-LEFT JOIN recording r ON rc.asset_type = 'recording' AND rc.asset_id = r.id
-LEFT JOIN release rel ON rc.asset_type = 'release' AND rc.asset_id = rel.id
-WHERE cs.code != 'RESOLVED'
+LEFT JOIN works w ON rc.asset_type = 'work' AND rc.asset_id = w.id -- Renamed to plural
+LEFT JOIN recordings r ON rc.asset_type = 'recording' AND rc.asset_id = r.id -- Renamed to plural
+LEFT JOIN releases rel ON rc.asset_type = 'release' AND rc.asset_id = rel.id -- Renamed to plural
+WHERE cs.code != 'RESOLVED' -- Using lookup code
 ORDER BY sl.priority DESC, rc.detection_date ASC;
 
 -- =============================================
--- RIGHTS VALIDATION TRIGGERS
+-- RIGHTS VALIDATION TRIGGERS (UPDATED)
 -- =============================================
 
 DELIMITER $$
 
 -- Trigger to log rights grant changes
-CREATE TRIGGER tr_log_rights_grant_changes
-AFTER UPDATE ON rights_grant
+CREATE TRIGGER tr_log_rights_grants_changes -- Renamed trigger
+AFTER UPDATE ON rights_grants -- Renamed to plural
 FOR EACH ROW
 BEGIN
     -- Log significant changes
@@ -11441,7 +11896,8 @@ BEGIN
        NEW.status_id != OLD.status_id OR
        NEW.expiry_date != OLD.expiry_date THEN
         
-        INSERT INTO rights_grant_history (
+        INSERT INTO rights_grant_histories ( -- Renamed to plural
+            id, aid, -- id is AUTO_INCREMENT, aid is generated
             rights_grant_id,
             change_type_id,
             field_name,
@@ -11451,15 +11907,9 @@ BEGIN
             effective_date,
             created_by
         ) VALUES (
+            NULL, UNHEX(REPLACE(UUID(), '-', '')),
             NEW.id,
-            (SELECT id FROM resource_db.rights_change_type WHERE code = 'MODIFICATION'),
-            CASE 
-                WHEN NEW.grantee_type != OLD.grantee_type THEN 'grantee_type'
-                WHEN NEW.grantee_id != OLD.grantee_id THEN 'grantee_id'
-                WHEN NEW.exclusive_rights != OLD.exclusive_rights THEN 'exclusive_rights'
-                WHEN NEW.status_id != OLD.status_id THEN 'status_id'
-                WHEN NEW.expiry_date != OLD.expiry_date THEN 'expiry_date'
-            END,
+            (SELECT id FROM resource_db.rights_change_types WHERE code = 'MODIFICATION'), -- Renamed lookup
             CASE 
                 WHEN NEW.grantee_type != OLD.grantee_type THEN OLD.grantee_type
                 WHEN NEW.grantee_id != OLD.grantee_id THEN CAST(OLD.grantee_id AS CHAR)
@@ -11480,8 +11930,9 @@ BEGIN
         );
     END IF;
     
-    -- Log in audit table
-    INSERT INTO rights_audit (
+    -- Log in audit
+    INSERT INTO rights_audits ( -- Renamed to plural
+        id, aid, -- id is AUTO_INCREMENT, aid is generated
         audit_type_id,
         entity_type,
         entity_id,
@@ -11492,10 +11943,11 @@ BEGIN
         related_grant_id,
         user_id
     ) VALUES (
-        (SELECT id FROM resource_db.rights_audit_type WHERE code = 'GRANT_UPDATE'),
-        'rights_grant',
+        NULL, UNHEX(REPLACE(UUID(), '-', '')),
+        (SELECT id FROM resource_db.rights_audit_types WHERE code = 'GRANT_UPDATE'), -- Renamed lookup
+        'rights_grants', -- Renamed entity type
         NEW.id,
-        (SELECT id FROM resource_db.audit_action_type WHERE code = 'UPDATE'),
+        (SELECT id FROM resource_db.audit_action_types WHERE code = 'UPDATE'), -- Renamed lookup
         'Rights grant updated',
         JSON_OBJECT(
             'status_id', OLD.status_id,
@@ -11513,8 +11965,8 @@ BEGIN
 END$$
 
 -- Trigger to check for reversion deadlines
-CREATE TRIGGER tr_check_reversion_notice
-BEFORE UPDATE ON rights_reversion
+CREATE TRIGGER tr_check_reversion_notices -- Renamed trigger
+BEFORE UPDATE ON rights_reversions -- Renamed to plural
 FOR EACH ROW
 BEGIN
     -- Check if notice deadline is approaching
@@ -11525,8 +11977,8 @@ BEGIN
         
         -- This would typically trigger a notification
         -- For now, we'll just ensure the status reflects this
-        IF NEW.status_id = (SELECT id FROM resource_db.reversion_status WHERE code = 'PENDING') THEN
-            SET NEW.status_id = (SELECT id FROM resource_db.reversion_status WHERE code = 'NOTICE_DUE');
+        IF NEW.status_id = (SELECT id FROM resource_db.reversion_statuses WHERE code = 'PENDING') THEN -- Renamed lookup
+            SET NEW.status_id = (SELECT id FROM resource_db.reversion_statuses WHERE code = 'NOTICE_DUE'); -- Renamed lookup
         END IF;
     END IF;
 END$$
@@ -11534,15 +11986,15 @@ END$$
 DELIMITER ;
 
 -- =============================================
--- PERFORMANCE INDEXES
+-- PERFORMANCE INDEXES (UPDATED)
 -- =============================================
 
 -- Additional composite indexes for common queries
-CREATE INDEX idx_rights_grant_lookup ON rights_grant(asset_type, asset_id, status_id, is_active);
-CREATE INDEX idx_rights_grant_dates ON rights_grant(effective_date, expiry_date, status_id);
-CREATE INDEX idx_territory_rights_lookup ON territory_rights(rights_grant_id, is_worldwide);
-CREATE INDEX idx_rights_claim_lookup ON rights_claim(asset_type, asset_id, status_id);
-CREATE INDEX idx_chain_of_title_lookup ON rights_chain_of_title(asset_type, asset_id, sequence_number);
+CREATE INDEX idx_rights_grants_lookup ON rights_grants(asset_type, asset_id, status_id, is_active); -- Renamed
+CREATE INDEX idx_rights_grants_dates ON rights_grants(effective_date, expiry_date, status_id); -- Renamed
+CREATE INDEX idx_territory_rights_sets_lookup ON territory_rights_sets(rights_grant_id, is_worldwide); -- Renamed
+CREATE INDEX idx_rights_claims_lookup ON rights_claims(asset_type, asset_id, status_id); -- Renamed
+CREATE INDEX idx_rights_chains_of_title_lookup ON rights_chains_of_title(asset_type, asset_id, sequence_number); -- Renamed
 
 -- =============================================================================
 -- Section 6: CWR
@@ -39849,9 +40301,158 @@ END//
 
 DELIMITER ;
 
--- =====================================================
--- END OF SECTION 27: ARCHIVE & RETENTION
--- =====================================================
+-- NEW FROM GEMINI --
 
--- Note: Configuration data for archive policies, retention rules, 
--- and storage providers should be added to resource_db as lookup tables
+CREATE TABLE astro_db.revenue_forecast_models (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    model_type VARCHAR(50) NOT NULL, -- e.g., 'STREAMING_FORECAST', 'REVENUE_PROJECTION', 'DECAY_CURVE'
+    parameters JSON, -- Model parameters, e.g., discount rates, decay factors, historical data ranges
+    last_trained_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.catalog_valuation_results (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    catalog_entity_type VARCHAR(50) NOT NULL, -- 'ASSET', 'ARTIST', 'LABEL', 'PORTFOLIO'
+    catalog_entity_id BIGINT UNSIGNED NOT NULL, -- ID of the entity being valued
+    valuation_model_id BIGINT UNSIGNED NOT NULL, -- FK to revenue_forecast_models (for DCF, etc.)
+    valuation_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valuation_amount DECIMAL(19,8) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL, -- FK to reference_db.currencies
+    valuation_method VARCHAR(50) NOT NULL, -- 'DCF', 'MULTIPLE_BASED', 'COST_BASED'
+    assumptions JSON, -- e.g., discount rate, projection period, decay curve used
+    report_url TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_valuation_results_model FOREIGN KEY (valuation_model_id) REFERENCES astro_db.revenue_forecast_models(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_valuation_results_currency FOREIGN KEY (currency_id) REFERENCES reference_db.currencies(id) ON DELETE RESTRICT,
+    INDEX ix_catalog_valuation_entity (catalog_entity_type, catalog_entity_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.deal_summary_templates (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    deal_type_id INT UNSIGNED NOT NULL, -- FK to reference_db.agreement_types
+    template_json JSON NOT NULL, -- JSON structure for the summary fields
+    description TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_deal_templates_agreement_type FOREIGN KEY (deal_type_id) REFERENCES reference_db.agreement_types(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.consolidated_usage_data (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    asset_id BIGINT NOT NULL, -- FK to astro_db.assets
+    dsp_id INT UNSIGNED NOT NULL, -- FK to reference_db.dsps
+    territory_id CHAR(3) NOT NULL, -- FK to reference_db.territories
+    report_date DATE NOT NULL,
+    stream_count BIGINT UNSIGNED NOT NULL,
+    revenue_amount DECIMAL(19,8) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL, -- FK to reference_db.currencies
+    -- Other relevant metrics like unique listeners, playlist adds, etc.
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_consolidated_usage (asset_id, dsp_id, territory_id, report_date)
+) ENGINE=InnoDB
+PARTITION BY RANGE (YEAR(report_date)) (
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION pmax VALUES LESS THAN MAXVALUE
+);
+
+CREATE TABLE astro_db.sync_license_quotes (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    asset_id BIGINT NOT NULL, -- FK to astro_db.assets
+    license_type_id INT UNSIGNED NOT NULL, -- FK to reference_db.license_types (e.g., 'FILM', 'TV', 'ADVERTISEMENT')
+    usage_type_id INT UNSIGNED NOT NULL, -- FK to reference_db.usage_types (e.g., 'BACKGROUND', 'FEATURED', 'OPENING_CREDITS')
+    territory_id CHAR(3) NOT NULL, -- FK to reference_db.territories
+    term_months INT NULL, -- Duration in months
+    fee_amount DECIMAL(15,6) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL, -- FK to reference_db.currencies
+    mfn_clause BOOLEAN DEFAULT FALSE, -- Most Favored Nations clause
+    quote_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    quoted_by BIGINT NULL, -- FK to astro_db.user or astro_db.person (for internal user)
+    status_id INT UNSIGNED NOT NULL, -- FK to reference_db.quote_status
+    negotiation_notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sync_quotes_asset FOREIGN KEY (asset_id) REFERENCES astro_db.assets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sync_quotes_license_type FOREIGN KEY (license_type_id) REFERENCES reference_db.license_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sync_quotes_usage_type FOREIGN KEY (usage_type_id) REFERENCES reference_db.usage_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sync_quotes_territory FOREIGN KEY (territory_id) REFERENCES reference_db.territories(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sync_quotes_currency FOREIGN KEY (currency_id) REFERENCES reference_db.currencies(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sync_quotes_status FOREIGN KEY (status_id) REFERENCES reference_db.quote_status(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.ar_investment_tracker (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    investment_entity_type VARCHAR(50) NOT NULL, -- 'ARTIST', 'PROJECT', 'RELEASE'
+    investment_entity_id BIGINT UNSIGNED NOT NULL,
+    investment_category VARCHAR(50) NOT NULL, -- 'RECORDING_COSTS', 'MARKETING_SPEND', 'ADVANCE'
+    amount DECIMAL(15,6) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL, -- FK to reference_db.currencies
+    investment_date DATE NOT NULL,
+    roi_target_percentage DECIMAL(5,4) NULL,
+    actual_roi_percentage DECIMAL(5,4) NULL, -- Calculated field
+    break_even_date DATE NULL, -- Calculated field
+    notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX ix_ar_investment_entity (investment_entity_type, investment_entity_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.tour_budgets (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    artist_id BIGINT NOT NULL, -- FK to astro_db.artist (or person if generic)
+    tour_name VARCHAR(255) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    total_budget DECIMAL(15,6) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL, -- FK to reference_db.currencies
+    recoupable_percentage DECIMAL(5,4) NULL,
+    non_recoupable_percentage DECIMAL(5,4) NULL,
+    -- Breakdowns by expense type could be a separate table or JSON
+    expected_merch_revenue DECIMAL(15,6) NULL,
+    actual_merch_revenue DECIMAL(15,6) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tour_budgets_artist FOREIGN KEY (artist_id) REFERENCES astro_db.artist(id) ON DELETE CASCADE,
+    CONSTRAINT fk_tour_budgets_currency FOREIGN KEY (currency_id) REFERENCES reference_db.currencies(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.sample_clearances (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    asset_id BIGINT NOT NULL, -- FK to astro_db.assets (the new song using the sample)
+    sampled_asset_id BIGINT NOT NULL, -- FK to astro_db.assets (the original sampled song)
+    clearance_type VARCHAR(50) NOT NULL, -- 'MASTER_USE', 'PUBLISHING', 'INTERPOLATION'
+    fee_amount DECIMAL(15,6) NULL,
+    currency_id INT UNSIGNED NULL, -- FK to reference_db.currencies
+    royalty_percentage DECIMAL(5,4) NULL,
+    mfn_clause BOOLEAN DEFAULT FALSE,
+    clearance_date DATE NOT NULL,
+    status_id INT UNSIGNED NOT NULL, -- FK to reference_db.clearance_status
+    notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sample_clearances_asset FOREIGN KEY (asset_id) REFERENCES astro_db.assets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sample_clearances_sampled_asset FOREIGN KEY (sampled_asset_id) REFERENCES astro_db.assets(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sample_clearances_currency FOREIGN KEY (currency_id) REFERENCES reference_db.currencies(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sample_clearances_status FOREIGN KEY (status_id) REFERENCES reference_db.clearance_status(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE astro_db.unclaimed_royalties (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    source VARCHAR(100) NOT NULL, -- e.g., 'PRO_BLACKBOX', 'DSP_UNCLAIMED'
+    reported_asset_identifier VARCHAR(255) NULL,
+    reported_contributor_identifier VARCHAR(255) NULL,
+    amount DECIMAL(19,8) NOT NULL,
+    currency_id INT UNSIGNED NOT NULL,
+    report_date DATE NOT NULL,
+    matched_asset_id BIGINT NULL, -- FK to astro_db.assets if matched
+    matched_contributor_id BIGINT NULL, -- FK to astro_db.contributors if matched
+    is_claimed BOOLEAN DEFAULT FALSE,
+    claim_date DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_unclaimed_royalties_currency FOREIGN KEY (currency_id) REFERENCES reference_db.currencies(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_unclaimed_royalties_asset FOREIGN KEY (matched_asset_id) REFERENCES astro_db.assets(id) ON DELETE SET NULL,
+    CONSTRAINT fk_unclaimed_royalties_contributor FOREIGN KEY (matched_contributor_id) REFERENCES astro_db.contributors(contributor_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+

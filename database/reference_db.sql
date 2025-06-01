@@ -31479,3 +31479,83 @@ ORDER BY st.display_order;
 -- GRANT EXECUTE ON reference_db.* TO 'astro_app'@'%';
 
 -- FLUSH PRIVILEGES;
+
+
+-- NEW FROM GEMINI --
+
+CREATE TABLE reference_db.tokens (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    symbol VARCHAR(10) NOT NULL UNIQUE,
+    blockchain_network_id INT UNSIGNED NOT NULL, -- FK to reference_db.blockchain_networks
+    contract_address VARCHAR(128) NULL,
+    decimal_places INT NOT NULL DEFAULT 18,
+    is_native BOOLEAN DEFAULT FALSE, -- e.g., ETH, MATIC
+    description TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tokens_blockchain_networks FOREIGN KEY (blockchain_network_id) REFERENCES reference_db.blockchain_networks(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+INSERT INTO reference_db.tokens (name, symbol, blockchain_network_id, contract_address, is_native) VALUES
+('ASTRO Coin', 'ASTRO', (SELECT id FROM reference_db.blockchain_networks WHERE name = 'Ethereum Mainnet'), '0x...', FALSE); -- Placeholder contract address
+
+CREATE TABLE astro_db.token_transactions (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    transaction_hash VARCHAR(128) NOT NULL UNIQUE,
+    token_id INT UNSIGNED NOT NULL, -- FK to reference_db.tokens (ASTRO Coin or other)
+    sender_wallet_id BIGINT UNSIGNED NULL, -- FK to astro_db.fan_wallets or astro_db.wallets
+    recipient_wallet_id BIGINT UNSIGNED NULL, -- FK to astro_db.fan_wallets or astro_db.wallets
+    amount DECIMAL(19,8) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL, -- e.g., 'MINT', 'TRANSFER', 'BURN', 'ROYALTY_PAYOUT', 'INVESTMENT'
+    blockchain_network_id INT UNSIGNED NOT NULL, -- FK to reference_db.blockchain_networks
+    transaction_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    gas_fee DECIMAL(19,8) NULL,
+    gas_currency_id INT UNSIGNED NULL, -- FK to reference_db.currencies
+    status VARCHAR(20) NOT NULL, -- e.g., 'PENDING', 'CONFIRMED', 'FAILED'
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_token_tx_token FOREIGN KEY (token_id) REFERENCES reference_db.tokens(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_token_tx_sender_wallet FOREIGN KEY (sender_wallet_id) REFERENCES astro_db.fan_wallets(id) ON DELETE SET NULL, -- Assuming fan_wallets also handles artist/label wallets, or create a generic wallet table
+    CONSTRAINT fk_token_tx_recipient_wallet FOREIGN KEY (recipient_wallet_id) REFERENCES astro_db.fan_wallets(id) ON DELETE SET NULL,
+    CONSTRAINT fk_token_tx_network FOREIGN KEY (blockchain_network_id) REFERENCES reference_db.blockchain_networks(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE reference_db.dsp_cpm_rates (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    dsp_id INT UNSIGNED NOT NULL, -- FK to reference_db.dsps
+    territory_id CHAR(3) NOT NULL, -- FK to reference_db.territories
+    tier_type VARCHAR(50) NOT NULL, -- e.g., 'PREMIUM', 'FREE', 'AD_SUPPORTED'
+    cpm_rate DECIMAL(10,6) NOT NULL, -- Cost Per Mille (rate per 1000 streams)
+    effective_date DATE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cpm_rates_dsp FOREIGN KEY (dsp_id) REFERENCES reference_db.dsps(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_cpm_rates_territory FOREIGN KEY (territory_id) REFERENCES reference_db.territories(id) ON DELETE RESTRICT,
+    UNIQUE KEY uk_cpm_rate (dsp_id, territory_id, tier_type, effective_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE reference_db.catalog_decay_rates (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    genre_id INT UNSIGNED NULL, -- FK to reference_db.genres
+    catalog_type VARCHAR(50) NOT NULL, -- 'EVERGREEN', 'NEW_RELEASE', 'BACK_CATALOG'
+    decay_factor DECIMAL(5,4) NOT NULL, -- e.g., 0.50 for 50% decay annually
+    description TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_decay_rates_genre FOREIGN KEY (genre_id) REFERENCES reference_db.genre(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE reference_db.tax_treaties (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    country_id_1 CHAR(3) NOT NULL,
+    country_id_2 CHAR(3) NOT NULL,
+    treaty_type VARCHAR(50) NOT NULL, -- e.g., 'DOUBLE_TAXATION_AVOIDANCE'
+    royalty_withholding_rate DECIMAL(5,4) NULL, -- applicable rate
+    effective_date DATE NOT NULL,
+    description TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_tax_treaty (country_id_1, country_id_2, effective_date),
+    CONSTRAINT fk_tax_treaty_country1 FOREIGN KEY (country_id_1) REFERENCES reference_db.country(id),
+    CONSTRAINT fk_tax_treaty_country2 FOREIGN KEY (country_id_2) REFERENCES reference_db.country(id)
+) ENGINE=InnoDB;
+
